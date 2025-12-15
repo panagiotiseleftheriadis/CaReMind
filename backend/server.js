@@ -20,11 +20,12 @@ app.use(express.urlencoded({ extended: true }));
 // Middlewares
 app.use(
   cors({
-    origin: "*", // για αρχή, δέχεται από παντού. Μετά μπορείς να βάλεις το κανονικό σου domain.
+    origin: "https://caremind2025.netlify.app",
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
+
 app.use(express.json());
 
 // Routes
