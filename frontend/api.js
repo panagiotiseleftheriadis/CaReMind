@@ -3,7 +3,7 @@
 class API {
   // Προσθέστε αυτό το έλεγχο στο api.js στο constructor:
   constructor() {
-    this.baseURL = "http://localhost:3000/api";
+    this.baseURL = "https://caremind-bzv3.onrender.com/api";
     this.token = localStorage.getItem("authToken");
 
     // Έλεγχος αν ο χρήστης είναι συνδεδεμένος
