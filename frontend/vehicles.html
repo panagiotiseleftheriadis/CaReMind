@@ -52,7 +52,7 @@
                 <div class="form-group">
                   <label for="vehicleType">Τύπος Οχήματος *</label>
                   <select id="vehicleType" name="vehicleType" required>
-                    <option value="">Επιλέξτε...</option>
+                    <option value="" disabled selected>Επιλέξτε...</option>
                     <option value="Επιβατικό ΙΧ">Επιβατικό ΙΧ</option>
                     <option value="Μοτοσυκλέτα">Μοτοσυκλέτα</option>
                     <option value="Φορτηγό Μεσαίου Τύπου">
@@ -66,6 +66,7 @@
                     <option value="Ημιρυμουλκούμενο">Ημιρυμουλκούμενο</option>
                     <option value="other">Άλλο…</option>
                   </select>
+
                   <input
                     type="text"
                     id="vehicleTypeOther"
@@ -77,7 +78,12 @@
 
                 <div class="form-group">
                   <label for="chassisNumber">Αριθμός Πλαισίου *</label>
-                  <input type="text" id="chassisNumber" required />
+                  <input
+                    type="text"
+                    id="chassisNumber"
+                    name="chassisNumber"
+                    required
+                  />
                 </div>
               </div>
 
