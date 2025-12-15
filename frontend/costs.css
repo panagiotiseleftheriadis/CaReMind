@@ -1,0 +1,1121 @@
+/* costs.css - Enhanced version */
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.header-costs {
+  display: flex;
+  justify-content: space-between; /* Τίτλος αριστερά, μενού δεξιά */
+  align-items: center;
+  gap: 1rem;
+  margin: 10px;
+  padding-left: 16px !important;
+  padding-right: 16px !important;
+  flex-wrap: nowrap; /* Desktop: όλα σε μία γραμμή */
+  position: relative;
+}
+.header-costs h1 {
+  font-size: 25px;
+  padding-left: 24px;
+  margin: 0;
+  white-space: nowrap;
+}
+.costs-header-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.header-content-costs {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  text-align: initial;
+}
+.header-content-costs nav {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  white-space: nowrap;
+}
+
+/* Στυλ για το κουμπί Hamburger (nav-toggle) */
+.nav-toggle {
+  display: none; /* Κρυφό σε μεγάλες οθόνες */
+  flex-direction: column;
+  justify-content: space-between;
+  width: 30px;
+  height: 21px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  z-index: 1001;
+}
+
+.nav-toggle span {
+  display: block;
+  width: 100%;
+  height: 3px;
+  background-color: #333;
+  border-radius: 3px;
+  transition: all 0.3s ease-in-out;
+}
+#costPeriod {
+  padding: 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  min-width: 150px;
+}
+#costVehicle {
+  padding: 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  min-width: 150px;
+}
+#costCategory {
+  padding: 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  min-width: 150px;
+}
+
+/* Cost Summary */
+.cost-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+.btn-secondary {
+  background: #3498db;
+  color: white;
+  padding: 0.5rem 1.2rem;
+  display: flex;
+  align-items: end;
+  text-align: center;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.75rem;
+  transition: background-color 0.3s;
+}
+
+.summary-card {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  text-align: center;
+  border-top: 4px solid #ddd;
+  transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.summary-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+}
+
+.summary-card.total {
+  border-top-color: #e74c3c;
+}
+
+.summary-card.monthly {
+  border-top-color: #3498db;
+}
+
+.summary-card.average {
+  border-top-color: #27ae60;
+}
+
+.summary-card.trend {
+  border-top-color: #f39c12;
+}
+
+.summary-card h3 {
+  margin: 0 0 0.5rem 0;
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.summary-card .amount {
+  font-size: 2rem;
+  font-weight: bold;
+  color: #2c3e50;
+  margin-bottom: 0.25rem;
+}
+
+.summary-card .period {
+  font-size: 0.8rem;
+  color: #999;
+}
+
+.trend-indicator {
+  font-size: 2rem;
+  margin-bottom: 0.25rem;
+}
+
+.trend-up {
+  color: #e74c3c;
+}
+
+.trend-down {
+  color: #27ae60;
+}
+
+.trend-neutral {
+  color: #f39c12;
+}
+
+/* Filters */
+.filters-section {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  margin-bottom: 2rem;
+  display: flex;
+  gap: 2rem;
+  flex-wrap: wrap;
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.filter-group label {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: #555;
+}
+
+.filter-actions {
+  margin-left: auto;
+}
+.filter-group select {
+  padding: 0.5rem;
+  border: 1px solid rgb(221, 221, 221);
+  border-radius: 4px;
+  min-width: 150px;
+  height: 40px;
+}
+
+.custom-range {
+  background: #f8f9fa;
+  padding: 1rem;
+  border-radius: 6px;
+  margin-bottom: 1rem;
+}
+
+/* costs.css - Chart Styles (Matched to Dashboard) */
+
+.charts-section {
+  margin-bottom: 2rem;
+}
+
+/* Grid Layout - Ίδιο με το dashboard */
+.chart-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: 2rem; /* Ήταν 1.5rem, το Dashboard έχει 2rem */
+  margin-bottom: 2rem;
+}
+
+/* Chart Card - Στυλ καρτέλας (αντίγραφο από .chart-container του dashboard) */
+.chart-card {
+  background: white;
+  padding: 1.5rem; /* Από 5rem που ήταν, τώρα 1.5rem */
+  border-radius: 12px; /* Από 8px σε 12px */
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  min-height: 300px; /* Σταθερό ελάχιστο ύψος */
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+}
+
+.chart-card h3 {
+  margin-bottom: 1rem;
+  color: #2c3e50;
+  text-align: center;
+  font-size: 1.1rem; /* Προαιρετική προσαρμογή τίτλου */
+}
+
+/* Canvas Styling - Περιορισμός ύψους για ομοιομορφία */
+.chart-card canvas {
+  width: 100% !important;
+  height: auto !important;
+  flex: 1;
+  max-height: 250px; /* Μέγιστο ύψος όπως στο dashboard */
+}
+
+/* Costs List */
+.costs-list-section {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  margin-bottom: 2rem;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.costs-table-container {
+  overflow-x: auto;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+}
+
+.data-table th,
+.data-table td {
+  padding: 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid #eee;
+}
+
+.data-table th {
+  background: #34495e;
+  color: white;
+  font-weight: 600;
+  position: sticky;
+  top: 0;
+}
+
+.data-table tr:hover {
+  background: #f8f9fa;
+}
+/* ===== Chart container height FIX ===== */
+.chart-card {
+  position: relative;
+}
+
+/* Mobile */
+
+/* Cost Items - Similar to maintenance items */
+.cost-item {
+  transition: background-color 0.3s;
+}
+
+.cost-item:hover {
+  background-color: #f8f9fa !important;
+}
+
+.cost-vehicle {
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.cost-chassis {
+  font-size: 0.8rem;
+  color: #666;
+}
+
+.cost-amount {
+  font-weight: bold;
+  color: #2c3e50;
+  font-size: 1.1rem;
+}
+
+.cost-description {
+  color: #666;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cost-receipt {
+  font-size: 0.8rem;
+  color: #999;
+  margin-top: 0.25rem;
+}
+
+.cost-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+/* Category badges */
+.category-badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  background-color: #e8eaf6; /* Ανοιχτό μωβ */
+  color: #3949ab; /* Σκούρο μπλε */
+}
+
+.category-fuel {
+  background: #ffeaa7;
+  color: #e17055;
+}
+
+.category-maintenance {
+  background: #a29bfe;
+  color: white;
+}
+
+.category-insurance {
+  background: #74b9ff;
+  color: white;
+}
+
+.category-repair {
+  background: #ff7675;
+  color: white;
+}
+
+.category-taxes {
+  background: #55efc4;
+  color: #2d3436;
+}
+
+.category-other {
+  background-color: #e8eaf6; /* Ανοιχτό μωβ */
+  color: #3949ab; /* Σκούρο μπλε */
+  border: 1px solid #7986cb;
+}
+
+/* Breakdown Section */
+.breakdown-section {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.breakdown-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+}
+
+.breakdown-card {
+  padding: 1rem;
+  border: 1px solid #eee;
+  border-radius: 6px;
+  transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.breakdown-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.breakdown-card h4 {
+  margin-bottom: 1rem;
+  color: #2c3e50;
+  border-bottom: 2px solid #3498db;
+  padding-bottom: 0.5rem;
+}
+
+.breakdown-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.breakdown-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.breakdown-label {
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.breakdown-value {
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.breakdown-percentage {
+  font-size: 0.8rem;
+  color: #999;
+  margin-left: 0.5rem;
+}
+
+/* Pagination */
+/* costs.css - New Pagination Styles */
+
+#costsPagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1.5rem; /* Απόσταση μεταξύ κουμπιών και κειμένου */
+  margin-top: 2rem;
+  padding: 1rem;
+  background: transparent;
+}
+
+/* Κουμπιά Pagination */
+.pagination-btn {
+  background-color: white;
+  color: #3498db; /* Το βασικό μπλε του θέματός σου */
+  border: 1px solid #3498db;
+  padding: 0.6rem 1.2rem;
+  border-radius: 50px; /* Οβάλ σχήμα */
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  box-shadow: 0 2px 5px rgba(52, 152, 219, 0.1);
+}
+
+/* Hover Effect */
+.pagination-btn:hover:not(:disabled) {
+  background-color: #3498db;
+  color: white;
+  transform: translateY(-2px); /* Ελαφριά ανύψωση */
+  box-shadow: 0 4px 10px rgba(52, 152, 219, 0.3);
+}
+
+/* Disabled State (όταν δεν πάει άλλο πίσω/μπροστά) */
+.pagination-btn:disabled {
+  background-color: #f1f3f5;
+  color: #adb5bd;
+  border-color: #dee2e6;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+
+/* Κείμενο "Σελίδα Χ από Υ" */
+.pagination-info {
+  font-size: 0.95rem;
+  color: #555;
+  background: #f8f9fa;
+  padding: 0.5rem 1rem;
+  border-radius: 12px;
+  border: 1px solid #eee;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.03);
+}
+
+.pagination-info strong {
+  color: #2c3e50;
+  font-weight: 700;
+}
+
+/* Ο πίνακας να απλώνει */
+.data-table {
+  width: 100%;
+}
+
+/* Μηδένισε padding στο td, θα το βάλουμε στο wrapper */
+#costsTableBody td[colspan] {
+  padding: 0;
+}
+
+/* Ο πραγματικός flex-wrapper */
+.empty-state {
+  display: flex;
+  align-items: center;
+  justify-content: space-between; /* σπρώχνει το κουμπί δεξιά */
+  gap: 12px;
+  width: 100%;
+  padding: 16px 24px; /* ίδιο padding με τα υπόλοιπα rows */
+  box-sizing: border-box;
+  text-align: left; /* override τυχόν center */
+  color: #666;
+}
+
+/* Ακύρωσε τυχόν παλιό margin-top στο κουμπί */
+.empty-state button {
+  margin-top: 0;
+  white-space: nowrap;
+}
+
+/* Form improvements */
+.form-section {
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #eee;
+}
+
+.form-section h4 {
+  margin-bottom: 1rem;
+  color: #2c3e50;
+}
+
+.form-row {
+  display: flex;
+  gap: 1rem;
+}
+
+.form-row .form-group {
+  flex: 1;
+}
+
+/* Animation for new costs */
+@keyframes highlightNew {
+  0% {
+    background-color: #e8f6f3;
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+.highlight-new {
+  animation: highlightNew 2s ease-in-out;
+}
+
+/* Debug borders - remove after testing */
+.cost-item {
+  border: 2px solid #007bff !important;
+  margin: 5px 0;
+}
+
+/* Highlight clickable elements */
+.cost-actions button:hover {
+  background-color: #007bff !important;
+  color: white !important;
+  transform: scale(1.05);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .nav-toggle {
+    display: flex;
+  }
+
+  /* Το header γίνεται wrap για να χωρέσει το μενού από κάτω */
+  .header-costs {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    margin: 10px;
+  }
+
+  /* Το group τίτλου-hamburger πιάνει όλο το πλάτος */
+  .costs-header-main {
+    width: 100%;
+  }
+  .header-content-costs {
+    width: 100%;
+  }
+
+  /* Το μενού κρύβεται αρχικά */
+  .header-costs .nav-toggle {
+    display: flex !important;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.15);
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    cursor: pointer;
+    transition: background 0.2s ease;
+  }
+  .header-costs .nav-toggle:hover {
+    background: rgba(0, 0, 0, 0.28);
+  }
+  .header-costs .nav-toggle span {
+    width: 22px;
+    height: 2px;
+    background: #fff;
+    border-radius: 2px;
+    transition: transform 0.25s ease, opacity 0.25s ease;
+  }
+
+  /* Τα links πιάνουν όλο το πλάτος */
+  .header-content-costs nav a {
+    width: 100%;
+    justify-content: flex-start;
+    padding: 10px;
+    display: block;
+  }
+
+  /* Μετατροπή Hamburger → Χ */
+  body.nav-open .header-costs .nav-toggle span:nth-child(1) {
+    transform: translateY(6px) rotate(45deg);
+  }
+  body.nav-open .header-costs .nav-toggle span:nth-child(2) {
+    opacity: 0;
+  }
+  body.nav-open .header-costs .nav-toggle span:nth-child(3) {
+    transform: translateY(-6px) rotate(-45deg);
+  }
+  /* Το navigation κρύβεται μέχρι να πατηθεί το hamburger */
+  .header-content-costs nav {
+    display: none;
+    width: 100%;
+    flex-direction: column; /* ΚΑΘΕΤΟ μενού στο mobile */
+    align-items: stretch;
+    gap: 6px;
+
+    /* σημαντικό: ακυρώνει το nowrap που “σπάει” το mobile menu */
+    white-space: normal !important;
+  }
+  /* Όταν nav-open → δείξε το μενού */
+  body.nav-open .header-content-costs nav {
+    display: flex;
+  }
+  /* Τα links να γίνονται full width (σαν mobile menu items) */
+  .header-content-costs nav a {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .page-header {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: flex-start;
+  }
+
+  .cost-summary {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .filters-section .filter-group {
+    min-width: 0; /* ΤΟ ΚΛΕΙΔΙ */
+  }
+  .filters-section {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    align-items: stretch;
+  }
+  .filters-section .filter-group:nth-child(3) {
+    grid-column: 1 / -1;
+  }
+
+  .filter-actions {
+    margin-left: 0;
+    align-self: center;
+  }
+
+  .breakdown-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .data-table {
+    font-size: 0.8rem;
+  }
+
+  .section-header {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-start;
+  }
+  h3 {
+    font-size: 14px;
+    padding-top: 7px;
+  }
+  .btn-secondary {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 12px 14px;
+    font-size: 10px;
+    border-radius: 6px;
+  }
+  .cost-actions {
+    flex-direction: column;
+  }
+
+  .form-row {
+    flex-direction: column;
+    gap: 0;
+  }
+  #addCostsBtn {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    padding: 12px 14px;
+    font-size: 15px;
+    border-radius: 12px;
+  }
+  .summary-card .amount {
+    font-size: 20px;
+    font-weight: bold;
+    color: #2c3e50;
+    margin-bottom: 0.25rem;
+  }
+  .costs-table-container {
+    overflow-x: visible; /* δεν θέλουμε οριζόντιο scroll σε mobile */
+  }
+
+  /* Κρύβουμε header γραμμής */
+  .data-table thead {
+    display: none;
+  }
+
+  /* Κάθε row γίνεται κάρτα */
+  .data-table,
+  .data-table tbody,
+  .data-table tr {
+    display: block;
+    width: 100%;
+  }
+
+  .data-table tr.cost-item {
+    background: #fff;
+    border: 1px solid #eee;
+    border-radius: 14px;
+    padding: 12px;
+    margin-bottom: 12px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+  }
+
+  /* Κάθε td γίνεται “γραμμή” με label + value */
+  .data-table td {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    /* gap: 12px; */
+    padding: 10px 0;
+    border: 0;
+    border-bottom: 1px dashed #eee;
+  }
+
+  .data-table td:last-child {
+    border-bottom: 0;
+    padding-bottom: 0;
+  }
+
+  /* Label από data-label */
+  .data-table td::before {
+    content: attr(data-label);
+    font-weight: 700;
+    color: #555;
+    flex: 0 0 38%;
+    max-width: 38%;
+  }
+
+  /* Περιγραφή να κάνει wrap (όχι ellipsis στο mobile) */
+  .cost-description {
+    max-width: none;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: unset;
+    word-break: break-word;
+  }
+
+  /* Buttons σε στήλη και full width */
+  .cost-actions {
+    width: 100%;
+    display: flex;
+
+    flex-direction: row; /* ✔ δίπλα δίπλα */
+  }
+
+  .cost-actions .btn-secondary {
+    flex: 1; /* ✔ ίσο πλάτος */
+    justify-content: center;
+    height: 35px;
+  }
+  .chart-row {
+    grid-template-columns: 1fr; /* Μία στήλη στα κινητά */
+    gap: 1rem;
+  }
+
+  .chart-card {
+    min-height: 250px; /* Ελαφρώς μικρότερο ύψος στα κινητά */
+    padding: 1rem;
+  }
+
+  .chart-card canvas {
+    max-height: 200px;
+  }
+}
+@media (max-width: 450px) {
+  /* Η πάνω γραμμή (τίτλος + hamburger) να “κρατάει” σωστά */
+  .costs-header-main {
+    gap: 8px;
+  }
+
+  /* Ο τίτλος να μπορεί να μικρύνει μέσα στο flex */
+  .costs-header-main h1 {
+    flex: 1;
+    min-width: 0; /* ΤΟ ΚΛΕΙΔΙ για να μην “σπάει” το flex */
+    white-space: normal !important; /* ακυρώνει το nowrap */
+    font-size: clamp(18px, 5vw, 22px);
+    line-height: 1.15;
+    padding-left: 12px;
+    text-align: left;
+  }
+
+  /* Το hamburger να μένει σταθερό δεξιά */
+  .header-costs .nav-toggle {
+    flex: 0 0 40px;
+  }
+  .filters-section {
+    grid-template-columns: 1fr;
+  }
+  .filters-section .filter-group:nth-child(3) {
+    grid-column: auto;
+  }
+  #costsPagination {
+    flex-wrap: nowrap; /* Απαγορεύει να σπάσει η γραμμή */
+    gap: 0.5rem; /* Μικρότερο κενό ανάμεσα στα κουμπιά */
+    width: 100%;
+    justify-content: center;
+    padding: 0.5rem;
+  }
+  /* Κρύβουμε τη λέξη "Σελίδα" */
+  .pagination-label {
+    display: none;
+  }
+  .pagination-btn {
+    padding: 0.5rem 0.8rem;
+    font-size: 0.85rem;
+  }
+
+  .pagination-info {
+    font-size: 0.8rem;
+    padding: 0.4rem 0.6rem;
+  }
+}
+@media (max-width: 400px) {
+  .pagination-btn {
+    padding: 0.5rem 0.7rem;
+    font-size: 0.7rem;
+  }
+  .pagination-info {
+    font-size: 0.7rem;
+    padding: 0.5rem 0.7rem;
+  }
+}
+/* costs.css - Fix for Action Buttons on very small screens (<380px) */
+
+@media (max-width: 370px) {
+  /* Στοχεύουμε το τελευταίο κελί (Actions) του πίνακα */
+  .data-table td:last-child {
+    display: flex; /* Ενεργοποιούμε Flexbox για έλεγχο */
+    flex-direction: column; /* Κάθετη στοίχιση: το ένα κάτω από το άλλο */
+    align-items: center; /* Κεντράρισμα στη μέση του κελιού */
+    justify-content: center;
+    gap: 5px; /* Κενό ανάμεσα στα κουμπιά (πάνω-κάτω) */
+    padding: 5px !important; /* Μικρότερο padding στο κελί */
+    width: auto !important; /* Αφήνουμε το πλάτος να προσαρμοστεί */
+    white-space: normal !important; /* Επιτρέπουμε την αλλαγή γραμμής */
+    border-bottom: 1px solid #eee; /* Βεβαιωνόμαστε ότι φαίνεται ο διαχωρισμός */
+  }
+
+  /* Αφαιρούμε τα πλάγια margins που είχαμε βάλει πριν */
+  .data-table .btn-icon {
+    margin: 0 !important;
+  }
+}
+
+/* Notification System - Same as costs */
+.notification {
+  position: fixed;
+  right: 16px;
+  top: 16px;
+  z-index: 9999;
+  background: #fff;
+  border-left: 4px solid #3498db;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.15);
+  border-radius: 8px;
+  padding: 12px 16px;
+  min-width: 280px;
+  animation: slideInRight 0.3s ease;
+}
+
+.notification.success {
+  border-left-color: #27ae60;
+  background: #d4edda;
+  color: #155724;
+}
+
+.notification.error {
+  border-left-color: #e74c3c;
+  background: #f8d7da;
+  color: #721c24;
+}
+
+.notification.warning {
+  border-left-color: #f39c12;
+  background: #fff3cd;
+  color: #856404;
+}
+
+.notification-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.notification-message {
+  font-weight: 600;
+  flex: 1;
+}
+
+.notification-close {
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  color: inherit;
+  opacity: 0.7;
+}
+
+.notification-close:hover {
+  opacity: 1;
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+/* costs.css - Modal Buttons Styling */
+
+/* 1. Ο container των κουμπιών (για να ξεχωρίσει από τα inputs) */
+#addCostModal form .form-actions,
+#addCostModal .modal-footer {
+  display: flex;
+  justify-content: flex-end; /* Στοίχιση δεξιά */
+  align-items: center;
+  gap: 1rem; /* Απόσταση μεταξύ των κουμπιών */
+  margin-top: 2rem; /* Απόσταση από τα inputs */
+  padding-top: 1.5rem;
+  border-top: 1px solid #eee; /* Λεπτή γραμμή διαχωρισμού */
+  width: 100%;
+}
+
+/* 2. Κοινό στυλ και για τα δύο κουμπιά (για ομοιομορφία) */
+#addCostModal button {
+  padding: 0.8rem 1.5rem;
+  border-radius: 8px; /* Ελαφρώς στρογγυλεμένες γωνίες */
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s ease;
+  min-width: 120px; /* Ελάχιστο πλάτος για να φαίνονται ίδια */
+  height: 45px; /* Σταθερό ύψος */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  /* Αφαιρούμε τυχόν παλιά margins */
+  margin: 0 !important;
+}
+
+/* 3. Κουμπί Ακύρωσης (Γκρι/Απαλό) */
+#addCostModal button[type="button"],
+#addCostModal .btn-secondary {
+  background-color: #f1f3f5;
+  color: #636e72;
+  border: 1px solid #e9ecef;
+}
+
+#addCostModal button[type="button"]:hover,
+#addCostModal .btn-secondary:hover {
+  background-color: #e9ecef;
+  color: #2d3436;
+  transform: translateY(-1px);
+}
+
+/* 4. Κουμπί Αποθήκευσης (Μπλε/Έντονο) */
+#addCostModal button[type="submit"],
+#addCostModal .btn-primary {
+  background-color: #3498db;
+  color: white;
+  box-shadow: 0 4px 6px rgba(52, 152, 219, 0.2);
+}
+
+#addCostModal button[type="submit"]:hover,
+#addCostModal .btn-primary:hover {
+  background-color: #2980b9;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 12px rgba(52, 152, 219, 0.3);
+}
+
+/* Mobile Responsiveness για τα κουμπιά */
+@media (max-width: 480px) {
+  #addCostModal form .form-actions,
+  #addCostModal .modal-footer {
+    flex-direction: column-reverse; /* Το Cancel κάτω, το Save πάνω */
+    gap: 0.8rem;
+  }
+
+  #addCostModal button {
+    width: 100%; /* Πλήρες πλάτος στο κινητό */
+  }
+}
+.empty-state {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 16px 24px;
+  box-sizing: border-box;
+  gap: 12px;
+  text-align: left; /* override παλιού text-align:center */
+  color: #666;
+}
+.empty-state button {
+  margin-top: 0 !important;
+  margin-left: auto; /* σπρώχνει το κουμπί τέρμα δεξιά */
+  white-space: nowrap;
+}
+#costCategorySelect,
+#costCategory {
+  max-height: 200px;
+  overflow-y: auto;
+}
+/* === Costs Modal: center like maintenance === */
+#addCostModal.modal {
+  position: fixed;
+  inset: 0;
+  display: none; /* ανοίγει σε flex από JS */
+  align-items: center; /* κάθετα κέντρο */
+  justify-content: center; /* οριζόντια κέντρο (ΑΥΤΟ σου λείπει) */
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.55);
+  z-index: 9999;
+}
+
+/* Το κουτί του modal να είναι centered και responsive */
+#addCostModal .modal-content {
+  width: min(720px, 100%);
+  max-height: 90vh;
+  overflow: auto;
+  margin: 0; /* να μην το σπρώχνει αριστερά κάποιο margin */
+  border-radius: 16px;
+}
+
+/* Mobile “feel” σαν maintenance */
+@media (max-width: 520px) {
+  #addCostModal.modal {
+    padding: 10px;
+  }
+
+  #addCostModal .modal-content {
+    border-radius: 14px;
+  }
+}

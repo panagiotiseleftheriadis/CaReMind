@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="el">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Διαχείριση Συντήρησης - Σύστημα Οχημάτων</title>
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="maintenance.css" />
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <div class="header-maintenance">
+          <!-- Πάνω σειρά: τίτλος + hamburger -->
+          <div class="maintenance-header-main">
+            <h1>Διαχείριση Συντήρησης</h1>
+
+            <button class="nav-toggle" type="button" aria-label="Άνοιγμα μενού">
+              <span></span>
+              <span></span>
+              <span></span>
+            </button>
+          </div>
+
+          <!-- Κάτω σειρά: μενού -->
+          <div class="header-content-maintenance">
+            <nav>
+              <a href="dashboard.html">Πίνακας</a>
+              <a href="vehicles.html">Οχήματα</a>
+              <a href="maintenance.html" class="active">Συντήρηση</a>
+              <a href="costs.html">Κόστη</a>
+              <a href="login.html" id="logoutBtn">Αποσύνδεση</a>
+            </nav>
+          </div>
+        </div>
+      </header>
+
+      <main>
+        <!-- Page Header -->
+        <div class="page-header">
+          <h2>Προγραμματισμός & Ιστορικό Συντήρησης</h2>
+          <button class="btn-primary" id="addMaintenanceBtn">
+            + Νέα Συντήρηση
+          </button>
+        </div>
+
+        <!-- Maintenance Summary -->
+        <div class="maintenance-summary">
+          <div class="summary-card pending">
+            <h3>Επικείμενη</h3>
+            <div class="count" id="pendingCount">0</div>
+          </div>
+          <div class="summary-card overdue">
+            <h3>Εκπρόθεσμη</h3>
+            <div class="count" id="overdueCount">0</div>
+          </div>
+          <div class="summary-card completed">
+            <h3>Ολοκληρωμένη</h3>
+            <div class="count" id="completedCount">0</div>
+          </div>
+          <div class="summary-card total">
+            <h3>Σύνολο</h3>
+            <div class="count" id="totalCount">0</div>
+          </div>
+        </div>
+
+        <!-- Filters Section -->
+        <div class="filters-section" id="debugFilters">
+          <div class="filter-group">
+            <label for="vehicleFilter">Φίλτρο Οχήματος:</label>
+            <select id="vehicleFilter">
+              <option value="all">Όλα τα Οχήματα</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label for="typeFilter">Τύπος Συντήρησης:</label>
+            <select id="typeFilter">
+              <option value="all">Όλοι οι Τύποι</option>
+              <option value="oil">Λάδια</option>
+              <option value="service">Σέρβις</option>
+              <option value="insurance">Ασφάλεια</option>
+              <option value="kteo">ΚΤΕΟ</option>
+              <option value="tires">Λάστιχα</option>
+              <option value="other">Άλλο</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label for="statusFilter">Κατάσταση:</label>
+            <select id="statusFilter">
+              <option value="all">Όλες</option>
+              <option value="pending">Επικείμενη</option>
+              <option value="completed">Ολοκληρωμένη</option>
+              <option value="overdue">Εκπρόθεσμη</option>
+            </select>
+          </div>
+        </div>
+        <!-- Στο maintenance list -->
+        <div class="maintenance-list" id="debugMaintenanceList">
+          <h3>Πρόγραμμα Συντήρησης</h3>
+          <div
+            id="maintenanceTable"
+            class="maintenance-table"
+            data-debug="maintenance-table"
+          >
+            <!-- Θα γεμίσει με JavaScript -->
+          </div>
+        </div>
+
+        <!-- Upcoming Maintenance -->
+        <div class="upcoming-section">
+          <h3>Επικείμενη Συντήρηση (Επόμενες 7 μέρες)</h3>
+          <div id="upcomingMaintenance" class="upcoming-list">
+            <!-- Θα γεμίσει με JavaScript -->
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <!-- Maintenance Modal -->
+    <div id="maintenanceModal" class="modal" style="display: none">
+      <div class="modal-content large">
+        <span class="close">&times;</span>
+        <h2 id="modalTitle">Επεξεργασία Συντήρηση</h2>
+
+        <form id="maintenanceForm">
+          <input type="hidden" id="maintenanceId" />
+
+          <div class="form-section">
+            <h4>Βασικές Πληροφορίες</h4>
+            <div class="form-row">
+              <div class="form-group">
+                <label for="maintenanceVehicle">Όχημα *</label>
+                <select id="maintenanceVehicle" required>
+                  <option value="">Επιλέξτε όχημα</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="maintenanceType">Τύπος Συντήρησης *</label>
+                <select id="maintenanceType" required>
+                  <option value="">Επιλέξτε τύπο</option>
+                  <option value="oil">Αλλαγή Λαδιών</option>
+                  <option value="service">Γενικό Σέρβις</option>
+                  <option value="insurance">Ανανέωση Ασφάλειας</option>
+                  <option value="kteo">ΚΤΕΟ</option>
+                  <option value="tires">Αλλαγή Λαστίχων</option>
+                  <option value="brakes">Αλλαγή Φρένων</option>
+                  <option value="battery">Αλλαγή Μπαταρίας</option>
+                  <option value="other">Άλλο</option>
+                </select>
+                <input
+                  type="text"
+                  id="maintenanceTypeOther"
+                  placeholder="Πληκτρολόγησε τύπο συντήρησης"
+                  style="display: none; margin-top: 8px"
+                />
+              </div>
+            </div>
+          </div>
+
+          <!-- Fields for Date-based Maintenance -->
+          <div class="form-section" id="dateBasedFields">
+            <h4>Πληροφορίες Ημερομηνίας</h4>
+            <div class="form-row">
+              <div class="form-group">
+                <label for="lastDate">Τελευταία Συντήρηση</label>
+                <input type="date" id="lastDate" />
+              </div>
+              <div class="form-group">
+                <label for="nextDate">Επόμενη Συντήρηση *</label>
+                <input type="date" id="nextDate" />
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="notificationDays">Ειδοποίηση (μέρες πριν)</label>
+              <input
+                type="number"
+                id="notificationDays"
+                min="1"
+                max="30"
+                value="7"
+              />
+            </div>
+          </div>
+
+          <!-- Fields for Mileage-based Maintenance -->
+          <div class="form-section" id="mileageBasedFields">
+            <h4>Πληροφορίες Χιλιομέτρων</h4>
+            <div class="form-row">
+              <div class="form-group">
+                <label for="lastMileage">Τελευταία Συντήρηση (χλμ)</label>
+                <input type="number" id="lastMileage" />
+              </div>
+              <div class="form-group">
+                <label for="nextMileage">Επόμενη Συντήρηση (χλμ)</label>
+                <input type="number" id="nextMileage" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Additional Information -->
+          <div class="form-section">
+            <div class="form-group">
+              <label for="maintenanceStatus">Κατάσταση</label>
+              <select id="maintenanceStatus">
+                <option value="pending">Επικείμενη</option>
+                <option value="completed">Ολοκληρωμένη</option>
+              </select>
+            </div>
+            <div class="form-group full-width">
+              <label for="maintenanceNotes">Σημειώσεις</label>
+              <textarea id="maintenanceNotes" rows="3"></textarea>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button type="button" class="btn-secondary" id="cancelBtn">
+              Ακύρωση
+            </button>
+            <button type="submit" class="btn-primary">Αποθήκευση</button>
+          </div>
+        </form>
+      </div>
+    </div>
+    <script src="api.js"></script>
+    <script src="database.js"></script>
+    <script src="auth.js"></script>
+    <script src="maintenance.js"></script>
+    <script>
+      // Debugging script
+      document.addEventListener("DOMContentLoaded", function () {
+        console.log("🛠️ Maintenance page loaded");
+
+        const user = JSON.parse(localStorage.getItem("currentUser"));
+        const token = localStorage.getItem("authToken");
+
+        console.log("User from localStorage:", user);
+        console.log("Token exists:", !!token);
+
+        // Test API connection
+        if (window.api) {
+          console.log("API instance available");
+        }
+        const navToggle = document.querySelector(".nav-toggle");
+
+        if (navToggle) {
+          navToggle.addEventListener("click", function () {
+            document.body.classList.toggle("nav-open");
+          });
+        }
+      });
+    </script>
+  </body>
+</html>

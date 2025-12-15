@@ -1,0 +1,837 @@
+/* Maintenance Page Styles */
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+h1 {
+  font-size: 25px;
+}
+.header-maintenance h1 {
+  padding-left: 24px;
+  margin: 0;
+  white-space: nowrap; /* ΜΗΝ κάνει wrap */
+  font-size: 25px;
+}
+.header-content-maintenance nav {
+  display: flex;
+  align-items: center;
+  gap: 2px; /* ίδια αίσθηση αποστάσεων με costs */
+  white-space: nowrap; /* όλα τα links σε μία γραμμή */
+}
+.header-maintenance {
+  padding-left: 16px !important;
+  padding-right: 16px !important;
+}
+
+.header-maintenance {
+  display: flex;
+  justify-content: space-between; /* τίτλος αριστερά, μενού δεξιά */
+  align-items: center; /* κάθετη στοίχιση */
+  gap: 1rem;
+  margin: 10px;
+  flex-wrap: nowrap; /* όλα σε μία γραμμή */
+  /* ΑΦΑΙΡΕΣΕ αυτό που υπήρχε: width: 100%; */
+}
+/* Πάνω σειρά στο header συντήρησης: τίτλος + hamburger */
+.maintenance-header-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.header-content-maintenance {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  /* ΑΦΑΙΡΕΣΕ αυτό που υπήρχε: width: 100%; */
+  text-align: initial; /* δεν χρειάζεται end εδώ */
+}
+.filters-section {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  margin-bottom: 2rem;
+  display: flex;
+  gap: 2rem;
+  flex-wrap: wrap;
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.filter-group label {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: #555;
+}
+
+.filter-group select {
+  padding: 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  min-width: 150px;
+  height: 40px; /* Consistent height */
+}
+
+/* Maintenance Summary */
+.maintenance-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+.form-actions {
+  display: flex;
+  gap: 1rem;
+  align-items: center; /* Ensure buttons are aligned */
+}
+
+.summary-card {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  text-align: center;
+  border-top: 4px solid #ddd;
+}
+
+.summary-card.pending {
+  border-top-color: #f39c12;
+}
+
+.summary-card.overdue {
+  border-top-color: #e74c3c;
+}
+
+.summary-card.completed {
+  border-top-color: #27ae60;
+}
+
+.summary-card.total {
+  border-top-color: #3498db;
+}
+
+.summary-card h3 {
+  margin: 0 0 0.5rem 0;
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.summary-card .count {
+  font-size: 2rem;
+  font-weight: bold;
+  color: #2c3e50;
+}
+/* Make sure buttons have consistent styling */
+.btn-primary {
+  background: linear-gradient(
+    135deg,
+    var(--primary-light) 0%,
+    var(--primary-color) 100%
+  );
+  color: white;
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: background-color 0.3s;
+  height: 40px; /* Consistent height */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-secondary {
+  background: #95a5a6;
+  color: white;
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 40px; /* Consistent height */
+}
+
+/* Maintenance List */
+.maintenance-list,
+.upcoming-section {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  margin-bottom: 2rem;
+}
+
+.maintenance-table {
+  margin-top: 1rem;
+}
+
+.maintenance-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  border: 1px solid #eee;
+  border-radius: 6px;
+  margin-bottom: 0.5rem;
+  transition: background-color 0.3s;
+}
+
+.maintenance-item:hover {
+  background-color: #f8f9fa;
+}
+
+.maintenance-item.overdue {
+  border: 2px solid #e74c3c;
+  background-color: #ffeaea;
+}
+
+.maintenance-item.pending {
+  background-color: #eff6ff; /* απαλό μπλε */
+  border: 2px solid #2563eb; /* έντονο μπλε */
+}
+
+.maintenance-item.completed {
+  border: 2px solid #27ae60;
+  background-color: #e8f6f3;
+}
+.maintenance-completed-date {
+  color: #128a3a;
+  font-weight: 500;
+}
+
+.maintenance-info {
+  flex: 1;
+}
+
+.maintenance-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 0.5rem;
+}
+.maintenance-header .status-badge {
+  display: none;
+}
+
+.maintenance-type {
+  font-weight: bold;
+  color: #2c3e50;
+}
+
+.maintenance-vehicle {
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.maintenance-details {
+  display: flex;
+  gap: 1.5rem;
+  font-size: 0.85rem;
+  color: #666;
+}
+
+.maintenance-detail {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.maintenance-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* ===== Upcoming Maintenance (τελευταίο section) ===== */
+
+.upcoming-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.upcoming-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+
+  padding: 16px;
+  border-radius: 16px;
+  background: #ffedd5;
+  border: 2px solid #ea580c;
+}
+
+/* Το info να "απλώνει" (λύνει το στενό 99px που βλέπεις) */
+.upcoming-info {
+  flex: 1;
+  min-width: 0;
+  color: #2d3748;
+}
+
+/* το πρώτο strong να είναι σωστά */
+.upcoming-info strong {
+  display: block;
+  font-size: 18px;
+  font-weight: 800;
+  margin-bottom: 6px;
+}
+
+/* η γραμμή οχήματος να κάνει wrap φυσιολογικά */
+.upcoming-info {
+  white-space: normal;
+  word-break: break-word;
+  line-height: 1.3;
+}
+
+/* Ημερομηνία/ημέρες: πιο σκούρο κόκκινο για contrast */
+.upcoming-date {
+  margin-top: 10px;
+  color: #b42318; /* πιο σκούρο από #E74C3C */
+  font-weight: 700;
+}
+
+/* Το κουμπί Διαχείριση: πιο σκούρο μπλε για contrast */
+.upcoming-item .btn-primary {
+  background: #3498db; /* πιο σκούρο από #3498DB */
+  color: #fff;
+  border: 0;
+  padding: 8px 15px;
+  border-radius: 999px;
+  font-weight: 600;
+  white-space: nowrap;
+  height: 35px;
+}
+
+/* Mobile: να μπαίνει το κουμπί κάτω και full width */
+@media (max-width: 520px) {
+  .upcoming-item {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .upcoming-item .btn-primary {
+    width: 100%;
+    font-size: 13px;
+  }
+}
+
+/* Modal Improvements */
+.modal-content.large {
+  max-width: 700px;
+}
+
+.form-section {
+  margin-bottom: 2rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid #eee;
+}
+
+.form-section h4 {
+  margin-bottom: 1rem;
+  color: #2c3e50;
+  font-size: 1.1rem;
+}
+
+/* Status Badges */
+.status-badge {
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #ffffff;
+  display: inline-block;
+  white-space: nowrap;
+}
+
+.status-pending {
+  background-color: #2563eb; /* μπλε */
+  color: #ffffff;
+}
+
+.status-overdue {
+  background: #ffeaea;
+  color: #e74c3c;
+  animation: pulse-red-strong 1.8s infinite;
+}
+
+@keyframes pulse-red-strong {
+  0% {
+    box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.85);
+  }
+  70% {
+    box-shadow: 0 0 0 9px rgba(220, 38, 38, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(220, 38, 38, 0);
+  }
+}
+
+.status-completed {
+  background: #27ae60;
+  color: #e8f6f3;
+}
+.status-upcoming {
+  background-color: #f97316;
+  animation: pulse-orange 1.8s infinite;
+}
+
+@keyframes pulse-orange {
+  0% {
+    box-shadow: 0 0 0 0 rgba(234, 88, 12, 0.6);
+  }
+  70% {
+    box-shadow: 0 0 0 8px rgba(234, 88, 12, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(234, 88, 12, 0);
+  }
+}
+
+.status-badge {
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.status-badge:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Κρύβεται σε desktop */
+.header-maintenance .nav-toggle {
+  display: none;
+}
+
+/* Mobile: εμφανίζεται το hamburger & γίνεται Χ */
+@media (max-width: 768px) {
+  /* Header σε στήλη: πάνω τίτλος+hamburger, κάτω το μενού */
+  .header-maintenance {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    margin: 10px;
+  }
+
+  /* Γραμμή πάνω (τίτλος αριστερά - hamburger δεξιά) */
+  .maintenance-header-main {
+    width: 100%;
+  }
+
+  .header-content-maintenance {
+    width: 100%;
+  }
+
+  /* Στρογγυλό hamburger δεξιά */
+  .header-maintenance .nav-toggle {
+    display: flex !important;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.15);
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    cursor: pointer;
+    transition: background 0.2s ease;
+  }
+
+  .header-maintenance .nav-toggle:hover {
+    background: rgba(0, 0, 0, 0.28);
+  }
+
+  .header-maintenance .nav-toggle span {
+    width: 22px;
+    height: 2px;
+    background: #fff;
+    border-radius: 2px;
+    transition: transform 0.25s ease, opacity 0.25s ease;
+  }
+
+  /* Μετατροπή Hamburger → Χ */
+  body.nav-open .header-maintenance .nav-toggle span:nth-child(1) {
+    transform: translateY(6px) rotate(45deg);
+  }
+  body.nav-open .header-maintenance .nav-toggle span:nth-child(2) {
+    opacity: 0;
+  }
+  body.nav-open .header-maintenance .nav-toggle span:nth-child(3) {
+    transform: translateY(-6px) rotate(-45deg);
+  }
+
+  /* Το navigation κρύβεται μέχρι να πατηθεί το hamburger */
+  .header-content-maintenance nav {
+    display: none;
+    width: 100%;
+    flex-direction: column; /* ΚΑΘΕΤΟ μενού στο mobile */
+    align-items: stretch;
+    gap: 6px;
+
+    /* σημαντικό: ακυρώνει το nowrap που “σπάει” το mobile menu */
+    white-space: normal !important;
+  }
+
+  /* Όταν nav-open → δείξε το μενού */
+  body.nav-open .header-content-maintenance nav {
+    display: flex;
+  }
+
+  /* Τα links να γίνονται full width (σαν mobile menu items) */
+  .header-content-maintenance nav a {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  #addMaintenanceBtn {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    padding: 18px 20px;
+    font-size: 16px;
+    border-radius: 12px;
+  }
+
+  .maintenance-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr)); /* 2 πάνω - 2 κάτω */
+    gap: 12px;
+  }
+
+  .summary-card {
+    padding: 14px;
+  }
+
+  .summary-card .count {
+    font-size: 32px;
+  }
+  .filters-section {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    align-items: stretch;
+  }
+
+  /* 3ο φίλτρο να πιάνει όλη τη γραμμή */
+  .filters-section .filter-group:nth-child(3) {
+    grid-column: 1 / -1;
+  }
+
+  .filter-group {
+    min-width: 0; /* σημαντικό για grid */
+  }
+  .status-badge {
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 10px;
+    font-weight: 600;
+    color: #ffffff;
+    display: inline-block;
+    white-space: nowrap;
+  }
+  .btn-primary,
+  .btn-secondary {
+    padding: 8px 20px;
+    border: none;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    font-weight: 400;
+    font-size: 9px;
+    transition: all var(--transition-normal);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    position: relative;
+    overflow: hidden;
+  }
+}
+@media (max-width: 450px) {
+  /* Η πάνω γραμμή (τίτλος + hamburger) να “κρατάει” σωστά */
+  .maintenance-header-main {
+    gap: 8px;
+  }
+
+  /* Ο τίτλος να μπορεί να μικρύνει μέσα στο flex */
+  .maintenance-header-main h1 {
+    flex: 1;
+    min-width: 0; /* ΤΟ ΚΛΕΙΔΙ για να μην “σπάει” το flex */
+    white-space: normal !important; /* ακυρώνει το nowrap */
+    font-size: clamp(18px, 5vw, 22px);
+    line-height: 1.15;
+    padding-left: 12px;
+    text-align: left;
+  }
+
+  /* Το hamburger να μένει σταθερό δεξιά */
+  .header-maintenance .nav-toggle {
+    flex: 0 0 40px;
+  }
+  .maintenance-summary {
+    gap: 10px;
+  }
+
+  .summary-card h3 {
+    font-size: 14px;
+  }
+
+  .summary-card .count {
+    font-size: 30px;
+  }
+  .filters-section {
+    grid-template-columns: 1fr;
+  }
+
+  .filters-section .filter-group:nth-child(3) {
+    grid-column: auto;
+  }
+  .maintenance-item {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+
+    padding: 14px;
+    border-radius: 14px;
+    background: #fff;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+  }
+  .status-badge {
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #ffffff;
+    display: inline-block;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+  .btn-primary,
+  .btn-secondary {
+    padding: 8px 20px;
+    border: none;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 9px;
+    transition: all var(--transition-normal);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+    height: 30px;
+  }
+  /* Κοινά για όλα τα buttons μέσα σε maintenance item */
+  .maintenance-item button {
+    font: 600 14px "Segoe UI", system-ui, -apple-system, sans-serif;
+    border-radius: 999px;
+    padding: 10px 14px;
+    border: 0;
+    cursor: pointer;
+  }
+
+  /* Secondary (π.χ. Επεξεργασία) — πιο σκούρο για να περνάει contrast */
+  .maintenance-item .btn-secondary {
+    background: #868e93; /* πιο σκούρο από το #95A5A6 */
+    color: #fff;
+  }
+
+  /* Primary (π.χ. Ολοκλήρωση) */
+  .maintenance-item .btn-primary {
+    background: #1f6feb;
+    color: #fff;
+  }
+
+  /* Danger (Διαγραφή) */
+  .maintenance-item .btn-danger {
+    background: #b42318;
+    color: #fff;
+  }
+
+  /* Hover */
+  .maintenance-item .btn-secondary:hover {
+    filter: brightness(0.95);
+  }
+  .maintenance-item .btn-primary:hover {
+    filter: brightness(0.95);
+  }
+  .maintenance-item .btn-danger:hover {
+    filter: brightness(0.95);
+  }
+  .maintenance-item {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px 18px;
+    padding: 18px;
+    border-radius: 18px;
+  }
+
+  /* τίτλος (εργασία) να πιάνει όλο το πλάτος */
+  .maintenance-item .maintenance-title {
+    grid-column: 1 / -1;
+    font-size: 22px;
+    font-weight: 800;
+    color: #2d3748;
+  }
+
+  /* όχημα να πηγαίνει δεξιά κάτω από τον τίτλο */
+  .maintenance-item .maintenance-vehicle {
+    color: #666;
+    font-weight: 500;
+  }
+
+  /* λεπτομέρειες */
+  .maintenance-item .maintenance-detail {
+    color: #666;
+    font-size: 14px;
+    line-height: 1.35;
+  }
+
+  /* το "Ημέρες" να μη δείχνει -3 αλλά να είναι πιο “καθαρό” οπτικά */
+  .maintenance-item .overdue-text {
+    font-weight: 600;
+  }
+  .maintenance-item .maintenance-actions {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    margin-top: 6px;
+  }
+
+  .maintenance-item .maintenance-actions button {
+    width: 100%;
+  }
+  /* ΜΗΝ κάνεις grid το .maintenance-item (δεν ταιριάζει στη δομή σου) */
+  .maintenance-item {
+    display: flex !important;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  /* Το header (τύπος + όχημα) να γίνεται κάθετο και full width */
+  .maintenance-header {
+    display: flex !important;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+    width: 100%;
+  }
+
+  /* Το όχημα να “απλώνει” σωστά */
+  .maintenance-vehicle {
+    width: 100%;
+    min-width: 0;
+    white-space: normal;
+    word-break: break-word;
+    line-height: 1.25;
+  }
+
+  /* Και οι λεπτομέρειες να μη στριμώχνονται */
+  .maintenance-details {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+
+  /* Actions 2-2 κάτω */
+  .maintenance-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    width: 100%;
+  }
+
+  .maintenance-actions button {
+    width: 100%;
+  }
+}
+.maintenance-item.upcoming {
+  background-color: #ffedd5;
+  border: 2px solid #ea580c;
+}
+.maintenance-item.upcoming .maintenance-detail strong,
+.maintenance-item.upcoming .maintenance-detail {
+  color: #9a3412;
+}
+
+/* Highlight clickable elements */
+.maintenance-actions button:hover {
+  background-color: #007bff !important;
+  color: white !important;
+  transform: scale(1.05);
+}
+*/
+/* ---- Toast notifications (πλάι) ---- */
+.notification {
+  position: fixed;
+  right: 16px;
+  top: 16px;
+  z-index: 9999;
+  background: #fff;
+  border-left: 4px solid #3498db;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.15);
+  border-radius: 8px;
+  padding: 12px 16px;
+  min-width: 280px;
+}
+.notification.success {
+  border-left-color: #27ae60;
+}
+.notification.error {
+  border-left-color: #e74c3c;
+}
+.notification.warning {
+  border-left-color: #f39c12;
+}
+
+.notification-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.notification-message {
+  color: #2c3e50;
+  font-weight: 600;
+}
+.notification-close {
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  color: #999;
+}
+
+/* (Προαιρετικό) Αφαίρεσε τα debug styles για καθαρό UI */
+/*
+.maintenance-item { border: 1px solid #eee !important; }
+.maintenance-actions button { border: 1px solid #ddd !important; }
+.upcoming-item { border: 1px solid #3498db !important; }
+*/
+.overdue-text {
+  color: #dc2626;
+  font-weight: bold;
+}
+
+.status-overdue {
+  background-color: #dc2626;
+  color: white;
+}

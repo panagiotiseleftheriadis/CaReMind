@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="el">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Σύνδεση - CarReminder</title>
+    <link rel="stylesheet" href="login.css" />
+    <style>
+      .admin-link {
+        text-align: center;
+        margin-top: 20px;
+        border-top: 1px solid #ddd;
+        padding-top: 15px;
+      }
+      .admin-link a {
+        color: #666;
+        text-decoration: none;
+        font-size: 14px;
+      }
+      .admin-link a:hover {
+        color: #007bff;
+      }
+    </style>
+  </head>
+  <body class="login-body">
+    <div class="login-container">
+      <div class="login-form">
+        <div class="logo-wrapper">
+          <img src="logo.svg" alt="CarReminder Logo" />
+        </div>
+
+        <form id="loginForm">
+          <div class="form-group">
+            <label for="username">Όνομα Χρήστη:</label>
+            <input
+              type="text"
+              id="username"
+              name="username"
+              required
+              placeholder="Συμπληρώστε username"
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="password">Κωδικός Πρόσβασης:</label>
+            <input
+              type="password"
+              id="password"
+              name="password"
+              required
+              placeholder="Συμπληρώστε κωδικό"
+            />
+          </div>
+
+          <button type="submit" class="btn-primary">Σύνδεση</button>
+          <div id="loginError" class="login-message error">
+            Λάθος στοιχεία εισόδου. Παρακαλώ προσπαθήστε ξανά.
+          </div>
+          <div
+            class="interest-link"
+            style="text-align: center; margin-top: 15px"
+          >
+            <p style="color: #666; font-size: 14px">
+              Ενδιαφέρεστε για λογαριασμό;
+              <a href="interest-form.html" style="color: #007bff"
+                >Κάντε αίτηση εδώ</a
+              >
+            </p>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <script src="api.js"></script>
+    <script src="auth.js"></script>
+  </body>
+</html>

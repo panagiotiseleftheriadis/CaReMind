@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="el">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Διαχείριση Κόστους - Σύστημα Οχημάτων</title>
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="costs.css" />
+    <!-- <link rel="stylesheet" href="theme.css" /> -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <div class="header-costs">
+          <div class="costs-header-main">
+            <h1>Διαχείριση Κόστους</h1>
+
+            <button class="nav-toggle" type="button" aria-label="Άνοιγμα μενού">
+              <span></span>
+              <span></span>
+              <span></span>
+            </button>
+          </div>
+
+          <div class="header-content-costs">
+            <nav>
+              <a href="dashboard.html">Πίνακας</a>
+              <a href="vehicles.html">Οχήματα</a>
+              <a href="maintenance.html">Συντήρηση</a>
+              <a href="costs.html" class="active">Κόστη</a>
+              <a href="login.html" id="logoutBtn">Αποσύνδεση</a>
+            </nav>
+          </div>
+        </div>
+      </header>
+
+      <main>
+        <!-- Page Header -->
+        <div class="page-header">
+          <h2>Κόστη Οχημάτων</h2>
+          <button
+            class="btn-primary"
+            id="addCostsBtn"
+            onclick="document.getElementById('addCostModal').style.display='flex'"
+          >
+            + Καταχώρηση Κόστους
+          </button>
+        </div>
+
+        <!-- Cost Summary -->
+        <div class="cost-summary">
+          <div class="summary-card total">
+            <h3>Συνολικό Κόστος</h3>
+            <div class="amount" id="totalCost">€0.00</div>
+            <div class="period">Όλο το Ιστορικό</div>
+          </div>
+          <div class="summary-card monthly">
+            <h3>Μηνιαίο Κόστος</h3>
+            <div class="amount" id="monthlyCost">€0.00</div>
+            <div class="period">Τρέχων Μήνας</div>
+          </div>
+          <div class="summary-card average">
+            <h3>Μέσο Μηνιαίο</h3>
+            <div class="amount" id="averageCost">€0.00</div>
+            <div class="period">12 Μήνες</div>
+          </div>
+          <div class="summary-card trend">
+            <h3>Τάση Κόστους</h3>
+            <div class="trend-indicator" id="costTrend">→</div>
+            <div class="period">vs Προηγούμενο</div>
+          </div>
+        </div>
+        <!-- Filters Section -->
+        <div class="filters-section" id="debugFilters">
+          <div class="filter-group">
+            <label for="costPeriod">Περίοδος:</label>
+            <select id="costPeriod">
+              <option value="all">Όλο το Ιστορικό</option>
+              <option value="today">Σήμερα</option>
+              <option value="week">Τελευταία Εβδομάδα</option>
+              <option value="month">Τρέχων Μήνας</option>
+              <option value="quarter">Τρέχον Τρίμηνο</option>
+              <option value="year">Τρέχον Έτος</option>
+              <option value="custom">Προσαρμοσμένη</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label for="costVehicle">Όχημα:</label>
+            <select id="costVehicle">
+              <option value="all">Όλα τα Οχήματα</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label for="costCategory">Κατηγορία:</label>
+            <select id="costCategory">
+              <option value="all">Όλες οι Κατηγορίες</option>
+              <option value="oil">Αλλαγή Λαδιών</option>
+              <option value="service">Σέρβις</option>
+              <option value="insurance">Ασφάλεια</option>
+              <option value="kteo">ΚΤΕΟ</option>
+              <option value="tires">Λάστιχα</option>
+              <option value="brakes">Φρένα</option>
+              <option value="battery">Μπαταρία</option>
+              <option value="fines">Πρόστιμα</option>
+              <option value="fuel">Καύσιμα</option>
+              <option value="maintenance">Συντήρηση</option>
+              <option value="insurance">Ασφάλεια</option>
+              <option value="repair">Επισκευές</option>
+              <option value="taxes">Τέλη</option>
+              <option value="other">Άλλο</option>
+            </select>
+          </div>
+          <div class="filter-actions">
+            <!-- <button class="btn-secondary" data-action="reset-filters">
+              Επαναφορά
+            </button> -->
+          </div>
+        </div>
+        <!-- Costs List -->
+        <div class="costs-list-section">
+          <div class="section-header">
+            <h3>Καταχωρημένα Κόστη</h3>
+            <div class="section-actions">
+              <button
+                id="exportCostsBtn"
+                class="btn-secondary"
+                data-action="export"
+                type="button"
+              >
+                Εξαγωγή CSV
+              </button>
+            </div>
+          </div>
+
+          <div class="costs-table-container">
+            <table id="costsTable" class="data-table">
+              <thead>
+                <tr>
+                  <th>Ημερομηνία</th>
+                  <th>Όχημα</th>
+                  <th>Κατηγορία</th>
+                  <th>Ποσό</th>
+                  <th>Περιγραφή</th>
+                  <th>Ενέργειες</th>
+                </tr>
+              </thead>
+              <tbody id="costsTableBody" data-debug="costs-table-body">
+                <tr class="empty-row">
+                  <td colspan="6">
+                    <div class="empty-state">
+                      <span>Δεν βρέθηκαν κόστη</span>
+                      <button class="btn btn-primary">
+                        Προσθέστε το πρώτο κόστος
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            <div id="costsPagination" class="pagination"></div>
+          </div>
+        </div>
+
+        <!-- Custom Date Range (hidden by default) -->
+        <div id="customDateRange" class="custom-range" style="display: none">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="startDate">Από:</label>
+              <input type="date" id="startDate" />
+            </div>
+            <div class="form-group">
+              <label for="endDate">Έως:</label>
+              <input type="date" id="endDate" />
+            </div>
+          </div>
+        </div>
+
+        <!-- Charts Section -->
+        <div class="charts-section">
+          <div class="chart-row">
+            <div class="chart-card">
+              <h3>Κόστος ανά Κατηγορία</h3>
+              <canvas id="costByCategoryChart"></canvas>
+            </div>
+            <div class="chart-card">
+              <h3>Μηνιαία Κόστη</h3>
+              <canvas id="monthlyCostsChart"></canvas>
+            </div>
+          </div>
+          <div class="chart-row">
+            <div class="chart-card">
+              <h3>Κόστος ανά Όχημα</h3>
+              <canvas id="costByVehicleChart"></canvas>
+            </div>
+            <div class="chart-card">
+              <h3>Τάση Κόστους</h3>
+              <canvas id="costTrendChart"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- Cost Breakdown -->
+        <div class="breakdown-section">
+          <h3>Ανάλυση Κόστους</h3>
+          <div class="breakdown-grid">
+            <div class="breakdown-card">
+              <h4>Κατηγορίες Κόστους</h4>
+              <div id="categoryBreakdown" class="breakdown-list">
+                <!-- Θα γεμίσει με JavaScript -->
+              </div>
+            </div>
+            <div class="breakdown-card">
+              <h4>Κόστος ανά Όχημα</h4>
+              <div id="vehicleBreakdown" class="breakdown-list">
+                <!-- Θα γεμίσει με JavaScript -->
+              </div>
+            </div>
+            <div class="breakdown-card">
+              <h4>Μηνιαία Σύγκριση</h4>
+              <div id="monthlyComparison" class="breakdown-list">
+                <!-- Θα γεμίσει με JavaScript -->
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <!-- Add Cost Modal - Fixed Version -->
+    <div id="addCostModal" class="modal" style="display: none">
+      <div class="modal-content">
+        <span class="close" id="modalCloseBtn">&times;</span>
+        <h3 id="costModalTitle">Καταχώρηση Νέου Κόστους</h3>
+
+        <form id="costForm">
+          <input type="hidden" id="costId" />
+
+          <div class="form-section">
+            <h4>Βασικές Πληροφορίες</h4>
+            <div class="form-row">
+              <div class="form-group">
+                <label for="costVehicleSelect">Όχημα *</label>
+                <select id="costVehicleSelect" required>
+                  <option value="">Επιλέξτε όχημα</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="costCategorySelect">Κατηγορία *</label>
+                <select id="costCategorySelect" required>
+                  <option value="">Επιλέξτε κατηγορία</option>
+                  <option value="oil">Αλλαγή Λαδιών</option>
+                  <option value="service">Γενικό Service</option>
+                  <option value="kteo">ΚΤΕΟ</option>
+                  <option value="tires">Αλλαγή Λαστίχων</option>
+                  <option value="brakes">Φρένα</option>
+                  <option value="battery">Μπαταρία</option>
+                  <option value="fuel">Καύσιμα</option>
+                  <option value="maintenance">Συντήρηση</option>
+                  <option value="insurance">Ασφάλεια</option>
+                  <option value="repair">Επισκευές</option>
+                  <option value="taxes">Τέλη</option>
+                  <option value="fines">Πρόστιμα</option>
+                  <option value="other">Άλλο</option>
+                </select>
+                <input
+                  type="text"
+                  id="costCategoryOther"
+                  placeholder="Πληκτρολόγησε κατηγορία κόστους"
+                  style="display: none; margin-top: 8px"
+                />
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="costAmount">Ποσό (€) *</label>
+                <input
+                  type="number"
+                  id="costAmount"
+                  step="0.01"
+                  min="0"
+                  required
+                />
+              </div>
+              <div class="form-group">
+                <label for="costDate">Ημερομηνία *</label>
+                <input type="date" id="costDate" required />
+              </div>
+            </div>
+          </div>
+
+          <div class="form-section">
+            <h4>Πρόσθετες Πληροφορίες</h4>
+            <div class="form-group">
+              <label for="costDescription">Περιγραφή</label>
+              <textarea
+                id="costDescription"
+                rows="3"
+                placeholder="Περιγραφή του κόστους..."
+              ></textarea>
+            </div>
+            <div class="form-group">
+              <label for="costReceipt">Αριθμός Αποδείξης</label>
+              <input type="text" id="costReceipt" placeholder="Προαιρετικά" />
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button type="button" class="btn-secondary" id="modalCancelBtn">
+              Ακύρωση
+            </button>
+            <button type="submit" class="btn-primary">Αποθήκευση</button>
+          </div>
+        </form>
+      </div>
+    </div>
+    <script src="api.js"></script>
+    <script src="database.js"></script>
+    <script src="auth.js"></script>
+    <script src="costs.js"></script>
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        const navToggle = document.querySelector(".nav-toggle");
+        if (navToggle) {
+          navToggle.addEventListener("click", function () {
+            document.body.classList.toggle("nav-open");
+          });
+        }
+      });
+    </script>
+
+    <script src="api.js"></script>
+    <script src="database.js"></script>
+    <script src="auth.js"></script>
+    <script src="costs.js"></script>
+  </body>
+</html>

@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="el">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Διαχείριση Οχημάτων</title>
+    <link rel="stylesheet" href="vehicles.css" />
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <div class="header-vehicle">
+          <!-- Πάνω σειρά: Τίτλος + hamburger ΔΙΠΛΑ -->
+          <div class="vehicles-header-main">
+            <h1>Διαχείριση Οχημάτων</h1>
+            <button class="nav-toggle" type="button" aria-label="Άνοιγμα μενού">
+              <span></span>
+              <span></span>
+              <span></span>
+            </button>
+          </div>
+
+          <!-- Κάτω σειρά: Μενού -->
+          <div class="header-content-vehicle">
+            <nav>
+              <a href="dashboard.html">Πίνακας</a>
+              <a href="vehicles.html" class="active">Οχήματα</a>
+              <a href="maintenance.html">Συντήρηση</a>
+              <a href="costs.html">Κόστη</a>
+              <a href="login.html" id="logoutBtn">Αποσύνδεση</a>
+            </nav>
+          </div>
+        </div>
+      </header>
+
+      <main>
+        <div class="page-header">
+          <h2>Οχήματα Εταιρείας</h2>
+          <button class="btn-primary" onclick="showAddVehicleForm()">
+            + Προσθήκη Νέου Οχήματος
+          </button>
+        </div>
+
+        <!-- Φόρμα Προσθήκης Οχήματος -->
+        <div id="addVehicleModal" class="modal" style="display: none">
+          <div class="modal-content">
+            <span class="close" onclick="closeAddVehicleForm()">&times;</span>
+            <h3>Προσθήκη Νέου Οχήματος</h3>
+            <form id="vehicleForm">
+              <div class="form-row">
+                <!-- Τύπος Οχήματος -->
+                <div class="form-group">
+                  <label for="vehicleType">Τύπος Οχήματος *</label>
+                  <select id="vehicleType" name="vehicleType" required>
+                    <option value="">Επιλέξτε...</option>
+                    <option value="Επιβατικό ΙΧ">Επιβατικό ΙΧ</option>
+                    <option value="Μοτοσυκλέτα">Μοτοσυκλέτα</option>
+                    <option value="Φορτηγό Μεσαίου Τύπου">
+                      Φορτηγό Μεσαίου Τύπου
+                    </option>
+                    <option value="Φορτηγό Βαρέως Τύπου">
+                      Φορτηγό Βαρέως Τύπου
+                    </option>
+                    <option value="Λεωφορείο">Λεωφορείο</option>
+                    <option value="Ρυμουλκούμενο">Ρυμουλκούμενο</option>
+                    <option value="Ημιρυμουλκούμενο">Ημιρυμουλκούμενο</option>
+                    <option value="other">Άλλο…</option>
+                  </select>
+                  <input
+                    type="text"
+                    id="vehicleTypeOther"
+                    name="vehicleTypeOther"
+                    placeholder="Πληκτρολόγησε τύπο οχήματος"
+                    style="display: none; margin-top: 8px"
+                  />
+                </div>
+
+                <div class="form-group">
+                  <label for="chassisNumber">Αριθμός Πλαισίου *</label>
+                  <input type="text" id="chassisNumber" required />
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="model">Μοντέλο</label>
+                  <input type="text" id="model" />
+                </div>
+                <div class="form-group">
+                  <label for="year">Έτος</label>
+                  <input type="number" id="year" min="1990" max="2024" />
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="currentMileage">Τρέχοντα Χιλιόμετρα</label>
+                <input type="number" id="currentMileage" value="0" />
+              </div>
+
+              <div class="form-actions">
+                <button
+                  type="button"
+                  class="btn-secondary"
+                  onclick="closeAddVehicleForm()"
+                >
+                  Ακύρωση
+                </button>
+
+                <button type="submit" class="btn-secondary">Αποθήκευση</button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <!-- Φόρμα Επεξεργασίας Οχήματος -->
+        <!-- <div id="editVehicleModal" class="modal" style="display: none">
+          <div class="modal-content">
+            <span class="close" onclick="closeEditVehicleModal()">&times;</span>
+            <h3>Επεξεργασία Οχήματος</h3>
+            <form id="editVehicleForm">
+              <input type="hidden" id="editVehicleId" />
+
+              <div class="form-section">
+                <h4>Βασικές Πληροφορίες</h4>
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="editChassisNumber">Αριθμός Πλαισίου *</label>
+                    <input type="text" id="editChassisNumber" required />
+                  </div>
+                  <div class="form-group">
+                    <label for="editVehicleType">Τύπος Οχήματος *</label>
+
+                    <input type="text" id="editVehicleType" required />
+                  </div>
+                </div>
+
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="editModel">Μοντέλο</label>
+                    <input type="text" id="editModel" />
+                  </div>
+                  <div class="form-group">
+                    <label for="editYear">Έτος</label>
+                    <input type="number" id="editYear" min="1990" max="2024" />
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label for="editCurrentMileage">Τρέχοντα Χιλιόμετρα</label>
+                  <input type="number" id="editCurrentMileage" value="0" />
+                </div>
+              </div>
+
+              <div class="form-actions">
+                <button
+                  type="button"
+                  class="btn-secondary"
+                  onclick="closeEditVehicleModal()"
+                >
+                  Ακύρωση
+                </button>
+                <button type="submit" class="btn-primary">
+                  Αποθήκευση Αλλαγών
+                </button>
+              </div>
+            </form>
+          </div>
+        </div> -->
+        <!-- EDIT VEHICLE MODAL -->
+        <div id="editVehicleModal" class="modal">
+          <div class="modal-content large">
+            <span class="close">&times;</span>
+            <h2>Επεξεργασία Οχήματος</h2>
+
+            <form id="editVehicleForm">
+              <input type="hidden" id="editVehicleId" />
+
+              <!-- 1η σειρά: Τύπος Οχήματος (όπως στο add) + Αριθμός Πλαισίου -->
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="editVehicleType">Τύπος Οχήματος *</label>
+                  <select id="editVehicleType" required>
+                    <option value="">Επιλέξτε...</option>
+                    <!-- ΒΑΛΕ ΑΚΡΙΒΩΣ ΤΙΣ ΙΔΙΕΣ ΕΠΙΛΟΓΕΣ ΜΕ ΤΟ add -->
+                    <option value="Επιβατικό ΙΧ">Επιβατικό ΙΧ</option>
+                    <option value="Μοτοσυκλέτα">Μοτοσυκλέτα</option>
+                    <option value="Φορτηγό Μεσαίου Τύπου">
+                      Φορτηγό Μεσαίου Τύπου
+                    </option>
+                    <option value="Φορτηγό Βαρέως Τύπου">
+                      Φορτηγό Βαρέως Τύπου
+                    </option>
+                    <option value="Λεωφορείο">Λεωφορείο</option>
+                    <option value="Ρυμουλκούμενο">Ρυμουλκούμενο</option>
+                    <option value="Ημιρυμουλκούμενο">Ημιρυμουλκούμενο</option>
+                    <option value="other">Άλλο…</option>
+                  </select>
+                  <input
+                    type="text"
+                    id="editVehicleTypeOther"
+                    placeholder="Πληκτρολόγησε τύπο οχήματος"
+                    style="display: none; margin-top: 8px"
+                  />
+                </div>
+
+                <div class="form-group">
+                  <label for="editChassisNumber">Αριθμός Πλαισίου *</label>
+                  <input type="text" id="editChassisNumber" required />
+                </div>
+              </div>
+
+              <!-- 2η σειρά: Μοντέλο + Έτος (ίδια σειρά με add) -->
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="editModel">Μοντέλο</label>
+                  <input type="text" id="editModel" />
+                </div>
+
+                <div class="form-group">
+                  <label for="editYear">Έτος</label>
+                  <input type="number" id="editYear" min="1900" max="2100" />
+                </div>
+              </div>
+
+              <!-- 3η σειρά: Τρέχοντα Χιλιόμετρα -->
+              <div class="form-group">
+                <label for="editCurrentMileage">Τρέχοντα Χιλιόμετρα</label>
+                <input
+                  type="number"
+                  id="editCurrentMileage"
+                  min="0"
+                  value="0"
+                />
+              </div>
+
+              <!-- Κουμπιά (ίδιο στυλ) -->
+              <div class="modal-actions">
+                <button
+                  type="button"
+                  class="btn-secondary"
+                  id="cancelEditVehicle"
+                >
+                  Ακύρωση
+                </button>
+                <button type="submit" class="btn-secondary">Αποθήκευση</button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <!-- Λίστα Οχημάτων -->
+        <div class="vehicles-table-container">
+          <table id="vehiclesTable" class="data-table">
+            <thead>
+              <tr>
+                <th>Αριθμός Πλαισίου</th>
+                <th>Τύπος Οχήματος</th>
+                <th>Μοντέλο</th>
+                <th>Έτος</th>
+                <th>Χιλιόμετρα</th>
+                <th>Ενέργειες</th>
+              </tr>
+            </thead>
+            <tbody id="vehiclesTableBody">
+              <!-- Θα γεμίσει με JavaScript -->
+            </tbody>
+          </table>
+        </div>
+      </main>
+    </div>
+
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        // ADD modal
+        const select = document.getElementById("vehicleType");
+        const other = document.getElementById("vehicleTypeOther");
+
+        function toggleOther() {
+          const isOther = select.value === "other";
+          other.style.display = isOther ? "block" : "none";
+          other.required = isOther;
+          if (!isOther) other.value = "";
+        }
+
+        if (select && other) {
+          select.addEventListener("change", toggleOther);
+        }
+
+        // EDIT modal
+        const editSelect = document.getElementById("editVehicleType");
+        const editOther = document.getElementById("editVehicleTypeOther");
+
+        function toggleEditOther() {
+          const isOther = editSelect.value === "other";
+          editOther.style.display = isOther ? "block" : "none";
+          editOther.required = isOther;
+          if (!isOther) editOther.value = "";
+        }
+
+        if (editSelect && editOther) {
+          editSelect.addEventListener("change", toggleEditOther);
+        }
+        const navToggle = document.querySelector(".nav-toggle");
+
+        if (navToggle) {
+          navToggle.addEventListener("click", function () {
+            document.body.classList.toggle("nav-open");
+          });
+        }
+
+        /* ================================
+           Mobile cards (όπως costs)
+           - προσθέτει data-label στα <td>
+           - βάζει class vehicle-item στα <tr>
+           ================================ */
+        const vehiclesTbody = document.getElementById("vehiclesTableBody");
+        const vehiclesTable = document.getElementById("vehiclesTable");
+
+        const getHeaderLabels = () => {
+          const ths = vehiclesTable?.querySelectorAll("thead th");
+          if (!ths || ths.length === 0) {
+            return [
+              "Αριθμός Πλαισίου",
+              "Τύπος Οχήματος",
+              "Μοντέλο",
+              "Έτος",
+              "Χιλιόμετρα",
+              "Ενέργειες",
+            ];
+          }
+          return Array.from(ths).map((th) => th.textContent.trim());
+        };
+
+        const decorateVehicleRows = () => {
+          if (!vehiclesTbody) return;
+          const labels = getHeaderLabels();
+          vehiclesTbody.querySelectorAll("tr").forEach((tr) => {
+            tr.classList.add("vehicle-item");
+            const tds = tr.querySelectorAll("td");
+            tds.forEach((td, idx) => {
+              if (!td.getAttribute("data-label")) {
+                td.setAttribute("data-label", labels[idx] || "");
+              }
+            });
+          });
+        };
+
+        // 1) τρέχει μια φορά (σε περίπτωση που έχει ήδη γεμίσει)
+        decorateVehicleRows();
+
+        // 2) παρακολουθεί αλλαγές από vehicles.js (όταν γεμίζει/αλλάζει το tbody)
+        if (vehiclesTbody) {
+          const observer = new MutationObserver(() => decorateVehicleRows());
+          observer.observe(vehiclesTbody, { childList: true, subtree: true });
+        }
+      });
+    </script>
+
+    <script src="api.js"></script>
+    <script src="vehicles.js"></script>
+  </body>
+</html>

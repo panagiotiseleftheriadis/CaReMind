@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="el">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Αίτηση Λογαριασμού - CarReminder</title>
+
+    <link rel="stylesheet" href="interest-form.css" />
+  </head>
+
+  <body class="login-body">
+    <div class="interest-container">
+      <div class="interest-header">
+        <h1>Αίτηση Λογαριασμού</h1>
+        <p>
+          Συμπληρώστε τα στοιχεία σας και θα επικοινωνήσουμε μαζί σας εντός 24
+          ωρών.
+        </p>
+      </div>
+
+      <div id="successMessage" class="message success">
+        Η αίτησή σας υποβλήθηκε επιτυχώς!
+      </div>
+      <div id="errorMessage" class="message error">
+        Σφάλμα κατά την υποβολή. Προσπαθήστε ξανά.
+      </div>
+
+      <form id="interestForm">
+        <div class="form-group">
+          <label class="required">Ονοματεπώνυμο</label>
+          <input
+            id="fullName"
+            required
+            placeholder="Π.χ. Γιώργος Παπαδόπουλος"
+          />
+        </div>
+
+        <div class="form-group">
+          <label class="required">Εταιρεία / Επάγγελμα</label>
+          <input
+            id="company"
+            required
+            placeholder="Π.χ. Εταιρεία ΑΕ ή Ιδιώτης"
+          />
+        </div>
+
+        <div class="form-group">
+          <label class="required">Email</label>
+          <input
+            id="email"
+            type="email"
+            required
+            placeholder="example@mail.com"
+          />
+        </div>
+
+        <div class="form-group">
+          <label class="required">Τηλέφωνο</label>
+          <input id="phone" required placeholder="69********" />
+        </div>
+
+        <div class="form-group">
+          <label>Πόλη</label>
+          <input id="city" placeholder="Π.χ. Αθήνα" />
+        </div>
+
+        <div class="form-group">
+          <label>Τύπος Επιχείρησης</label>
+          <select id="businessType">
+            <option value="">-- Επιλέξτε --</option>
+            <option value="individual">Ιδιώτης</option>
+            <option value="company">Εταιρεία</option>
+            <option value="freelancer">Ελεύθερος Επαγγελματίας</option>
+            <option value="other">Άλλο</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Αριθμός Οχημάτων</label>
+          <select id="vehicleCount">
+            <option value="">-- Επιλέξτε --</option>
+            <option value="1">1-5</option>
+            <option value="5-10">5-10</option>
+            <option value="10-20">10-20</option>
+            <option value="20+">20+</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Σχόλια</label>
+          <textarea
+            id="comments"
+            placeholder="Επιπλέον πληροφορίες..."
+          ></textarea>
+        </div>
+
+        <button class="btn-submit" id="submitInterestBtn">Υποβολή</button>
+      </form>
+
+      <div class="back-link">
+        <a href="login.html">Επιστροφή</a>
+      </div>
+    </div>
+
+    <script src="interest-form.js"></script>
+  </body>
+</html>

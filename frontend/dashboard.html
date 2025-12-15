@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="el">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Πίνακας Ελέγχου - Σύστημα Οχημάτων</title>
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="dashboard.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  </head>
+  <body>
+    <div class="container">
+      <header class="dashboard-header">
+        <div class="header-content">
+          <!-- Πάνω σειρά: τίτλος + hamburger ΔΙΠΛΑ -->
+          <div class="header-main-row">
+            <h1>Πίνακας Ελέγχου</h1>
+
+            <button class="nav-toggle" type="button" aria-label="Άνοιγμα μενού">
+              <span></span>
+              <span></span>
+              <span></span>
+            </button>
+          </div>
+
+          <!-- Κάτω σειρά: μενού (κρυφό μέχρι να πατηθεί το hamburger) -->
+          <nav class="dashboard-nav">
+            <a href="dashboard.html" class="active">Πίνακας</a>
+            <a href="vehicles.html">Οχήματα</a>
+            <a href="maintenance.html">Συντήρηση</a>
+            <a href="costs.html">Κόστη</a>
+            <a href="login.html" id="logoutBtn">Αποσύνδεση</a>
+          </nav>
+        </div>
+      </header>
+
+      <main>
+        <section class="welcome">
+          <div class="welcome-bg"></div>
+
+          <div class="welcome-card">
+            <h1 class="welcome-title">
+              Καλώς ήρθατε, <span id="companyName"></span>
+            </h1>
+          </div>
+        </section>
+
+        <!-- Stats Grid -->
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-info">
+              <h5>Σύνολο Οχημάτων</h5>
+              <div class="stat-number" id="totalVehicles">0</div>
+              <div class="stat-description">Ενεργά οχήματα στο σύστημα</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-info">
+              <h5>Μηνιαία Κόστη</h5>
+              <div class="stat-number" id="monthlyCosts">€0</div>
+              <div class="stat-description">Τρέχων μήνας</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-info">
+              <h5>Επικείμενη Συντήρηση</h5>
+              <div class="stat-number" id="pendingMaintenance">0</div>
+              <div class="stat-description">Επόμενες 7 ημέρες</div>
+            </div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-info">
+              <h5>Εκπρόθεσμη Συντήρηση</h5>
+              <div class="stat-number" id="overdueMaintenance">0</div>
+              <div class="stat-description">Απαιτεί άμεση προσοχή</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Charts Section -->
+        <div class="charts-section">
+          <div class="chart-container">
+            <h3>Κόστος ανά Κατηγορία</h3>
+            <canvas id="costsChart"></canvas>
+          </div>
+          <div class="chart-container">
+            <h3>Συντήρηση ανά Τύπο</h3>
+            <canvas id="maintenanceChart"></canvas>
+          </div>
+        </div>
+
+        <!-- Recent Activity -->
+        <div class="activity-section">
+          <h3>Πρόσφατη Δραστηριότητα</h3>
+          <div class="activity-list" id="recentActivity">
+            <!-- Γεμίζει από το dashboard.js -->
+          </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="quick-actions">
+          <h3>Γρήγορες Ενέργειες</h3>
+          <div class="action-buttons">
+            <button class="action-btn" id="addVehicleBtn">
+              <span class="action-text">Προσθήκη Οχήματος</span>
+              <span class="action-arrow">→</span>
+            </button>
+            <button class="action-btn" id="addMaintenanceBtn">
+              <span class="action-text">Νέα Συντήρηση</span>
+              <span class="action-arrow">→</span>
+            </button>
+            <button class="action-btn" id="addCostBtn">
+              <span class="action-text">Καταχώρηση Κόστους</span>
+              <span class="action-arrow">→</span>
+            </button>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <!-- Notification Panel Modal -->
+    <div id="notificationModal" class="modal" style="display: none">
+      <div class="modal-content">
+        <span class="close" onclick="closeNotificationModal()">&times;</span>
+        <h3>Ειδοποιήσεις</h3>
+        <div id="notificationList"></div>
+      </div>
+    </div>
+
+    <!-- Όλος ο κώδικας λογικής είναι πλέον στο dashboard.js -->
+
+    <script src="api.js"></script>
+    <script src="notifications.js"></script>
+    <script src="dashboard.js"></script>
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        const navToggle = document.querySelector(".nav-toggle");
+
+        if (navToggle) {
+          navToggle.addEventListener("click", function () {
+            document.body.classList.toggle("nav-open");
+          });
+        }
+      });
+    </script>
+  </body>
+</html>
