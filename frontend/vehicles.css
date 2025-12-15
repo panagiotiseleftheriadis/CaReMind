@@ -1521,3 +1521,96 @@ header::before {
     padding: 18px 14px;
   }
 }
+/* ===============================
+   Vehicles Modals Buttons
+   SAME AS Costs Modal (SCOPED)
+   - αφορά ΜΟΝΟ #addVehicleModal & #editVehicleModal
+   - δεν πειράζει άλλα κουμπιά
+   =============================== */
+
+/* 1) Container κουμπιών (Add + Edit) */
+#addVehicleModal form .form-actions,
+#addVehicleModal .modal-footer,
+#editVehicleModal form .form-actions,
+#editVehicleModal .modal-actions,
+#editVehicleModal .modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #eee;
+  width: 100%;
+}
+
+/* 2) Κοινό στυλ κουμπιών (ΜΟΝΟ μέσα στα vehicle modals) */
+#addVehicleModal button,
+#editVehicleModal button {
+  padding: 0.8rem 1.5rem;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s ease;
+  min-width: 120px;
+  height: 45px;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  margin: 0 !important;
+}
+
+/* 3) Cancel / Secondary (ίδιο με costs) */
+#addVehicleModal button[type="button"],
+#addVehicleModal .btn-secondary[data-action="cancel"],
+#editVehicleModal button[type="button"],
+#editVehicleModal .btn-secondary[data-action="cancel"] {
+  background-color: #f1f3f5;
+  color: #636e72;
+  border: 1px solid #e9ecef;
+}
+
+#addVehicleModal button[type="button"]:hover,
+#addVehicleModal .btn-secondary[data-action="cancel"]:hover,
+#editVehicleModal button[type="button"]:hover,
+#editVehicleModal .btn-secondary[data-action="cancel"]:hover {
+  background-color: #e9ecef;
+  color: #2d3436;
+  transform: translateY(-1px);
+}
+
+/* 4) Save / Primary look (ίδιο με costs)
+   Στα vehicles.html το save είναι .btn-secondary αλλά type="submit",
+   άρα το πιάνουμε από το type="submit" για να γίνει μπλε “save”. */
+#addVehicleModal button[type="submit"],
+#editVehicleModal button[type="submit"] {
+  background-color: #3498db;
+  color: white;
+  box-shadow: 0 4px 6px rgba(52, 152, 219, 0.2);
+}
+
+#addVehicleModal button[type="submit"]:hover,
+#editVehicleModal button[type="submit"]:hover {
+  background-color: #2980b9;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 12px rgba(52, 152, 219, 0.3);
+}
+
+/* 5) Mobile behavior (ίδιο με costs) */
+@media (max-width: 480px) {
+  #addVehicleModal form .form-actions,
+  #addVehicleModal .modal-footer,
+  #editVehicleModal form .form-actions,
+  #editVehicleModal .modal-actions,
+  #editVehicleModal .modal-footer {
+    flex-direction: column-reverse;
+    gap: 0.8rem;
+  }
+
+  #addVehicleModal button,
+  #editVehicleModal button {
+    width: 100%;
+  }
+}
