@@ -1,0 +1,265 @@
+/* =========================
+   CarReminder Admin - style.css
+   Mobile-first responsive
+   ========================= */
+
+:root {
+  --bg: #f3f5f7;
+  --card: #ffffff;
+  --text: #111827;
+  --muted: #6b7280;
+  --border: #e5e7eb;
+  --shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+  --radius: 12px;
+
+  --primary: #2563eb;
+  --primary-hover: #1d4ed8;
+
+  --secondary: #334155;
+  --secondary-hover: #1f2937;
+
+  --success: #16a34a;
+  --warning: #f59e0b;
+
+  --focus: rgba(37, 99, 235, 0.25);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  line-height: 1.5;
+}
+
+/* Better spacing on mobile */
+.admin-container {
+  width: min(900px, calc(100% - 24px));
+  margin: 18px auto;
+  padding: 14px;
+}
+
+/* Title */
+.admin-container h1 {
+  margin: 0 0 14px 0;
+  font-size: clamp(20px, 3.6vw, 28px);
+  letter-spacing: 0.2px;
+}
+
+/* Cards / sections */
+.form-section {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 14px;
+  margin-bottom: 14px;
+}
+
+.form-section h3 {
+  margin: 0 0 12px 0;
+  font-size: 18px;
+}
+
+/* Form layout */
+.form-group {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+label {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text);
+}
+
+input[type="text"],
+input[type="email"],
+input[type="password"] {
+  width: 100%;
+  padding: 12px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--text);
+  font-size: 16px; /* important for iOS: avoids zoom on focus */
+  outline: none;
+  transition: box-shadow 0.15s ease, border-color 0.15s ease,
+    transform 0.05s ease;
+}
+
+input::placeholder {
+  color: #9ca3af;
+}
+
+input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 4px var(--focus);
+}
+
+/* Buttons */
+button,
+a.btn-primary,
+a.btn-secondary {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.btn-primary,
+.btn-secondary,
+button.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid transparent;
+
+  font-weight: 700;
+  font-size: 15px;
+  text-decoration: none;
+  cursor: pointer;
+
+  transition: transform 0.06s ease, background 0.15s ease,
+    border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.btn-primary,
+button.btn-primary {
+  background: var(--primary);
+  color: #fff;
+}
+
+.btn-primary:hover,
+button.btn-primary:hover {
+  background: var(--primary-hover);
+}
+
+.btn-secondary {
+  background: var(--secondary);
+  color: #fff;
+}
+
+.btn-secondary:hover {
+  background: var(--secondary-hover);
+}
+
+.btn-primary:active,
+.btn-secondary:active,
+button.btn-primary:active {
+  transform: translateY(1px);
+}
+
+.btn-primary:focus-visible,
+.btn-secondary:focus-visible,
+button.btn-primary:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 4px var(--focus);
+}
+
+/* Users list */
+.users-list {
+  margin-top: 14px;
+}
+
+#usersList p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.user-item {
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-left: 6px solid var(--success);
+  border-radius: 12px;
+  padding: 12px;
+  margin: 12px 0;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.04);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  overflow-wrap: anywhere;
+}
+
+.user-item:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.06);
+}
+
+.user-item p {
+  margin: 6px 0;
+  font-size: 14px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    "Liberation Mono", "Courier New", monospace;
+}
+
+.password-display {
+  background: #fff3bf;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  padding: 2px 8px;
+  border-radius: 8px;
+  font-weight: 800;
+}
+
+/* Links */
+a {
+  color: inherit;
+}
+
+/* Footer link container (the "back to login" area) */
+.admin-container > div[style*="text-align: center"] {
+  margin-top: 18px !important;
+}
+
+/* =========================
+   Responsive enhancements
+   ========================= */
+@media (min-width: 640px) {
+  .admin-container {
+    margin: 28px auto;
+    padding: 18px;
+  }
+
+  .form-section {
+    padding: 18px;
+    margin-bottom: 18px;
+  }
+
+  /* Buttons side-by-side where it makes sense */
+  .btn-primary,
+  .btn-secondary,
+  button.btn-primary {
+    width: auto;
+    min-width: 220px;
+  }
+}
+
+@media (min-width: 900px) {
+  /* Slightly more breathing room on desktop */
+  .admin-container {
+    margin: 40px auto;
+  }
+
+  /* Make form groups align a bit nicer on wide screens */
+  .form-group {
+    grid-template-columns: 260px 1fr;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .form-group label {
+    margin: 0;
+  }
+}
