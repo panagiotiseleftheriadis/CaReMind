@@ -158,17 +158,12 @@ class VehiclesManager {
     if (!tbody) return;
 
     tbody.innerHTML = `
-            <tr class="empty-state-row">
-  <td colspan="6">
-    <div class="empty-state">
-      <div class="empty-icon">🚗</div>
-      <div class="empty-text">
-        <strong>Δεν υπάρχει καταχωρημένο όχημα</strong>
-        <span>Πάτησε «Προσθήκη Νέου Οχήματος» για να ξεκινήσεις</span>
-      </div>
-    </div>
+            <tr class="empty-row">
+  <td colspan="6" class="empty-cell">
+    Δεν υπάρχει καταχωρημένο όχημα
   </td>
 </tr>
+
         `;
   }
 

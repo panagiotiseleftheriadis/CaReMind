@@ -1119,3 +1119,58 @@
     border-radius: 14px;
   }
 }
+/* ===============================
+   EMPTY STATE (Costs) - FIX
+   =============================== */
+
+/* Μην αφήνεις padding στο td[colspan] */
+#costsTableBody tr.empty-row td[colspan] {
+  padding: 0 !important;
+  border-bottom: 0 !important;
+}
+
+/* Κεντραρισμένο, “ήρεμο” empty state */
+#costsTableBody tr.empty-row .empty-state {
+  display: flex;
+  align-items: center;
+  justify-content: center; /* αντί για space-between */
+  flex-direction: column;
+  gap: 10px;
+
+  width: 100%;
+  padding: 22px 18px;
+  margin: 12px 0;
+
+  text-align: center;
+  color: #666;
+
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+/* Το κουμπί να μην “φεύγει” δεξιά */
+#costsTableBody tr.empty-row .empty-state button {
+  margin: 0 !important;
+  width: auto;
+  white-space: nowrap;
+}
+
+/* Mobile: το κουμπί full width για touch */
+@media (max-width: 768px) {
+  /* Κρύψε τα data-label pseudo στοιχεία στο empty row */
+  .data-table tr.empty-row td::before {
+    content: none !important;
+    display: none !important;
+  }
+
+  #costsTableBody tr.empty-row .empty-state {
+    padding: 18px 14px;
+    margin: 10px 0;
+  }
+
+  #costsTableBody tr.empty-row .empty-state button {
+    width: 100%;
+  }
+}

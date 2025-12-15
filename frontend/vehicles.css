@@ -1485,62 +1485,39 @@ header::before {
     font-size: 13px;
   }
 }
+
 /* ===============================
-   EMPTY STATE – Vehicles Table
+   EMPTY STATE (clean + mobile safe)
    =============================== */
 
-.empty-state-row td {
-  padding: 0;
-  border: none;
+.empty-row td {
+  border-bottom: 0 !important;
 }
 
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  padding: 32px 20px;
-  margin: 16px;
-  border-radius: 16px;
-  background: linear-gradient(
-    135deg,
-    rgba(66, 153, 225, 0.08),
-    rgba(159, 122, 234, 0.08)
-  );
-  border: 1px dashed var(--gray-light);
+.empty-cell {
   text-align: center;
+  padding: 22px 14px;
+
+  font-weight: 600;
+  font-style: normal; /* όχι italic */
 }
 
-.empty-icon {
-  font-size: 40px;
-  opacity: 0.8;
-}
-
-.empty-text strong {
-  display: block;
-  font-size: 16px;
-  color: var(--dark-color);
-  margin-bottom: 4px;
-}
-
-.empty-text span {
-  font-size: 14px;
-  color: var(--gray-dark);
-}
-
-/* Mobile tweak */
+/* Πολύ σημαντικό: στα mobile “cards” κρύβουμε το td::before */
 @media (max-width: 768px) {
-  .empty-state {
-    margin: 8px 0;
-    padding: 24px 16px;
+  .vehicles-table-container .empty-row,
+  .vehicles-table-container .empty-row td {
+    display: block;
+    width: 100%;
   }
 
-  .empty-text strong {
-    font-size: 15px;
+  .vehicles-table-container .empty-row td::before {
+    content: none !important;
+    display: none !important;
   }
 
-  .empty-text span {
-    font-size: 13px;
+  .vehicles-table-container .empty-cell {
+    margin: 10px 0;
+    text-align: center;
+    padding: 18px 14px;
   }
 }
