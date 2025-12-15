@@ -107,7 +107,7 @@
                 <button
                   type="button"
                   class="btn-secondary"
-                  onclick="closeAddVehicleForm()"
+                  data-action="cancel"
                 >
                   Ακύρωση
                 </button>
@@ -186,7 +186,8 @@
                 <div class="form-group">
                   <label for="editVehicleType">Τύπος Οχήματος *</label>
                   <select id="editVehicleType" required>
-                    <option value="">Επιλέξτε...</option>
+                    <option value="" disabled selected>Επιλέξτε...</option>
+
                     <!-- ΒΑΛΕ ΑΚΡΙΒΩΣ ΤΙΣ ΙΔΙΕΣ ΕΠΙΛΟΓΕΣ ΜΕ ΤΟ add -->
                     <option value="Επιβατικό ΙΧ">Επιβατικό ΙΧ</option>
                     <option value="Μοτοσυκλέτα">Μοτοσυκλέτα</option>
@@ -245,6 +246,7 @@
                   type="button"
                   class="btn-secondary"
                   id="cancelEditVehicle"
+                  data-action="cancel"
                 >
                   Ακύρωση
                 </button>

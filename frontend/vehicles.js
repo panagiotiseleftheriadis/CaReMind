@@ -25,15 +25,20 @@ class VehiclesManager {
     });
 
     // Cancel buttons
-    const cancelButtons = document.querySelectorAll(".btn-secondary");
+    const cancelButtons = document.querySelectorAll(
+      'button.btn-secondary[data-action="cancel"]'
+    );
+
     cancelButtons.forEach((button) => {
       button.addEventListener("click", (e) => {
+        // ✅ Αν είναι submit κουμπί, ΜΗΝ το θεωρείς cancel
+        if (button.type === "submit") return;
+
         const modal = e.target.closest(".modal");
-        if (modal.id === "addVehicleModal") {
-          this.closeAddVehicleForm();
-        } else if (modal.id === "editVehicleModal") {
-          this.closeEditVehicleModal();
-        }
+        if (!modal) return;
+
+        if (modal.id === "addVehicleModal") this.closeAddVehicleForm();
+        if (modal.id === "editVehicleModal") this.closeEditVehicleModal();
       });
     });
 
