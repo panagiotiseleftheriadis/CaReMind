@@ -25,7 +25,8 @@ app.use(
     allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
-
+app.use(cors(corsOptions));
+app.options(/.*/, cors(corsOptions)); // ✅ preflight για όλα τα routes
 app.use(express.json());
 
 // Routes

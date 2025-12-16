@@ -967,27 +967,27 @@ class MaintenanceManager {
 
   async completeMaintenance(id) {
     const maintenanceId = parseInt(id, 10);
-    const index = this.maintenance.findIndex((m) => m.id === maintenanceId);
-    if (index === -1) {
+    const item = this.maintenance.find((m) => m.id === maintenanceId);
+    if (!item) {
       this.showNotification("Δεν βρέθηκε η συντήρηση", "error");
       return;
     }
 
-    const item = this.maintenance[index];
     const today = new Date().toISOString().split("T")[0];
 
-    // ✅ ΠΛΗΡΕΣ payload (για PUT route)
     const payload = {
-      vehicleId: item.vehicleId,
+      vehicleId: parseInt(item.vehicleId, 10),
       maintenanceType: item.maintenanceType,
       lastDate: item.nextDate || today,
-      nextDate: item.nextDate || null, // (ή null αν θες να το καθαρίζεις)
+      nextDate: item.nextDate || null,
       lastMileage: item.nextMileage ?? item.lastMileage ?? null,
-      nextMileage: item.nextMileage ?? null, // (ή null αν θες να το καθαρίζεις)
+      nextMileage: item.nextMileage ?? null,
       notificationDays: item.notificationDays ?? 7,
       status: "completed",
       notes: item.notes ?? null,
     };
+
+    console.log("PUT payload:", payload); // ✅ για έλεγχο
 
     try {
       await this.api.updateMaintenance(maintenanceId, payload);
