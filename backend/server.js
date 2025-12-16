@@ -1,3 +1,4 @@
+// server.js
 const path = require("path");
 const adminUsersRoutes = require("./routes/adminUsers");
 const express = require("express");
@@ -11,27 +12,24 @@ const maintenanceRoutes = require("./routes/maintenances");
 const costRoutes = require("./routes/costs");
 const interestRoutes = require("./routes/interest");
 const cronRoutes = require("./routes/cron");
-
 const app = express();
 const PORT = process.env.PORT || 3000;
-
-// Middlewares
-const corsOptions = {
-  origin: [
-    "https://caremind2025.netlify.app",
-    "https://ca-re-mind-jl1oqqwhe-panos17s-projects.vercel.app",
-  ],
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
-};
-
-app.use(cors(corsOptions));
-app.options(/.*/, cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Middlewares
+app.use(
+  cors({
+    origin: "https://ca-re-mind-jl1oqqwhe-panos17s-projects.vercel.app/",
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
+
+app.use(express.json());
+
 // Routes
-app.use("/api", authRoutes);
+app.use("/api", authRoutes); // /api/login, /api/logout
 app.use("/api/vehicles", authenticateToken, vehicleRoutes);
 app.use("/api/maintenances", authenticateToken, maintenanceRoutes);
 app.use("/api/notifications", notificationsRoutes);
@@ -45,6 +43,7 @@ app.get("/", (req, res) => {
   res.json({ message: "CarCare backend is running" });
 });
 
+// Start server
 app.listen(PORT, () => {
   console.log(`CarCare backend listening on http://localhost:${PORT}`);
 });

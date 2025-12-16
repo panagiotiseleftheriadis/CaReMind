@@ -43,26 +43,39 @@ class API {
 
   async request(endpoint, options = {}) {
     const url = `${this.baseURL}${endpoint}`;
+    const config = {
+      method: options.method || "GET",
+      headers: this.getHeaders(),
+    };
 
-    const response = await fetch(url, options);
-
-    const contentType = response.headers.get("content-type") || "";
-    const isJson = contentType.includes("application/json");
-
-    const data = isJson ? await response.json() : await response.text();
-
-    if (!response.ok) {
-      console.error("API failed:", response.status, data);
-      throw new Error(
-        typeof data === "string"
-          ? data
-          : data.error || `HTTP ${response.status}`
-      );
+    if (options.body) {
+      config.body = JSON.stringify(options.body);
     }
 
-    return data;
-  }
+    try {
+      const response = await fetch(url, config);
+      const text = await response.text();
 
+      let data = null;
+      try {
+        data = text ? JSON.parse(text) : null;
+      } catch (e) {
+        console.error("JSON parse error:", e, text);
+      }
+
+      if (!response.ok) {
+        throw new Error(
+          (data && data.error) ||
+            `Request failed with status ${response.status}`
+        );
+      }
+
+      return data;
+    } catch (error) {
+      console.error("API Error:", error);
+      throw error;
+    }
+  }
   // // ADMIN USERS
   // async createUser(data) {
   //   return this.request("/users", {
@@ -166,11 +179,10 @@ class API {
     });
   }
 
-  async updateMaintenance(id, data) {
-    return this.request(`/maintenances/${id}`, {
+  async updateMaintenance(id, maintenanceData) {
+    return await this.request(`/maintenances/${id}`, {
       method: "PUT",
-      headers: this.getHeaders(), // ✅ Χρήση σωστών headers
-      body: JSON.stringify(data), // ✅ Ensure it's JSON string
+      body: maintenanceData,
     });
   }
 

@@ -914,33 +914,21 @@ class MaintenanceManager {
       return;
     }
 
+    const updated = { ...this.maintenance[index], ...updates };
+
     try {
-      if (!this.api) throw new Error("API not available");
+      if (!this.api) {
+        throw new Error("API not available");
+      }
 
-      const current = this.maintenance[index];
-
-      // ✅ ΠΛΗΡΕΣ payload για PUT
-      const payload = {
-        vehicleId: current.vehicleId,
-        maintenanceType: current.maintenanceType,
-        lastDate: updates.lastDate ?? current.lastDate ?? null,
-        nextDate: updates.nextDate ?? current.nextDate ?? null,
-        lastMileage: updates.lastMileage ?? current.lastMileage ?? null,
-        nextMileage: updates.nextMileage ?? current.nextMileage ?? null,
-        notificationDays:
-          updates.notificationDays ?? current.notificationDays ?? 7,
-        status: updates.status ?? current.status ?? "active",
-        notes: updates.notes ?? current.notes ?? null,
-      };
-
-      await this.api.updateMaintenance(id, payload);
+      await this.api.updateMaintenance(id, updated);
 
       this.showNotification("Η συντήρηση ενημερώθηκε με επιτυχία!", "success");
       await this.reloadMaintenances();
     } catch (error) {
       console.error("❌ Σφάλμα updateMaintenance:", error);
       this.showNotification(
-        "Αποτυχία ενημερωσης συντήρησης στον server",
+        "Αποτυχία ενημέρωσης συντήρησης στον server",
         "error"
       );
     }
@@ -966,43 +954,32 @@ class MaintenanceManager {
   }
 
   async completeMaintenance(id) {
-    const maintenanceId = parseInt(id, 10);
-    const item = this.maintenance.find((m) => m.id === maintenanceId);
-
-    if (!item) {
+    const maintenanceId = parseInt(id);
+    const index = this.maintenance.findIndex((m) => m.id === maintenanceId);
+    if (index === -1) {
       this.showNotification("Δεν βρέθηκε η συντήρηση", "error");
       return;
     }
 
-    const toYMD = (d) => {
-      if (!d) return null;
-      return new Date(d).toISOString().split("T")[0]; // YYYY-MM-DD
-    };
-
+    const item = this.maintenance[index];
     const today = new Date().toISOString().split("T")[0];
 
-    // ✅ Δημιουργία payload πρώτα
-    const payload = {
-      vehicleId: parseInt(item.vehicleId, 10),
-      maintenanceType: item.maintenanceType,
-      lastDate: toYMD(item.nextDate) || today,
-      nextDate: toYMD(item.nextDate), // ή null αν θες
-      lastMileage: item.nextMileage ?? item.lastMileage ?? null,
-      nextMileage: item.nextMileage ?? null,
-      notificationDays: item.notificationDays ?? 7,
+    const updated = {
+      ...item,
+      lastDate: item.nextDate || today,
+      lastMileage: item.nextMileage || item.lastMileage || null,
       status: "completed",
-      notes: item.notes ?? null,
+      completedDate: today, // ✅ Ημερομηνία Ολοκλήρωσης
     };
 
-    // ✅ ΜΟΝΟ μετά τη δημιουργία του payload, αφαίρεση undefined
-    Object.keys(payload).forEach(
-      (k) => payload[k] === undefined && delete payload[k]
-    );
-
-    console.log("PUT payload:", JSON.stringify(payload, null, 2));
-
     try {
-      await this.api.updateMaintenance(maintenanceId, payload);
+      if (this.api) {
+        await this.api.updateMaintenance(maintenanceId, updated);
+      } else {
+        this.maintenance[index] = updated;
+        this.saveMaintenance();
+      }
+
       this.showNotification(
         "Η συντήρηση σημειώθηκε ως ολοκληρωμένη",
         "success"
