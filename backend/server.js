@@ -21,7 +21,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(
   cors({
     origin: "https://caremind2025.netlify.app",
-    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
   })
 );

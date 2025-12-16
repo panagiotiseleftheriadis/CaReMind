@@ -917,9 +917,20 @@ class MaintenanceManager {
     try {
       if (!this.api) throw new Error("API not available");
 
-      // ✅ Στείλε μόνο updates, όχι όλο το αντικείμενο
+      const current = this.maintenance[index];
+
+      // ✅ ΠΛΗΡΕΣ payload για PUT
       const payload = {
-        ...updates,
+        vehicleId: current.vehicleId,
+        maintenanceType: current.maintenanceType,
+        lastDate: updates.lastDate ?? current.lastDate ?? null,
+        nextDate: updates.nextDate ?? current.nextDate ?? null,
+        lastMileage: updates.lastMileage ?? current.lastMileage ?? null,
+        nextMileage: updates.nextMileage ?? current.nextMileage ?? null,
+        notificationDays:
+          updates.notificationDays ?? current.notificationDays ?? 7,
+        status: updates.status ?? current.status ?? "active",
+        notes: updates.notes ?? current.notes ?? null,
       };
 
       await this.api.updateMaintenance(id, payload);
@@ -929,7 +940,7 @@ class MaintenanceManager {
     } catch (error) {
       console.error("❌ Σφάλμα updateMaintenance:", error);
       this.showNotification(
-        "Αποτυχία ενημέρωσης συντήρησης στον server",
+        "Αποτυχία ενημερωσης συντήρησης στον server",
         "error"
       );
     }
@@ -965,12 +976,17 @@ class MaintenanceManager {
     const item = this.maintenance[index];
     const today = new Date().toISOString().split("T")[0];
 
-    // ✅ Στείλε μόνο τα πεδία που χρειάζονται (πιο ασφαλές για backend validations)
+    // ✅ ΠΛΗΡΕΣ payload (για PUT route)
     const payload = {
-      status: "completed",
-      completedDate: today,
+      vehicleId: item.vehicleId,
+      maintenanceType: item.maintenanceType,
       lastDate: item.nextDate || today,
+      nextDate: item.nextDate || null, // (ή null αν θες να το καθαρίζεις)
       lastMileage: item.nextMileage ?? item.lastMileage ?? null,
+      nextMileage: item.nextMileage ?? null, // (ή null αν θες να το καθαρίζεις)
+      notificationDays: item.notificationDays ?? 7,
+      status: "completed",
+      notes: item.notes ?? null,
     };
 
     try {
