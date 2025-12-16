@@ -603,7 +603,7 @@ class DashboardManager {
   handleLogout() {
     localStorage.removeItem("currentUser");
     localStorage.removeItem("authToken");
-    window.location.href = "login.html";
+    window.location.href = "index.html";
   }
 
   /* ================== TOAST NOTIFICATIONS ================== */
