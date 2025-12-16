@@ -179,10 +179,11 @@ class API {
     });
   }
 
-  async updateMaintenance(id, maintenanceData) {
-    return await this.request(`/maintenances/${id}`, {
-      method: "PUT",
-      body: maintenanceData,
+  async updateMaintenance(id, data) {
+    return this.request(`/maintenances/${id}`, {
+      method: "PATCH", // ✅ αντί για PUT
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
     });
   }
 

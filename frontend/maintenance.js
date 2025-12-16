@@ -914,14 +914,15 @@ class MaintenanceManager {
       return;
     }
 
-    const updated = { ...this.maintenance[index], ...updates };
-
     try {
-      if (!this.api) {
-        throw new Error("API not available");
-      }
+      if (!this.api) throw new Error("API not available");
 
-      await this.api.updateMaintenance(id, updated);
+      // ✅ Στείλε μόνο updates, όχι όλο το αντικείμενο
+      const payload = {
+        ...updates,
+      };
+
+      await this.api.updateMaintenance(id, payload);
 
       this.showNotification("Η συντήρηση ενημερώθηκε με επιτυχία!", "success");
       await this.reloadMaintenances();
