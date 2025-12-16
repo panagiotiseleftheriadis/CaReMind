@@ -954,7 +954,7 @@ class MaintenanceManager {
   }
 
   async completeMaintenance(id) {
-    const maintenanceId = parseInt(id);
+    const maintenanceId = parseInt(id, 10);
     const index = this.maintenance.findIndex((m) => m.id === maintenanceId);
     if (index === -1) {
       this.showNotification("Δεν βρέθηκε η συντήρηση", "error");
@@ -964,22 +964,16 @@ class MaintenanceManager {
     const item = this.maintenance[index];
     const today = new Date().toISOString().split("T")[0];
 
-    const updated = {
-      ...item,
-      lastDate: item.nextDate || today,
-      lastMileage: item.nextMileage || item.lastMileage || null,
+    // ✅ Στείλε μόνο τα πεδία που χρειάζονται (πιο ασφαλές για backend validations)
+    const payload = {
       status: "completed",
-      completedDate: today, // ✅ Ημερομηνία Ολοκλήρωσης
+      completedDate: today,
+      lastDate: item.nextDate || today,
+      lastMileage: item.nextMileage ?? item.lastMileage ?? null,
     };
 
     try {
-      if (this.api) {
-        await this.api.updateMaintenance(maintenanceId, updated);
-      } else {
-        this.maintenance[index] = updated;
-        this.saveMaintenance();
-      }
-
+      await this.api.updateMaintenance(maintenanceId, payload);
       this.showNotification(
         "Η συντήρηση σημειώθηκε ως ολοκληρωμένη",
         "success"
