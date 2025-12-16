@@ -966,6 +966,10 @@ class MaintenanceManager {
   }
 
   async completeMaintenance(id) {
+    Object.keys(payload).forEach(
+      (k) => payload[k] === undefined && delete payload[k]
+    );
+
     const maintenanceId = parseInt(id, 10);
     const item = this.maintenance.find((m) => m.id === maintenanceId);
     if (!item) {
@@ -988,7 +992,7 @@ class MaintenanceManager {
       notes: item.notes ?? null,
     };
 
-    console.log("PUT payload:", payload); // ✅ για έλεγχο
+    console.log("PUT payload:", JSON.stringify(payload, null, 2));
 
     try {
       await this.api.updateMaintenance(maintenanceId, payload);
