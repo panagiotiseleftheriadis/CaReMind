@@ -24,7 +24,7 @@ async function sendMail(to, subject, html, attachments = []) {
 
   await resend.emails.send({
     // Προσωρινά μπορείς να βάλεις το default domain που επιτρέπει το Resend (ή το verified domain σου)
-    from: "CaReMind <onboarding@resend.dev>",
+    replyTo: "support@caremind.gr",
     to,
     subject,
     html,

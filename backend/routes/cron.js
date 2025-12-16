@@ -81,7 +81,7 @@ router.get("/maintenance", async (req, res) => {
     
     <!-- LOGO -->
     <div style="text-align:center; margin-bottom:18px;">
-      <img src="https://drive.google.com/uc?export=view&id=1flOnA06A25rGHTAxkuRcZRLAvuS6Yn3X" style="height:60px;" alt="CaReMind" />
+      <img src="https://caremind2025.netlify.app/logo.png" style="height:60px;" alt="CaReMind" />
 
     </div>
 
@@ -123,7 +123,8 @@ router.get("/maintenance", async (req, res) => {
 
     <!-- ΚΟΥΜΠΙ -->
     <div style="text-align:center; margin-top:6px;">
-      <a href="#"
+      <a href="href="https://caremind2025.netlify.app/"
+
          style="display:inline-block; background:#FF7777; color:#FFFFFF; padding:10px 26px; border-radius:999px; text-decoration:none; font-size:13px; font-weight:600; letter-spacing:0.3px;">
         Δείτε τις συντηρήσεις σας
       </a>
