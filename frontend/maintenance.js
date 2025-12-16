@@ -966,31 +966,38 @@ class MaintenanceManager {
   }
 
   async completeMaintenance(id) {
-    Object.keys(payload).forEach(
-      (k) => payload[k] === undefined && delete payload[k]
-    );
-
     const maintenanceId = parseInt(id, 10);
     const item = this.maintenance.find((m) => m.id === maintenanceId);
+
     if (!item) {
       this.showNotification("Δεν βρέθηκε η συντήρηση", "error");
       return;
     }
-    const toYMD = (d) => (d ? new Date(d).toISOString().split("T")[0] : null);
+
+    const toYMD = (d) => {
+      if (!d) return null;
+      return new Date(d).toISOString().split("T")[0]; // YYYY-MM-DD
+    };
 
     const today = new Date().toISOString().split("T")[0];
 
+    // ✅ Δημιουργία payload πρώτα
     const payload = {
       vehicleId: parseInt(item.vehicleId, 10),
       maintenanceType: item.maintenanceType,
       lastDate: toYMD(item.nextDate) || today,
-      nextDate: toYMD(item.nextDate), // ή null αν θες να το καθαρίζεις
+      nextDate: toYMD(item.nextDate), // ή null αν θες
       lastMileage: item.nextMileage ?? item.lastMileage ?? null,
       nextMileage: item.nextMileage ?? null,
       notificationDays: item.notificationDays ?? 7,
       status: "completed",
       notes: item.notes ?? null,
     };
+
+    // ✅ ΜΟΝΟ μετά τη δημιουργία του payload, αφαίρεση undefined
+    Object.keys(payload).forEach(
+      (k) => payload[k] === undefined && delete payload[k]
+    );
 
     console.log("PUT payload:", JSON.stringify(payload, null, 2));
 

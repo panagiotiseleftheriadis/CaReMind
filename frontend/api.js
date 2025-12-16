@@ -169,8 +169,8 @@ class API {
   async updateMaintenance(id, data) {
     return this.request(`/maintenances/${id}`, {
       method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
+      headers: this.getHeaders(), // ✅ Χρήση σωστών headers
+      body: JSON.stringify(data), // ✅ Ensure it's JSON string
     });
   }
 

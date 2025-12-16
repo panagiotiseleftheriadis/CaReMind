@@ -98,7 +98,10 @@ router.post("/", async (req, res) => {
 });
 
 // PUT /api/maintenances/:id
+// PUT /api/maintenances/:id - διορθωμένο
 router.put("/:id", async (req, res) => {
+  console.log("🔧 PUT /maintenances/:id - Request Body:", req.body);
+  console.log("🔧 User ID:", req.user.id);
   try {
     const userId = req.user.id;
     const maintenanceId = req.params.id;
@@ -122,6 +125,9 @@ router.put("/:id", async (req, res) => {
       return res.status(404).json({ error: "Η συντήρηση δεν βρέθηκε" });
     }
 
+    // 🔧 ΔΙΟΡΘΩΣΗ: Μετατροπή "completed" σε "inactive"
+    const dbStatus = status === "completed" ? "inactive" : status || "active";
+
     await db.query(
       `UPDATE maintenances
        SET vehicle_id = ?, maintenance_type = ?, last_date = ?, next_date = ?,
@@ -135,7 +141,7 @@ router.put("/:id", async (req, res) => {
         lastMileage || null,
         nextMileage || null,
         notificationDays || 7,
-        status || "active",
+        dbStatus, // 🔧 Χρησιμοποιούμε τη μετατρεπόμενη τιμή
         notes || null,
         maintenanceId,
       ]
