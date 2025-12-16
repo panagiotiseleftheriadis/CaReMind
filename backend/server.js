@@ -27,7 +27,14 @@ app.use(express.urlencoded({ extended: true }));
    CORS (Vercel only)
 ====================== */
 const corsOptions = {
-  origin: "https://ca-re-mind-jl1oqqwhe-panos17s-projects.vercel.app",
+  origin: (origin, cb) => {
+    if (!origin) return cb(null, true);
+
+    const ok =
+      origin === "http://localhost:5173" || origin.endsWith(".vercel.app");
+
+    return ok ? cb(null, true) : cb(new Error("Not allowed by CORS"));
+  },
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
   credentials: true,
