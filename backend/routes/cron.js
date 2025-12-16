@@ -81,7 +81,8 @@ router.get("/maintenance", async (req, res) => {
     
     <!-- LOGO -->
     <div style="text-align:center; margin-bottom:18px;">
-      <img src="cid:caremind-logo" style="height:60px;" alt="CaReMind" />
+      <img src="https://drive.google.com/uc?export=view&id=1flOnA06A25rGHTAxkuRcZRLAvuS6Yn3X" style="height:60px;" alt="CaReMind" />
+
     </div>
 
     <!-- ΤΙΤΛΟΣ -->
@@ -141,15 +142,8 @@ router.get("/maintenance", async (req, res) => {
 </div>
 `;
 
-        const attachments = [
-          {
-            filename: "logo.png",
-            path: path.join(__dirname, "../logo.png"),
-            cid: "caremind-logo",
-          },
-        ];
+        await sendMail(item.email, subject, messageHtml, []);
 
-        await sendMail(item.email, subject, messageHtml, attachments);
         console.log(`📩 Email στάλθηκε σε: ${item.email}`);
         sent++;
       }
