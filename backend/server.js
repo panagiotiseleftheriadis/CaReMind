@@ -1,4 +1,3 @@
-// server.js
 const path = require("path");
 const adminUsersRoutes = require("./routes/adminUsers");
 const express = require("express");
@@ -12,25 +11,25 @@ const maintenanceRoutes = require("./routes/maintenances");
 const costRoutes = require("./routes/costs");
 const interestRoutes = require("./routes/interest");
 const cronRoutes = require("./routes/cron");
+
 const app = express();
 const PORT = process.env.PORT || 3000;
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Middlewares
-app.use(
-  cors({
-    origin: "https://caremind2025.netlify.app",
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-  })
-);
+const corsOptions = {
+  origin: "https://caremind2025.netlify.app",
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+};
+
 app.use(cors(corsOptions));
-app.options(/.*/, cors(corsOptions)); // ✅ preflight για όλα τα routes
-app.use(express.json());
+app.options(/.*/, cors(corsOptions));
 
 // Routes
-app.use("/api", authRoutes); // /api/login, /api/logout
+app.use("/api", authRoutes);
 app.use("/api/vehicles", authenticateToken, vehicleRoutes);
 app.use("/api/maintenances", authenticateToken, maintenanceRoutes);
 app.use("/api/notifications", notificationsRoutes);
@@ -44,7 +43,6 @@ app.get("/", (req, res) => {
   res.json({ message: "CarCare backend is running" });
 });
 
-// Start server
 app.listen(PORT, () => {
   console.log(`CarCare backend listening on http://localhost:${PORT}`);
 });
