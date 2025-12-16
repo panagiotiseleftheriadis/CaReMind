@@ -972,14 +972,15 @@ class MaintenanceManager {
       this.showNotification("Δεν βρέθηκε η συντήρηση", "error");
       return;
     }
+    const toYMD = (d) => (d ? new Date(d).toISOString().split("T")[0] : null);
 
     const today = new Date().toISOString().split("T")[0];
 
     const payload = {
       vehicleId: parseInt(item.vehicleId, 10),
       maintenanceType: item.maintenanceType,
-      lastDate: item.nextDate || today,
-      nextDate: item.nextDate || null,
+      lastDate: toYMD(item.nextDate) || today,
+      nextDate: toYMD(item.nextDate), // ή null αν θες να το καθαρίζεις
       lastMileage: item.nextMileage ?? item.lastMileage ?? null,
       nextMileage: item.nextMileage ?? null,
       notificationDays: item.notificationDays ?? 7,

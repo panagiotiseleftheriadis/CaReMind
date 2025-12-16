@@ -15,9 +15,6 @@ const cronRoutes = require("./routes/cron");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-
 // Middlewares
 const corsOptions = {
   origin: [
@@ -30,6 +27,8 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 app.options(/.*/, cors(corsOptions));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // Routes
 app.use("/api", authRoutes);
