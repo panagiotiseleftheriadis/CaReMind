@@ -181,7 +181,7 @@ class API {
 
   async updateMaintenance(id, data) {
     return this.request(`/maintenances/${id}`, {
-      method: "PATCH", // ✅ αντί για PUT
+      method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
