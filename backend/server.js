@@ -20,7 +20,10 @@ app.use(express.urlencoded({ extended: true }));
 // Middlewares
 app.use(
   cors({
-    origin: "https://ca-re-mind-jl1oqqwhe-panos17s-projects.vercel.app/",
+    origin: [
+      "https://caremind2025.netlify.app",
+      "https://ca-re-mind-jl1oqqwhe-panos17s-projects.vercel.app",
+    ],
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
   })
