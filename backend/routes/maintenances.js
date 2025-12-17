@@ -160,7 +160,12 @@ router.put("/:id", async (req, res) => {
 
     res.json(rows[0]);
   } catch (err) {
-    console.error("Update maintenance error:", err);
+    console.error("❌ Update maintenance error:");
+    console.error("MySQL / Server error:", err);
+    console.error("➡️ req.body:", req.body);
+    console.error("➡️ maintenanceId:", req.params.id);
+    console.error("➡️ userId:", req.user?.id);
+
     res.status(500).json({ error: "Σφάλμα κατά την ενημέρωση συντήρησης" });
   }
 });
