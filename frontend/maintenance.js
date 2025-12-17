@@ -966,7 +966,7 @@ class MaintenanceManager {
 
     const updated = {
       ...item,
-      lastDate: item.nextDate || today,
+      lastDate: today,
       lastMileage: item.nextMileage || item.lastMileage || null,
       status: "completed",
       completedDate: today, // ✅ Ημερομηνία Ολοκλήρωσης
