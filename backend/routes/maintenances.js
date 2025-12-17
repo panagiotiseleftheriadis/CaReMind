@@ -121,7 +121,8 @@ router.put("/:id", async (req, res) => {
     if (!existingRows.length) {
       return res.status(404).json({ error: "Η συντήρηση δεν βρέθηκε" });
     }
-
+    const toSqlDate = (d) =>
+      d ? new Date(d).toISOString().slice(0, 10) : null;
     await db.query(
       `UPDATE maintenances
        SET vehicle_id = ?, maintenance_type = ?, last_date = ?, next_date = ?,
@@ -130,8 +131,8 @@ router.put("/:id", async (req, res) => {
       [
         vehicleId,
         maintenanceType,
-        lastDate || null,
-        nextDate || null,
+        toSqlDate(lastDate),
+        toSqlDate(nextDate),
         lastMileage || null,
         nextMileage || null,
         notificationDays || 7,
