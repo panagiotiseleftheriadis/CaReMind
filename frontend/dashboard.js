@@ -328,6 +328,56 @@ class DashboardManager {
   }
 
   /* ================== ACTIVITY FEED ================== */
+  /* ================== TIME NORMALIZATION ================== */
+
+  // Μετατρέπει «ό,τι βρούμε» σε έγκυρο Date. Επιστρέφει null αν δεν γίνεται parse.
+  toDate(value) {
+    if (!value) return null;
+
+    // numeric timestamps (sec/ms)
+    if (typeof value === "number") {
+      const ms = value < 1e12 ? value * 1000 : value; // αν είναι seconds
+      const d = new Date(ms);
+      return isNaN(d.getTime()) ? null : d;
+    }
+
+    // strings
+    if (typeof value === "string") {
+      const s = value.trim();
+      if (!s) return null;
+
+      // ISO / RFC
+      let d = new Date(s);
+      if (!isNaN(d.getTime())) return d;
+
+      // yyyy-mm-dd
+      const m1 = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (m1) {
+        d = new Date(Number(m1[1]), Number(m1[2]) - 1, Number(m1[3]));
+        return isNaN(d.getTime()) ? null : d;
+      }
+
+      // dd/mm/yyyy
+      const m2 = s.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+      if (m2) {
+        d = new Date(Number(m2[3]), Number(m2[2]) - 1, Number(m2[1]));
+        return isNaN(d.getTime()) ? null : d;
+      }
+    }
+
+    return null;
+  }
+
+  // Επιστρέφει ISO string από το πρώτο διαθέσιμο πεδίο (createdAt, created_at, κ.λπ.)
+  resolveTimestamp(obj, candidates) {
+    for (const key of candidates) {
+      if (obj && Object.prototype.hasOwnProperty.call(obj, key)) {
+        const d = this.toDate(obj[key]);
+        if (d) return d.toISOString();
+      }
+    }
+    return null;
+  }
 
   updateActivityFeed() {
     const activityList = document.getElementById("recentActivity");
@@ -336,18 +386,18 @@ class DashboardManager {
     const user = JSON.parse(localStorage.getItem("currentUser"));
     if (!user) {
       activityList.innerHTML = `
-        <div class="activity-item">
-          <div class="activity-content">
-            <div class="activity-message">Δεν βρέθηκε συνδεδεμένος χρήστης</div>
-          </div>
+      <div class="activity-item">
+        <div class="activity-content">
+          <div class="activity-message">Δεν βρέθηκε συνδεδεμένος χρήστης</div>
         </div>
-      `;
+      </div>
+    `;
       return;
     }
 
-    const vehicles = this.vehicles;
-    const maintenance = this.maintenance;
-    const costs = this.costs;
+    const vehicles = this.vehicles || [];
+    const maintenance = this.maintenance || [];
+    const costs = this.costs || [];
 
     const allActivities = [];
 
@@ -360,8 +410,16 @@ class DashboardManager {
         type: "maintenance",
         message: `Συντήρηση ${this.getMaintenanceTypeLabel(
           item.maintenanceType
-        )} για ${vehicle.vehicleType} ${vehicle.model || ""}`,
-        time: item.createdAt || item.date || new Date().toISOString(),
+        )} για ${vehicle.vehicleType} ${vehicle.model || ""}`.trim(),
+        // ❌ ΟΧΙ fallback σε "τώρα"
+        time: this.resolveTimestamp(item, [
+          "createdAt",
+          "created_at",
+          "createdOn",
+          "created",
+          "date",
+          "timestamp",
+        ]),
       });
     });
 
@@ -374,8 +432,16 @@ class DashboardManager {
         type: "cost",
         message: `Κόστος €${(Number(cost.amount) || 0).toFixed(2)} για ${
           vehicle.vehicleType
-        } ${vehicle.model || ""}`,
-        time: cost.date || new Date().toISOString(),
+        } ${vehicle.model || ""}`.trim(),
+        // ❌ ΟΧΙ fallback σε "τώρα"
+        time: this.resolveTimestamp(cost, [
+          "createdAt",
+          "created_at",
+          "createdOn",
+          "created",
+          "date",
+          "timestamp",
+        ]),
       });
     });
 
@@ -385,41 +451,54 @@ class DashboardManager {
         type: "vehicle",
         message: `Προστέθηκε νέο όχημα: ${vehicle.vehicleType} ${
           vehicle.model || ""
-        }`,
-        time: vehicle.createdAt || new Date().toISOString(),
+        }`.trim(),
+        // ❌ ΟΧΙ fallback σε "τώρα"
+        time: this.resolveTimestamp(vehicle, [
+          "createdAt",
+          "created_at",
+          "createdOn",
+          "created",
+          "date",
+          "timestamp",
+        ]),
       });
     });
 
-    // Ταξινόμηση - πιο πρόσφατα πρώτα
-    allActivities.sort((a, b) => new Date(b.time) - new Date(a.time));
+    // Ταξινόμηση: πιο πρόσφατα πρώτα.
+    // Όσα ΔΕΝ έχουν ημερομηνία πάνε στο τέλος (και δεν βαφτίζονται "Μόλις τώρα").
+    allActivities.sort((a, b) => {
+      const ta = this.toDate(a.time)?.getTime() ?? -Infinity;
+      const tb = this.toDate(b.time)?.getTime() ?? -Infinity;
+      return tb - ta;
+    });
 
     const recentActivities = allActivities.slice(0, 5);
 
     if (!recentActivities.length) {
       activityList.innerHTML = `
-        <div class="activity-item">
-          <div class="activity-content">
-            <div class="activity-message">Δεν υπάρχει πρόσφατη δραστηριότητα</div>
-            <div class="activity-time">Προσθέστε οχήματα, συντήρηση ή κόστη</div>
-          </div>
+      <div class="activity-item">
+        <div class="activity-content">
+          <div class="activity-message">Δεν υπάρχει πρόσφατη δραστηριότητα</div>
+          <div class="activity-time">Προσθέστε οχήματα, συντήρηση ή κόστη</div>
         </div>
-      `;
+      </div>
+    `;
       return;
     }
 
     activityList.innerHTML = recentActivities
       .map(
         (activity) => `
-        <div class="activity-item">
-          <div class="activity-content">
-            <div class="activity-message">${activity.message}</div>
-            <div class="activity-time">${this.formatTime(activity.time)}</div>
-          </div>
-          <span class="activity-type ${activity.type}">
-            ${this.getActivityTypeLabel(activity.type)}
-          </span>
+      <div class="activity-item">
+        <div class="activity-content">
+          <div class="activity-message">${activity.message}</div>
+          <div class="activity-time">${this.formatTime(activity.time)}</div>
         </div>
-      `
+        <span class="activity-type ${activity.type}">
+          ${this.getActivityTypeLabel(activity.type)}
+        </span>
+      </div>
+    `
       )
       .join("");
   }
@@ -457,7 +536,8 @@ class DashboardManager {
   }
 
   formatTime(timestamp) {
-    const date = new Date(timestamp);
+    const date = this.toDate(timestamp);
+    if (!date) return "Χωρίς ημερομηνία";
     const now = new Date();
     const diffMs = now - date;
     const diffMins = Math.floor(diffMs / 60000);
