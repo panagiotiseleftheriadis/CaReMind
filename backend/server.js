@@ -24,16 +24,23 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 /* ======================
-   CORS (Vercel only)
+   CORS
 ====================== */
+const allowedOrigins = new Set([
+  "http://localhost:5173",
+  "https://car-remind.gr",
+  "https://www.car-remind.gr",
+]);
+
 const corsOptions = {
   origin: (origin, cb) => {
+    // allow server-to-server / curl / healthchecks with no Origin
     if (!origin) return cb(null, true);
 
-    const ok =
-      origin === "http://localhost:5173" || origin.endsWith(".vercel.app");
+    const isVercelPreview = origin.endsWith(".vercel.app");
+    const isAllowed = allowedOrigins.has(origin) || isVercelPreview;
 
-    return ok ? cb(null, true) : cb(new Error("Not allowed by CORS"));
+    return isAllowed ? cb(null, true) : cb(new Error("Not allowed by CORS"));
   },
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
