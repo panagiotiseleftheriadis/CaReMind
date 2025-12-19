@@ -246,6 +246,7 @@ class VehiclesManager {
         year: year ? parseInt(year) : null,
         currentMileage: parseInt(currentMileage) || 0,
         companyId: user.companyId,
+        createdAt: new Date().toISOString(), // ✅ ημερομηνία καταχώρησης
       };
 
       await api.addVehicle(newVehicle);

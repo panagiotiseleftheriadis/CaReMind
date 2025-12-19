@@ -406,7 +406,7 @@ class DashboardManager {
 
     const allActivities = [];
 
-    // Συντηρήσεις
+    // ✅ Συντηρήσεις (ΗΜΕΡΟΜΗΝΙΑ ΚΑΤΑΧΩΡΗΣΗΣ ΜΟΝΟ)
     maintenance.forEach((item) => {
       const vehicle = vehicles.find((v) => v.id === item.vehicleId);
       if (!vehicle) return;
@@ -416,19 +416,18 @@ class DashboardManager {
         message: `Συντήρηση ${this.getMaintenanceTypeLabel(
           item.maintenanceType
         )} για ${vehicle.vehicleType} ${vehicle.model || ""}`.trim(),
-        // ❌ ΟΧΙ fallback σε "τώρα"
+        // ✅ ΜΟΝΟ καταχώρηση, όχι ημερομηνία εργασίας
         time: this.resolveTimestamp(item, [
           "createdAt",
           "created_at",
           "createdOn",
           "created",
-          "date",
           "timestamp",
         ]),
       });
     });
 
-    // Κόστη
+    // ✅ Κόστη (ΗΜΕΡΟΜΗΝΙΑ ΚΑΤΑΧΩΡΗΣΗΣ ΜΟΝΟ)
     costs.forEach((cost) => {
       const vehicle = vehicles.find((v) => v.id === cost.vehicleId);
       if (!vehicle) return;
@@ -438,39 +437,36 @@ class DashboardManager {
         message: `Κόστος €${(Number(cost.amount) || 0).toFixed(2)} για ${
           vehicle.vehicleType
         } ${vehicle.model || ""}`.trim(),
-        // ❌ ΟΧΙ fallback σε "τώρα"
+        // ✅ ΜΟΝΟ καταχώρηση, όχι ημερομηνία κόστους
         time: this.resolveTimestamp(cost, [
           "createdAt",
           "created_at",
           "createdOn",
           "created",
-          "date",
           "timestamp",
         ]),
       });
     });
 
-    // Οχήματα
+    // ✅ Οχήματα (ΗΜΕΡΟΜΗΝΙΑ ΚΑΤΑΧΩΡΗΣΗΣ ΜΟΝΟ)
     vehicles.forEach((vehicle) => {
       allActivities.push({
         type: "vehicle",
         message: `Προστέθηκε νέο όχημα: ${vehicle.vehicleType} ${
           vehicle.model || ""
         }`.trim(),
-        // ❌ ΟΧΙ fallback σε "τώρα"
         time: this.resolveTimestamp(vehicle, [
           "createdAt",
           "created_at",
           "createdOn",
           "created",
-          "date",
           "timestamp",
         ]),
       });
     });
 
     // Ταξινόμηση: πιο πρόσφατα πρώτα.
-    // Όσα ΔΕΝ έχουν ημερομηνία πάνε στο τέλος (και δεν βαφτίζονται "Μόλις τώρα").
+    // Όσα ΔΕΝ έχουν ημερομηνία πάνε στο τέλος.
     allActivities.sort((a, b) => {
       const ta = this.toDate(a.time)?.getTime() ?? -Infinity;
       const tb = this.toDate(b.time)?.getTime() ?? -Infinity;
@@ -494,16 +490,16 @@ class DashboardManager {
     activityList.innerHTML = recentActivities
       .map(
         (activity) => `
-      <div class="activity-item">
-        <div class="activity-content">
-          <div class="activity-message">${activity.message}</div>
-          <div class="activity-time">${this.formatTime(activity.time)}</div>
+        <div class="activity-item">
+          <div class="activity-content">
+            <div class="activity-message">${activity.message}</div>
+            <div class="activity-time">${this.formatTime(activity.time)}</div>
+          </div>
+          <span class="activity-type ${activity.type}">
+            ${this.getActivityTypeLabel(activity.type)}
+          </span>
         </div>
-        <span class="activity-type ${activity.type}">
-          ${this.getActivityTypeLabel(activity.type)}
-        </span>
-      </div>
-    `
+      `
       )
       .join("");
   }

@@ -707,6 +707,7 @@ class CostsManager {
         category: data.category,
         amount: data.amount,
         date: data.date,
+        createdAt: new Date().toISOString(), // ✅ ημερομηνία καταχώρησης
         description: data.description,
         receiptNumber: data.receiptNumber, // Προσέξτε: receiptNumber, όχι receipt
       };

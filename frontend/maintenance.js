@@ -885,6 +885,7 @@ class MaintenanceManager {
       notificationDays: Number.isNaN(notificationDays) ? 7 : notificationDays,
       notes,
       status,
+      createdAt: new Date().toISOString(), // ✅ ημερομηνία καταχώρησης
     };
   }
 
