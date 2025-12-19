@@ -41,6 +41,10 @@ class DashboardManager {
 
     // Αυτόματη ανανέωση κάθε 30 δευτερόλεπτα
     this.refreshInterval = setInterval(() => this.refreshDashboard(), 30_000);
+    window.addEventListener("focus", () => this.loadDashboardData());
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") this.loadDashboardData();
+    });
   }
 
   async refreshDashboard() {
@@ -112,6 +116,7 @@ class DashboardManager {
     this.costs = costs;
 
     this.updateStats(vehicles, maintenance, costs);
+    this.updateActivityFeed();
   }
 
   normalizeList(data, key) {
