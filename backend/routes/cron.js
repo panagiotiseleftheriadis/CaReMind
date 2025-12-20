@@ -73,7 +73,7 @@ router.get("/maintenance", async (req, res) => {
           ? `${item.model} (${item.chassis_number || ""})`
           : item.chassis_number || "Όχημα";
 
-        const subject = "Υπενθύμιση Συντήρησης Οχήματος";
+        const subject = `Υπενθύμιση: ${maintenanceName} — ${vehicleLabel} — ${dateStr}`;
 
         const messageHtml = `
 <div style="font-family: Arial, sans-serif; background:#F4F5F7; padding:25px 0;">
@@ -81,7 +81,7 @@ router.get("/maintenance", async (req, res) => {
     
     <!-- LOGO -->
     <div style="text-align:center; margin-bottom:18px;">
-      <img src="https://caremind2025.netlify.app/logo.png" style="height:60px;" alt="CaReMind" />
+      <img src="https://imgur.com/a/WfmmGVg"style="height:60px;" alt="CaReMind" />
 
     </div>
 
@@ -123,7 +123,8 @@ router.get("/maintenance", async (req, res) => {
 
     <!-- ΚΟΥΜΠΙ -->
     <div style="text-align:center; margin-top:6px;">
-      <a href="href="https://caremind2025.netlify.app/"
+      <a href="https://www.car-remind.gr/"
+
 
          style="display:inline-block; background:#FF7777; color:#FFFFFF; padding:10px 26px; border-radius:999px; text-decoration:none; font-size:13px; font-weight:600; letter-spacing:0.3px;">
         Δείτε τις συντηρήσεις σας
@@ -136,6 +137,9 @@ router.get("/maintenance", async (req, res) => {
       <strong style="color:#FF7777;">CaReMind</strong>
     </p>
   </div>
+<div style="display:none; color:transparent; opacity:0; height:0; width:0;">
+  ref:${maintenance_id}
+</div>
 
   <p style="text-align:center; font-size:11px; color:#9CA3AF; margin-top:14px;">
     Αυτό το email στάλθηκε αυτόματα από το σύστημα υπενθυμίσεων <strong>CaReMind</strong>.
@@ -144,7 +148,7 @@ router.get("/maintenance", async (req, res) => {
 `;
 
         await sendMail(item.email, subject, messageHtml, []);
-
+        await new Promise((r) => setTimeout(r, 500));
         console.log(`📩 Email στάλθηκε σε: ${item.email}`);
         sent++;
       }
