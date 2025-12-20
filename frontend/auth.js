@@ -213,20 +213,186 @@ document.addEventListener("DOMContentLoaded", function () {
   if (protectedPages.includes(currentPage)) {
     auth.requireAuth();
   }
-  document.addEventListener("DOMContentLoaded", function () {
-    const u = document.getElementById("username");
-    const p = document.getElementById("password");
 
-    if (u) u.addEventListener("input", hideLoginError);
-    if (p) p.addEventListener("input", hideLoginError);
+  /* ==========================
+     Forgot password modal logic
+     ========================== */
+  const modal = document.getElementById("forgotModal");
+  const openLink = document.getElementById("forgotPasswordLink");
+  const closeBtn = document.getElementById("forgotClose");
+
+  const stepEmail = document.getElementById("fpStepEmail");
+  const stepCode = document.getElementById("fpStepCode");
+  const stepReset = document.getElementById("fpStepReset");
+
+  const fpEmail = document.getElementById("fpEmail");
+  const fpCode = document.getElementById("fpCode");
+  const fpNewPass = document.getElementById("fpNewPass");
+  const fpNewPass2 = document.getElementById("fpNewPass2");
+
+  const btnSendCode = document.getElementById("fpSendCode");
+  const btnVerify = document.getElementById("fpVerifyCode");
+  const btnBack = document.getElementById("fpBackToEmail");
+  const btnReset = document.getElementById("fpDoReset");
+
+  const msg = document.getElementById("fpMsg");
+
+  let cachedEmail = "";
+  let resetToken = "";
+
+  function showMsg(text, type = "success") {
+    if (!msg) return;
+    msg.textContent = text;
+    msg.className = `fp-message ${type}`;
+    msg.style.display = "block";
+  }
+
+  function hideMsg() {
+    if (!msg) return;
+    msg.style.display = "none";
+    msg.textContent = "";
+    msg.className = "fp-message";
+  }
+
+  function showStep(which) {
+    if (stepEmail)
+      stepEmail.style.display = which === "email" ? "block" : "none";
+    if (stepCode) stepCode.style.display = which === "code" ? "block" : "none";
+    if (stepReset)
+      stepReset.style.display = which === "reset" ? "block" : "none";
+    hideMsg();
+  }
+
+  function openModal() {
+    if (!modal) return;
+    modal.classList.add("open");
+    modal.setAttribute("aria-hidden", "false");
+    resetToken = "";
+    cachedEmail = "";
+    if (fpEmail) fpEmail.value = "";
+    if (fpCode) fpCode.value = "";
+    if (fpNewPass) fpNewPass.value = "";
+    if (fpNewPass2) fpNewPass2.value = "";
+    showStep("email");
+    setTimeout(() => fpEmail?.focus(), 50);
+  }
+
+  function closeModal() {
+    if (!modal) return;
+    modal.classList.remove("open");
+    modal.setAttribute("aria-hidden", "true");
+  }
+
+  openLink?.addEventListener("click", (e) => {
+    e.preventDefault();
+    openModal();
   });
-  ["username", "password"].forEach((id) => {
-    const el = document.getElementById(id);
-    if (!el) return;
+  closeBtn?.addEventListener("click", (e) => {
+    e.preventDefault();
+    closeModal();
+  });
+  modal?.addEventListener("click", (e) => {
+    if (e.target === modal) closeModal();
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && modal?.classList.contains("open")) closeModal();
+  });
 
-    el.addEventListener("input", () => {
-      el.classList.remove("input-error", "input-valid");
-      hideLoginError();
-    });
+  btnSendCode?.addEventListener("click", async (e) => {
+    e.preventDefault();
+    const email = String(fpEmail?.value || "")
+      .trim()
+      .toLowerCase();
+    if (!email) {
+      showMsg("Συμπλήρωσε το email σου.", "error");
+      fpEmail?.focus();
+      return;
+    }
+
+    btnSendCode.disabled = true;
+    try {
+      await api.forgotPassword(email);
+      cachedEmail = email;
+      showStep("code");
+      showMsg("Στείλαμε έναν κωδικό στο email σου.", "success");
+      setTimeout(() => fpCode?.focus(), 50);
+    } catch (err) {
+      showMsg(err.message || "Αποτυχία αποστολής κωδικού.", "error");
+    } finally {
+      btnSendCode.disabled = false;
+    }
+  });
+
+  btnBack?.addEventListener("click", (e) => {
+    e.preventDefault();
+    showStep("email");
+    setTimeout(() => fpEmail?.focus(), 50);
+  });
+
+  btnVerify?.addEventListener("click", async (e) => {
+    e.preventDefault();
+    const code = String(fpCode?.value || "").trim();
+    if (!cachedEmail) {
+      showStep("email");
+      return;
+    }
+    if (!code || code.length < 4) {
+      showMsg("Συμπλήρωσε τον κωδικό που έλαβες.", "error");
+      fpCode?.focus();
+      return;
+    }
+
+    btnVerify.disabled = true;
+    try {
+      const resp = await api.verifyResetCode(cachedEmail, code);
+      resetToken = resp.resetToken;
+      showStep("reset");
+      showMsg("Ο κωδικός επαληθεύτηκε. Βάλε νέο password.", "success");
+      setTimeout(() => fpNewPass?.focus(), 50);
+    } catch (err) {
+      showMsg(err.message || "Λάθος κωδικός.", "error");
+    } finally {
+      btnVerify.disabled = false;
+    }
+  });
+
+  btnReset?.addEventListener("click", async (e) => {
+    e.preventDefault();
+    const p1 = String(fpNewPass?.value || "");
+    const p2 = String(fpNewPass2?.value || "");
+    if (!resetToken) {
+      showStep("email");
+      return;
+    }
+    if (!p1 || p1.length < 4) {
+      showMsg(
+        "Ο νέος κωδικός πρέπει να είναι τουλάχιστον 4 χαρακτήρες.",
+        "error"
+      );
+      fpNewPass?.focus();
+      return;
+    }
+    if (p1 !== p2) {
+      showMsg("Οι κωδικοί δεν ταιριάζουν.", "error");
+      fpNewPass2?.focus();
+      return;
+    }
+
+    btnReset.disabled = true;
+    try {
+      await api.resetPassword(resetToken, p1);
+      showMsg("Έγινε! Ο κωδικός άλλαξε. Μπορείς να συνδεθείς.", "success");
+      setTimeout(() => {
+        closeModal();
+        // Προσυμπλήρωση για ευκολία
+        const userInput = document.getElementById("username");
+        if (userInput && cachedEmail) userInput.value = cachedEmail;
+        document.getElementById("password")?.focus();
+      }, 900);
+    } catch (err) {
+      showMsg(err.message || "Αποτυχία αλλαγής κωδικού.", "error");
+    } finally {
+      btnReset.disabled = false;
+    }
   });
 });

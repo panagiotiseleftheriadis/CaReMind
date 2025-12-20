@@ -64,10 +64,15 @@ class API {
       }
 
       if (!response.ok) {
-        throw new Error(
+        const err = new Error(
           (data && data.error) ||
             `Request failed with status ${response.status}`
         );
+        if (data && data.code) {
+          err.code = data.code;
+        }
+        err.status = response.status;
+        throw err;
       }
 
       return data;
@@ -132,6 +137,28 @@ class API {
     }
 
     return response; // { token, user }
+  }
+
+  /* ------------ FORGOT PASSWORD ------------ */
+  async forgotPassword(email) {
+    return this.request("/forgot-password", {
+      method: "POST",
+      body: { email },
+    });
+  }
+
+  async verifyResetCode(email, code) {
+    return this.request("/verify-reset-code", {
+      method: "POST",
+      body: { email, code },
+    });
+  }
+
+  async resetPassword(resetToken, newPassword) {
+    return this.request("/reset-password", {
+      method: "POST",
+      body: { resetToken, newPassword },
+    });
   }
   // NOTIFICATIONS
   async getNotifications() {

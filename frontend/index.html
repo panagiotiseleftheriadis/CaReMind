@@ -4,7 +4,6 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Σύνδεση - CarReminder</title>
-    <link rel="icon" type="image/png" href="/favicon.png" />
     <link rel="stylesheet" href="login.css" />
     <style>
       .admin-link {
@@ -32,13 +31,13 @@
 
         <form id="loginForm">
           <div class="form-group">
-            <label for="username">Όνομα Χρήστη:</label>
+            <label for="username">Όνομα Χρήστη ή Email:</label>
             <input
               type="text"
               id="username"
               name="username"
               required
-              placeholder="Συμπληρώστε username"
+              placeholder="Συμπληρώστε username ή email"
             />
           </div>
 
@@ -54,6 +53,11 @@
           </div>
 
           <button type="submit" class="btn-primary">Σύνδεση</button>
+
+          <div class="forgot-password">
+            <a href="#" id="forgotPasswordLink">Ξεχάσατε τον κωδικό σας;</a>
+          </div>
+
           <div id="loginError" class="login-message error">
             Λάθος στοιχεία εισόδου. Παρακαλώ προσπαθήστε ξανά.
           </div>
@@ -74,5 +78,63 @@
 
     <script src="api.js"></script>
     <script src="auth.js"></script>
+
+    <!-- Forgot password modal -->
+    <div class="modal" id="forgotModal" aria-hidden="true">
+      <div class="modal-content" role="dialog" aria-modal="true">
+        <button class="modal-close" id="forgotClose" aria-label="Κλείσιμο">
+          ×
+        </button>
+
+        <h3>Επαναφορά κωδικού</h3>
+
+        <!-- Step 1: email -->
+        <div class="fp-step" id="fpStepEmail">
+          <p>Βάλε το email σου και θα σου στείλουμε έναν κωδικό.</p>
+          <div class="form-group">
+            <label for="fpEmail">Email:</label>
+            <input type="email" id="fpEmail" placeholder="name@example.com" />
+          </div>
+          <button class="btn-primary" id="fpSendCode">Αποστολή κωδικού</button>
+        </div>
+
+        <!-- Step 2: code -->
+        <div class="fp-step" id="fpStepCode" style="display: none">
+          <p>Σου στείλαμε έναν 6-ψήφιο κωδικό. Πληκτρολόγησέ τον παρακάτω.</p>
+          <div class="form-group">
+            <label for="fpCode">Κωδικός:</label>
+            <input
+              type="text"
+              id="fpCode"
+              inputmode="numeric"
+              maxlength="6"
+              placeholder="000000"
+            />
+          </div>
+          <button class="btn-primary" id="fpVerifyCode">Επιβεβαίωση</button>
+          <button class="btn-secondary" id="fpBackToEmail">Άλλαξε email</button>
+        </div>
+
+        <!-- Step 3: new password -->
+        <div class="fp-step" id="fpStepReset" style="display: none">
+          <p>Βάλε τον νέο σου κωδικό.</p>
+          <div class="form-group">
+            <label for="fpNewPass">Νέος κωδικός:</label>
+            <input type="password" id="fpNewPass" placeholder="Νέος κωδικός" />
+          </div>
+          <div class="form-group">
+            <label for="fpNewPass2">Επιβεβαίωση:</label>
+            <input
+              type="password"
+              id="fpNewPass2"
+              placeholder="Επανάληψη νέου κωδικού"
+            />
+          </div>
+          <button class="btn-primary" id="fpDoReset">Αλλαγή κωδικού</button>
+        </div>
+
+        <div class="fp-message" id="fpMsg" style="display: none"></div>
+      </div>
+    </div>
   </body>
 </html>
