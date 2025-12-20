@@ -73,7 +73,7 @@ router.get("/maintenance", async (req, res) => {
           ? `${item.model} (${item.chassis_number || ""})`
           : item.chassis_number || "Όχημα";
 
-        const subject = `Υπενθύμιση: ${maintenanceName} — ${vehicleLabel} — ${dateStr}`;
+        const subject = `Υπενθύμιση: ${maintenanceName} — ${vehicleLabel}`;
 
         const messageHtml = `
 <div style="font-family: Arial, sans-serif; background:#F4F5F7; padding:25px 0;">
@@ -81,7 +81,8 @@ router.get("/maintenance", async (req, res) => {
     
     <!-- LOGO -->
     <div style="text-align:center; margin-bottom:18px;">
-      <img src="https://imgur.com/a/WfmmGVg"style="height:60px;" alt="CaReMind" />
+      <img src="https://i.imgur.com/1KsMfep.png
+"style="height:60px;" alt="CaReMind" />
 
     </div>
 
