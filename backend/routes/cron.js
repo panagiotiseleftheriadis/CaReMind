@@ -138,7 +138,7 @@ router.get("/maintenance", async (req, res) => {
     </p>
   </div>
 <div style="display:none; color:transparent; opacity:0; height:0; width:0;">
-  ref:${maintenance_id}
+  ref:${maintenanceName}
 </div>
 
   <p style="text-align:center; font-size:11px; color:#9CA3AF; margin-top:14px;">
