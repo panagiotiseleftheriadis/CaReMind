@@ -43,13 +43,24 @@
 
           <div class="form-group">
             <label for="password">Κωδικός Πρόσβασης:</label>
-            <input
-              type="password"
-              id="password"
-              name="password"
-              required
-              placeholder="Συμπληρώστε κωδικό"
-            />
+
+            <div class="password-wrapper">
+              <input
+                type="password"
+                id="password"
+                name="password"
+                required
+                placeholder="Συμπληρώστε κωδικό"
+              />
+              <button
+                type="button"
+                class="toggle-password"
+                data-target="password"
+                aria-label="Εμφάνιση/Απόκρυψη κωδικού"
+              >
+                👁
+              </button>
+            </div>
           </div>
 
           <button type="submit" class="btn-primary">Σύνδεση</button>
