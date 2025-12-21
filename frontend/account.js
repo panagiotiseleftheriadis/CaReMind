@@ -59,6 +59,19 @@ function renderRecipients(list) {
   const wrap = $("recipientsList");
   if (!wrap) return;
 
+  // badge: how many recipients exist
+  const badge = $("badgeRecipients");
+  const count = Array.isArray(list) ? list.length : 0;
+  if (badge) {
+    if (count > 0) {
+      badge.textContent = String(count);
+      badge.style.display = "inline-flex";
+    } else {
+      badge.textContent = "";
+      badge.style.display = "none";
+    }
+  }
+
   if (!Array.isArray(list) || list.length === 0) {
     wrap.innerHTML = `<div class="muted">Δεν έχετε προσθέσει επιπλέον παραλήπτες ακόμη.</div>`;
     return;
@@ -202,13 +215,12 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
 
-    // Toggle (single-open like Skroutz sections)
+    // Toggle (multi-open like Skroutz filters/categories)
     items.forEach((item) => {
       const btn = item.querySelector(".acc-trigger");
       if (!btn) return;
       btn.addEventListener("click", () => {
         const isOpen = item.classList.contains("is-open");
-        items.forEach((it) => setOpen(it, false));
         setOpen(item, !isOpen);
       });
     });
