@@ -347,7 +347,6 @@ document.addEventListener("DOMContentLoaded", function () {
       const resp = await api.verifyResetCode(cachedEmail, code);
       resetToken = resp.resetToken;
       showStep("reset");
-      showMsg("Ο κωδικός επαληθεύτηκε. Συμπληρώστε νέο κωδικό.", "success");
       setTimeout(() => fpNewPass?.focus(), 50);
     } catch (err) {
       showMsg(err.message || "Λάθος κωδικός.", "error");
@@ -364,9 +363,9 @@ document.addEventListener("DOMContentLoaded", function () {
       showStep("email");
       return;
     }
-    if (!p1 || p1.length < 4) {
+    if (!p1 || p1.length < 6) {
       showMsg(
-        "Ο νέος κωδικός πρέπει να είναι τουλάχιστον 4 χαρακτήρες.",
+        "Ο νέος κωδικός πρέπει να είναι τουλάχιστον 6 χαρακτήρες.",
         "error"
       );
       fpNewPass?.focus();
