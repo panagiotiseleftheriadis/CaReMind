@@ -14,9 +14,9 @@
   </head>
   <body>
     <div class="container">
-      <header class="dashboard-header">
-        <div class="header-content">
-          <div class="header-main-row">
+      <header>
+        <div class="header-costs">
+          <div class="costs-header-main">
             <h1>Λογαριασμός</h1>
 
             <button class="nav-toggle" type="button" aria-label="Άνοιγμα μενού">
@@ -26,13 +26,15 @@
             </button>
           </div>
 
-          <nav class="dashboard-nav">
-            <a href="dashboard.html">Πίνακας</a>
-            <a href="vehicles.html">Οχήματα</a>
-            <a href="maintenance.html">Συντήρηση</a>
-            <a href="costs.html">Κόστη</a>
-            <a href="account.html" class="active">Λογαριασμός</a>
-          </nav>
+          <div class="header-content-costs">
+            <nav>
+              <a href="dashboard.html">Πίνακας</a>
+              <a href="vehicles.html">Οχήματα</a>
+              <a href="maintenance.html">Συντήρηση</a>
+              <a href="costs.html">Κόστη</a>
+              <a href="account.html" class="active">Λογαριασμός</a>
+            </nav>
+          </div>
         </div>
       </header>
 
@@ -246,14 +248,6 @@
             document.body.classList.toggle("nav-open");
           });
         }
-      });
-    </script>
-    <script>
-      const toggle = document.getElementById("menuToggle");
-      const nav = document.getElementById("headerNav");
-      toggle.addEventListener("click", () => {
-        nav.classList.toggle("open");
-        toggle.textContent = nav.classList.contains("open") ? "✕" : "☰";
       });
     </script>
   </body>
