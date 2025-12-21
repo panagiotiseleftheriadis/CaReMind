@@ -1,0 +1,6 @@
+// Pws ektelw mia vash sql
+mysql --version
+mysql -h ballast.proxy.rlwy.net -u root -p --port 55124 carcare
+password: YsKBrSdMTfOfFRJzygjhoJYhlCjuKPmY
+SHOW TABLES;
+//paste thn vash mou

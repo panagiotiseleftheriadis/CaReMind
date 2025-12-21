@@ -62,7 +62,7 @@ app.use("/api/costs", authenticateToken, costRoutes);
 app.use("/api/interest", interestRoutes);
 app.use("/api/users", adminUsersRoutes);
 app.use("/api/cron", cronRoutes);
-app.use("/api/account", accountRoutes);
+app.use("/api/account", authenticateToken, accountRoutes);
 /* ======================
    HEALTH CHECK
 ====================== */
