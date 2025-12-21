@@ -84,8 +84,17 @@ class AuthService {
       localStorage.setItem("currentUser", JSON.stringify(this.currentUser));
       this.updateNavigation();
       hideLoginError();
+      // If the user was redirected here from a protected page, send them back there.
+      // Example: login.html?next=dashboard.html OR login.html?next=dashboard
+      const params = new URLSearchParams(window.location.search);
+      const nextRaw = params.get("next");
+      const next = nextRaw ? decodeURIComponent(nextRaw) : null;
 
-      window.location.href = "dashboard.html";
+      // Basic safety: avoid protocol/host injection (only allow relative paths)
+      const safeNext =
+        next && !/^(https?:)?\/\//i.test(next) ? next.replace(/^\//, "") : null;
+
+      window.location.href = safeNext || "dashboard.html";
       return true;
     } catch (error) {
       const message =
