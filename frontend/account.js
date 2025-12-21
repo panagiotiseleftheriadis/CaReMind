@@ -161,6 +161,71 @@ async function loadRecipients() {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+  // Accordion behavior (Skroutz-like sections)
+  function initAccordion() {
+    const root = document.getElementById("accountAccordion");
+    if (!root) return;
+
+    const items = Array.from(root.querySelectorAll(".acc-item"));
+    if (items.length === 0) return;
+
+    function setOpen(item, open) {
+      const btn = item.querySelector(".acc-trigger");
+      const panel = item.querySelector(".acc-panel");
+      if (!btn || !panel) return;
+
+      if (open) {
+        item.classList.add("is-open");
+        btn.setAttribute("aria-expanded", "true");
+        // set a fixed max-height for smooth open animation
+        panel.style.maxHeight = panel.scrollHeight + "px";
+      } else {
+        item.classList.remove("is-open");
+        btn.setAttribute("aria-expanded", "false");
+        panel.style.maxHeight = "0px";
+      }
+    }
+
+    // Initialize based on aria-expanded
+    items.forEach((item) => {
+      const btn = item.querySelector(".acc-trigger");
+      const panel = item.querySelector(".acc-panel");
+      if (!btn || !panel) return;
+      const isExpanded = btn.getAttribute("aria-expanded") === "true";
+      // Ensure correct starting state
+      if (isExpanded) {
+        item.classList.add("is-open");
+        panel.style.maxHeight = panel.scrollHeight + "px";
+      } else {
+        item.classList.remove("is-open");
+        panel.style.maxHeight = "0px";
+      }
+    });
+
+    // Toggle (single-open like Skroutz sections)
+    items.forEach((item) => {
+      const btn = item.querySelector(".acc-trigger");
+      if (!btn) return;
+      btn.addEventListener("click", () => {
+        const isOpen = item.classList.contains("is-open");
+        items.forEach((it) => setOpen(it, false));
+        setOpen(item, !isOpen);
+      });
+    });
+
+    // Keep open panel height correct on resize (fonts/wrapping)
+    window.addEventListener("resize", () => {
+      items.forEach((item) => {
+        if (!item.classList.contains("is-open")) return;
+        const panel = item.querySelector(".acc-panel");
+        if (!panel) return;
+        panel.style.maxHeight = panel.scrollHeight + "px";
+      });
+    });
+  }
+
+  initAccordion();
+
   // logout button inside account
   $("logoutAccountBtn")?.addEventListener("click", (e) => {
     e.preventDefault();
