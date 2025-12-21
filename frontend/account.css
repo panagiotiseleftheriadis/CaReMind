@@ -16,39 +16,15 @@
   gap: 14px;
 }
 
-/* Hero (Skroutz-ish summary card) */
-.hero-kicker {
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
+.hero-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--dark-color);
+}
+
+.hero-subtitle {
+  font-size: 13px;
   color: var(--gray-dark);
-}
-
-.hero-name {
-  margin-top: 4px;
-  font-size: 22px;
-  font-weight: 800;
-  color: var(--dark-color);
-  line-height: 1.15;
-}
-
-/* Logout button like your screenshot */
-.btn-logout {
-  padding: 14px 26px;
-  border-radius: 14px;
-  border: 3px solid #dfe6f1;
-  background: #fff;
-  color: var(--dark-color);
-  font-weight: 800;
-  cursor: pointer;
-  transition: transform var(--transition-fast),
-    border-color var(--transition-fast), box-shadow var(--transition-fast);
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.04);
-}
-
-.btn-logout:hover {
-  border-color: #cfd8e6;
-  transform: translateY(-1px);
 }
 
 .btn-outline {
@@ -73,197 +49,11 @@
   gap: 18px;
 }
 
-/* Account main area is now an accordion list (Skroutz vibes ✨) */
-
-.acc-list {
-  background: var(--light-color);
-  border: 1px solid var(--gray-light);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-md);
-  padding: 12px;
-}
-
-.acc-item {
-  background: #fff;
-  border: 1px solid var(--gray-light);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm, 0 6px 18px rgba(0, 0, 0, 0.06));
-  overflow: hidden;
-}
-
-/* Active/open state like Skroutz category panels */
-.acc-item.is-open {
-  border-color: rgba(66, 153, 225, 0.35);
-  box-shadow: 0 14px 40px rgba(15, 23, 42, 0.1);
-}
-
-.acc-item + .acc-item {
-  margin-top: 10px;
-}
-
-.acc-trigger {
-  width: 100%;
-  background: #fff;
-  border: 0;
-  padding: 14px 14px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  cursor: pointer;
-  transition: transform var(--transition-fast),
-    background var(--transition-fast);
-  text-align: left;
-  position: relative;
-}
-
-/* little left accent bar like category panels */
-.acc-trigger::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 10px;
-  bottom: 10px;
-  width: 3px;
-  border-radius: 999px;
-  background: rgba(66, 153, 225, 0.22);
-  opacity: 0;
-  transition: opacity var(--transition-fast);
-}
-
-.acc-item.is-open .acc-trigger::before {
-  opacity: 1;
-}
-
-.acc-trigger:hover {
-  background: rgba(66, 153, 225, 0.05);
-  transform: translateY(-1px);
-}
-
-.acc-left {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-width: 0;
-}
-
-.acc-right {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex: 0 0 auto;
-}
-
-.acc-leading {
-  width: 38px;
-  height: 38px;
-  border-radius: 12px;
-  background: rgba(66, 153, 225, 0.12);
-  border: 1px solid rgba(66, 153, 225, 0.18);
-  display: grid;
-  place-items: center;
-  position: relative;
-}
-
-.acc-leading::before {
-  content: "";
-  width: 18px;
-  height: 18px;
-  background: var(--primary-light);
-  mask-repeat: no-repeat;
-  mask-position: center;
-  mask-size: contain;
-  -webkit-mask-repeat: no-repeat;
-  -webkit-mask-position: center;
-  -webkit-mask-size: contain;
-}
-
-/* simple SVG masks (keeps it crisp, no external assets) */
-.acc-leading[data-icon="user"]::before {
-  -webkit-mask-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4Zm0 2c-4.42 0-8 2-8 4.5A1.5 1.5 0 0 0 5.5 20h13A1.5 1.5 0 0 0 20 18.5C20 16 16.42 14 12 14Z"/></svg>');
-  mask-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4Zm0 2c-4.42 0-8 2-8 4.5A1.5 1.5 0 0 0 5.5 20h13A1.5 1.5 0 0 0 20 18.5C20 16 16.42 14 12 14Z"/></svg>');
-}
-
-.acc-leading[data-icon="shield"]::before {
-  -webkit-mask-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2 4 5v6c0 5.55 3.84 10.74 8 11 4.16-.26 8-5.45 8-11V5l-8-3Zm0 18.5c-2.99-.87-6-4.9-6-9.5V6.3L12 4l6 2.3V11c0 4.6-3.01 8.63-6 9.5Z"/></svg>');
-  mask-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2 4 5v6c0 5.55 3.84 10.74 8 11 4.16-.26 8-5.45 8-11V5l-8-3Zm0 18.5c-2.99-.87-6-4.9-6-9.5V6.3L12 4l6 2.3V11c0 4.6-3.01 8.63-6 9.5Z"/></svg>');
-}
-
-.acc-leading[data-icon="mail"]::before {
-  -webkit-mask-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2Zm0 4-8 5L4 8V6l8 5 8-5Z"/></svg>');
-  mask-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2Zm0 4-8 5L4 8V6l8 5 8-5Z"/></svg>');
-}
-
-.acc-leading[data-icon="doc"]::before {
-  -webkit-mask-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Zm0 2.5L18.5 9H14ZM8 13h8v2H8Zm0 4h8v2H8Zm0-8h4v2H8Z"/></svg>');
-  mask-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Zm0 2.5L18.5 9H14ZM8 13h8v2H8Zm0 4h8v2H8Zm0-8h4v2H8Z"/></svg>');
-}
-
-.acc-text {
-  min-width: 0;
-}
-
-.acc-title {
-  font-size: 15px;
-  font-weight: 900;
-  color: var(--dark-color);
-  line-height: 1.2;
-}
-
-.acc-subtitle {
-  margin-top: 4px;
-  font-size: 12.5px;
-  color: var(--gray-dark);
-  line-height: 1.35;
-}
-
-.acc-badge {
-  padding: 6px 10px;
-  border-radius: 999px;
-  font-weight: 800;
-  font-size: 12px;
-  background: rgba(66, 153, 225, 0.12);
-  border: 1px solid rgba(66, 153, 225, 0.22);
-  color: #1a365d;
-}
-
-.acc-chevron {
-  flex: 0 0 auto;
-  width: 30px;
-  height: 30px;
-  border-radius: 999px;
-  border: 1px solid var(--gray-light);
-  display: grid;
-  place-items: center;
-  position: relative;
-  transition: transform var(--transition-fast),
-    border-color var(--transition-fast);
-}
-
-.acc-chevron::before {
-  content: "";
-  width: 8px;
-  height: 8px;
-  border-right: 2px solid var(--gray-dark);
-  border-bottom: 2px solid var(--gray-dark);
-  transform: rotate(45deg);
-  margin-top: -2px;
-}
-
-.acc-item.is-open .acc-chevron {
-  transform: rotate(180deg);
-  border-color: var(--primary-light);
-}
-
-.acc-panel {
-  max-height: 0;
-  overflow: hidden;
-  transition: max-height 240ms ease;
-  background: #fff;
-}
-
-.acc-inner {
-  padding: 0 16px 16px;
+@media (min-width: 980px) {
+  .account-grid {
+    grid-template-columns: 1fr 1fr;
+    align-items: start;
+  }
 }
 
 .account-card {
@@ -604,4 +394,87 @@
     padding-left: 12px;
     text-align: left;
   }
+}
+
+/* --- Skroutz vibes refinements --- */
+.hero-kicker {
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  font-weight: 800;
+  color: var(--gray-600);
+}
+
+.hero-name {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--gray-900);
+  margin-top: 2px;
+}
+
+.btn-logout {
+  appearance: none;
+  background: #fff;
+  border: var(--border-width-0) solid var(--color-border-danger-5);
+  color: var(--color-text-danger-3);
+  font-weight: 800;
+  font-size: 12px;
+  border-radius: 16px;
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: transform var(--transition-fast),
+    background var(--transition-fast), box-shadow var(--transition-fast),
+    border-color var(--transition-fast);
+  box-shadow: 0 6px 18px rgba(22, 37, 56, 0.06);
+}
+
+.btn-logout:hover {
+  background: #f6f9ff;
+  border-color: #cdd8ee;
+  transform: translateY(-1px);
+}
+
+.btn-logout:active {
+  transform: translateY(0);
+  box-shadow: 0 3px 10px rgba(22, 37, 56, 0.08);
+}
+
+.acc-trigger {
+  padding: 16px 16px;
+  gap: 14px;
+}
+
+.acc-leading {
+  width: 48px;
+  height: 48px;
+  border-radius: 16px;
+  background: #eef6ff;
+  border: 1px solid #d7e8ff;
+  display: grid;
+  place-items: center;
+  flex: 0 0 48px;
+}
+
+.acc-leading svg {
+  width: 22px;
+  height: 22px;
+  fill: #2f7ee6;
+}
+
+.acc-text {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.acc-title {
+  line-height: 1.15;
+}
+
+.acc-subtitle {
+  margin-top: 4px;
+  line-height: 1.35;
+}
+
+.acc-icon {
+  flex: 0 0 auto;
+  margin-left: 6px;
 }
