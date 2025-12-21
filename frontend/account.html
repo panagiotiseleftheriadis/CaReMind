@@ -46,7 +46,11 @@
             </div>
 
             <div class="hero-right">
-              <button class="btn-outline logout-link" id="logoutAccountBtn" type="button">
+              <button
+                class="btn-outline logout-link"
+                id="logoutAccountBtn"
+                type="button"
+              >
                 Αποσύνδεση
               </button>
             </div>
@@ -80,7 +84,11 @@
               </div>
             </div>
 
-            <div class="inline-note" id="accountInfoNote" style="display: none"></div>
+            <div
+              class="inline-note"
+              id="accountInfoNote"
+              style="display: none"
+            ></div>
           </section>
 
           <!-- SECURITY / CHANGES -->
@@ -88,8 +96,8 @@
             <div class="card-head">
               <h2>Αλλαγή στοιχείων</h2>
               <p>
-                Για αλλαγή Email / Username / Password θα σας σταλεί <b>6-ψήφιος</b> κωδικός στο email που
-                έχετε δηλώσει.
+                Για αλλαγή Email / Username / Password θα σας σταλεί
+                <b>6-ψήφιος</b> κωδικός στο email που έχετε δηλώσει.
               </p>
             </div>
 
@@ -108,7 +116,9 @@
               </div>
 
               <div class="form-actions">
-                <button class="btn-primary" type="button" id="sendCodeBtn">Αποστολή κωδικού</button>
+                <button class="btn-primary" type="button" id="sendCodeBtn">
+                  Αποστολή κωδικού
+                </button>
               </div>
 
               <div id="codeArea" class="code-area" style="display: none">
@@ -125,12 +135,24 @@
                   />
                 </div>
                 <div class="form-actions">
-                  <button class="btn-outline" type="button" id="resendCodeBtn">Επανάληψη αποστολής</button>
-                  <button class="btn-primary" type="submit" id="confirmChangeBtn">Επιβεβαίωση & Αλλαγή</button>
+                  <button class="btn-outline" type="button" id="resendCodeBtn">
+                    Επανάληψη αποστολής
+                  </button>
+                  <button
+                    class="btn-primary"
+                    type="submit"
+                    id="confirmChangeBtn"
+                  >
+                    Επιβεβαίωση & Αλλαγή
+                  </button>
                 </div>
               </div>
 
-              <div class="form-message" id="changeMsg" style="display: none"></div>
+              <div
+                class="form-message"
+                id="changeMsg"
+                style="display: none"
+              ></div>
             </form>
           </section>
 
@@ -139,7 +161,8 @@
             <div class="card-head">
               <h2>Παραλήπτες ειδοποιήσεων</h2>
               <p>
-                Προσθέστε επιπλέον emails που θα λαμβάνουν υπενθυμίσεις για τις συντηρήσεις.
+                Προσθέστε επιπλέον emails που θα λαμβάνουν υπενθυμίσεις για τις
+                συντηρήσεις.
                 <span class="muted">(Σύντομα και τηλέφωνα)</span>
               </p>
             </div>
@@ -147,13 +170,23 @@
             <form id="recipientForm" class="form">
               <div class="form-row">
                 <label for="recipientEmail">Νέο email</label>
-                <input id="recipientEmail" type="email" placeholder="name@company.gr" />
+                <input
+                  id="recipientEmail"
+                  type="email"
+                  placeholder="name@company.gr"
+                />
               </div>
 
               <div class="form-actions">
-                <button class="btn-primary" type="submit" id="addRecipientBtn">Προσθήκη</button>
+                <button class="btn-primary" type="submit" id="addRecipientBtn">
+                  Προσθήκη
+                </button>
               </div>
-              <div class="form-message" id="recipientMsg" style="display: none"></div>
+              <div
+                class="form-message"
+                id="recipientMsg"
+                style="display: none"
+              ></div>
             </form>
 
             <div class="divider"></div>
@@ -173,23 +206,29 @@
             <div class="terms">
               <h3>1. Υπενθυμίσεις</h3>
               <p>
-                Οι ειδοποιήσεις αποστέλλονται με βάση τις ημερομηνίες συντήρησης και τις ρυθμίσεις που ορίζετε
-                (π.χ. πόσες ημέρες νωρίτερα). Ελέγχετε πάντα ότι τα στοιχεία οχημάτων/συντηρήσεων είναι σωστά.
+                Οι ειδοποιήσεις αποστέλλονται με βάση τις ημερομηνίες συντήρησης
+                και τις ρυθμίσεις που ορίζετε (π.χ. πόσες ημέρες νωρίτερα).
+                Ελέγχετε πάντα ότι τα στοιχεία οχημάτων/συντηρήσεων είναι σωστά.
               </p>
 
               <h3>2. Email παραληπτών</h3>
               <p>
-                Είστε υπεύθυνοι για τα emails που προσθέτετε ως παραλήπτες. Αν δεν θέλετε πλέον ένας παραλήπτης
-                να λαμβάνει ειδοποιήσεις, αφαιρέστε τον από τη λίστα.
+                Είστε υπεύθυνοι για τα emails που προσθέτετε ως παραλήπτες. Αν
+                δεν θέλετε πλέον ένας παραλήπτης να λαμβάνει ειδοποιήσεις,
+                αφαιρέστε τον από τη λίστα.
               </p>
 
               <h3>3. Ασφάλεια</h3>
               <p>
-                Για αλλαγή βασικών στοιχείων (Email / Username / Password) απαιτείται επιβεβαίωση με 6-ψήφιο
-                κωδικό που αποστέλλεται στο email του λογαριασμού.
+                Για αλλαγή βασικών στοιχείων (Email / Username / Password)
+                απαιτείται επιβεβαίωση με 6-ψήφιο κωδικό που αποστέλλεται στο
+                email του λογαριασμού.
               </p>
 
-              <div class="muted">Το περιεχόμενο εδώ είναι ενημερωτικό και μπορεί να ενημερωθεί στο μέλλον.</div>
+              <div class="muted">
+                Το περιεχόμενο εδώ είναι ενημερωτικό και μπορεί να ενημερωθεί
+                στο μέλλον.
+              </div>
             </div>
           </section>
         </div>
@@ -207,6 +246,14 @@
             document.body.classList.toggle("nav-open");
           });
         }
+      });
+    </script>
+    <script>
+      const toggle = document.getElementById("menuToggle");
+      const nav = document.getElementById("headerNav");
+      toggle.addEventListener("click", () => {
+        nav.classList.toggle("open");
+        toggle.textContent = nav.classList.contains("open") ? "✕" : "☰";
       });
     </script>
   </body>

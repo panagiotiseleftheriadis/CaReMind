@@ -19,7 +19,9 @@ function hideMsg(el) {
 }
 
 function sanitizeEmail(value) {
-  return String(value || "").trim().toLowerCase();
+  return String(value || "")
+    .trim()
+    .toLowerCase();
 }
 
 function buildChangeFields(type) {
@@ -41,7 +43,8 @@ function buildChangeFields(type) {
   }
 
   const label = type === "email" ? "Νέο email" : "Νέο username";
-  const placeholder = type === "email" ? "name@company.gr" : "π.χ. papadopoulos";
+  const placeholder =
+    type === "email" ? "name@company.gr" : "π.χ. papadopoulos";
   const inputType = type === "email" ? "email" : "text";
 
   container.innerHTML = `
@@ -75,7 +78,9 @@ function renderRecipients(list) {
             <div class="recipient-meta">Προστέθηκε: ${created || "—"}</div>
           </div>
           <div class="recipient-actions">
-            <button type="button" class="recipient-remove" data-id="${r.id}">Αφαίρεση</button>
+            <button type="button" class="recipient-remove" data-id="${
+              r.id
+            }">Αφαίρεση</button>
           </div>
         </div>
       `;
@@ -92,7 +97,11 @@ function renderRecipients(list) {
         await loadRecipients();
         showMsg($("recipientMsg"), "Ο παραλήπτης αφαιρέθηκε.", "success");
       } catch (e) {
-        showMsg($("recipientMsg"), e?.message || "Αποτυχία αφαίρεσης.", "error");
+        showMsg(
+          $("recipientMsg"),
+          e?.message || "Αποτυχία αφαίρεσης.",
+          "error"
+        );
       } finally {
         btn.disabled = false;
       }
@@ -113,7 +122,9 @@ async function loadMe() {
     $("infoUserNumber").textContent = me?.user_number || me?.userNumber || "—";
 
     if (hero) {
-      const who = me?.companyName ? `${me.companyName}` : `${me?.username || ""}`;
+      const who = me?.companyName
+        ? `${me.companyName}`
+        : `${me?.username || ""}`;
       hero.textContent = who ? `Συνδεδεμένος ως: ${who}` : "Συνδεδεμένος";
     }
 
@@ -154,6 +165,7 @@ document.addEventListener("DOMContentLoaded", () => {
   $("logoutAccountBtn")?.addEventListener("click", (e) => {
     e.preventDefault();
     auth.logout();
+    window.location.href = "index.html";
   });
 
   // default fields
@@ -179,9 +191,17 @@ document.addEventListener("DOMContentLoaded", () => {
       await api.sendAccountChangeCode();
       $("codeArea").style.display = "block";
       $("verifyCode").focus();
-      showMsg($("changeMsg"), "Στάλθηκε 6-ψήφιος κωδικός στο email σας.", "success");
+      showMsg(
+        $("changeMsg"),
+        "Στάλθηκε 6-ψήφιος κωδικός στο email σας.",
+        "success"
+      );
     } catch (e) {
-      showMsg($("changeMsg"), e?.message || "Αποτυχία αποστολής κωδικού.", "error");
+      showMsg(
+        $("changeMsg"),
+        e?.message || "Αποτυχία αποστολής κωδικού.",
+        "error"
+      );
     } finally {
       sendBtn.disabled = false;
       if (resendBtn) resendBtn.disabled = false;
@@ -217,7 +237,11 @@ document.addEventListener("DOMContentLoaded", () => {
       const p1 = String($("newPassword")?.value || "");
       const p2 = String($("newPassword2")?.value || "");
       if (!p1 || p1.length < 6) {
-        showMsg($("changeMsg"), "Ο κωδικός πρέπει να είναι τουλάχιστον 6 χαρακτήρες.", "error");
+        showMsg(
+          $("changeMsg"),
+          "Ο κωδικός πρέπει να είναι τουλάχιστον 6 χαρακτήρες.",
+          "error"
+        );
         $("newPassword")?.focus();
         return;
       }
@@ -238,7 +262,11 @@ document.addEventListener("DOMContentLoaded", () => {
     } else {
       const username = String($("newValue")?.value || "").trim();
       if (!username || username.length < 3) {
-        showMsg($("changeMsg"), "Το username πρέπει να έχει τουλάχιστον 3 χαρακτήρες.", "error");
+        showMsg(
+          $("changeMsg"),
+          "Το username πρέπει να έχει τουλάχιστον 3 χαρακτήρες.",
+          "error"
+        );
         $("newValue")?.focus();
         return;
       }
@@ -289,9 +317,17 @@ document.addEventListener("DOMContentLoaded", () => {
       await api.addRecipient(email);
       $("recipientEmail").value = "";
       await loadRecipients();
-      showMsg($("recipientMsg"), "Το email προστέθηκε στους παραλήπτες.", "success");
+      showMsg(
+        $("recipientMsg"),
+        "Το email προστέθηκε στους παραλήπτες.",
+        "success"
+      );
     } catch (err) {
-      showMsg($("recipientMsg"), err?.message || "Αποτυχία προσθήκης.", "error");
+      showMsg(
+        $("recipientMsg"),
+        err?.message || "Αποτυχία προσθήκης.",
+        "error"
+      );
     } finally {
       btn.disabled = false;
     }
