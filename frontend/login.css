@@ -323,15 +323,17 @@
 .eye-icon {
   width: 20px;
   height: 20px;
+  object-fit: contain;
   pointer-events: none; /* για να δουλεύει το click στο button */
 }
 .toggle-password {
   position: absolute;
   right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
   background: transparent;
   border: none;
   cursor: pointer;
-  font-size: 18px;
   opacity: 0.7;
 }
 
