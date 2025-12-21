@@ -384,3 +384,14 @@
     display: flex;
   }
 }
+@media (max-width: 450px) {
+  .costs-header-main h1 {
+    flex: 1;
+    min-width: 0;
+    white-space: normal !important;
+    font-size: clamp(18px, 5vw, 22px);
+    line-height: 1.15;
+    padding-left: 12px;
+    text-align: left;
+  }
+}
