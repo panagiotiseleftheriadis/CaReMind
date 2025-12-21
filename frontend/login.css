@@ -320,7 +320,11 @@
   width: 100%;
   padding-right: 42px;
 }
-
+.eye-icon {
+  width: 20px;
+  height: 20px;
+  pointer-events: none; /* για να δουλεύει το click στο button */
+}
 .toggle-password {
   position: absolute;
   right: 10px;

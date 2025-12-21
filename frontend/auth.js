@@ -400,10 +400,12 @@ document.addEventListener("DOMContentLoaded", function () {
     if (!btn) return;
 
     const input = document.getElementById(btn.dataset.target);
-    if (!input) return;
+    const img = btn.querySelector("img");
+    if (!input || !img) return;
 
     const show = input.type === "password";
+
     input.type = show ? "text" : "password";
-    btn.textContent = show ? "🙈" : "👁";
+    img.src = show ? "assets/icons/visible.png" : "assets/icons/eye.png";
   });
 });
