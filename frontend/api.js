@@ -167,6 +167,50 @@ class API {
     });
   }
 
+  /* ------------ ACCOUNT (PROFILE) ------------ */
+  async getAccountMe() {
+    return this.request("/account/me", { method: "GET" });
+  }
+
+  // Sends a 6-digit code to the email of the logged-in user
+  async sendAccountChangeCode() {
+    return this.request("/account/send-code", { method: "POST" });
+  }
+
+  // Verifies the code and returns an accountToken
+  async verifyAccountChangeCode(code) {
+    return this.request("/account/verify-code", {
+      method: "POST",
+      body: { code },
+    });
+  }
+
+  // Performs the actual update (email/username/password) using the accountToken
+  async updateAccount(accountToken, updates) {
+    return this.request("/account/update", {
+      method: "POST",
+      body: { accountToken, updates },
+    });
+  }
+
+  /* ------------ ACCOUNT RECIPIENTS ------------ */
+  async getRecipients() {
+    return this.request("/account/recipients", { method: "GET" });
+  }
+
+  async addRecipient(email) {
+    return this.request("/account/recipients", {
+      method: "POST",
+      body: { type: "email", value: email },
+    });
+  }
+
+  async deleteRecipient(id) {
+    return this.request(`/account/recipients/${id}`, {
+      method: "DELETE",
+    });
+  }
+
   /* ------------ VEHICLES ------------ */
 
   async getVehicles() {
