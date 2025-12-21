@@ -123,7 +123,7 @@ function renderRecipients(list) {
 }
 
 async function loadMe() {
-  const hero = $("heroSubtitle");
+  const hero = $("heroCompany");
   const note = $("accountInfoNote");
 
   try {
@@ -135,10 +135,8 @@ async function loadMe() {
     $("infoUserNumber").textContent = me?.user_number || me?.userNumber || "—";
 
     if (hero) {
-      const who = me?.companyName
-        ? `${me.companyName}`
-        : `${me?.username || ""}`;
-      hero.textContent = who ? `Συνδεδεμένος ως: ${who}` : "Συνδεδεμένος";
+      // Show only the company name (fallback to username)
+      hero.textContent = me?.companyName || me?.username || "—";
     }
 
     // Keep localStorage currentUser in sync (username/companyName)
@@ -156,7 +154,7 @@ async function loadMe() {
       note.style.display = "none";
     }
   } catch (e) {
-    if (hero) hero.textContent = "Δεν ήταν δυνατή η φόρτωση.";
+    if (hero) hero.textContent = "—";
     if (note) {
       note.textContent = e?.message || "Σφάλμα φόρτωσης στοιχείων.";
       note.style.display = "block";
@@ -168,8 +166,13 @@ async function loadRecipients() {
   try {
     const list = await api.getRecipients();
     renderRecipients(list);
+    const badge = document.getElementById("badgeRecipients");
+    if (badge)
+      badge.textContent = String(Array.isArray(list) ? list.length : 0);
   } catch (e) {
     renderRecipients([]);
+    const badge = document.getElementById("badgeRecipients");
+    if (badge) badge.textContent = "0";
   }
 }
 
