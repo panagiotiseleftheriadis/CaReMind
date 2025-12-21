@@ -201,9 +201,14 @@
   text-align: center;
   margin-top: 12px;
 }
+.forgot-password {
+  text-align: start;
+  margin-bottom: 15px;
+  margin-top: -10px;
+}
 
 .forgot-password a {
-  color: #007bff;
+  color: #707070;
   font-size: 14px;
   text-decoration: none;
 }

@@ -304,7 +304,7 @@ document.addEventListener("DOMContentLoaded", function () {
       .trim()
       .toLowerCase();
     if (!email) {
-      showMsg("Συμπλήρωσε το email σου.", "error");
+      showMsg("Συμπληρώστε το email σας.", "error");
       fpEmail?.focus();
       return;
     }
@@ -314,7 +314,7 @@ document.addEventListener("DOMContentLoaded", function () {
       await api.forgotPassword(email);
       cachedEmail = email;
       showStep("code");
-      showMsg("Στείλαμε έναν κωδικό στο email σου.", "success");
+      showMsg("Έχει αποσταλθεί ένας κωδικός στο email σας.", "success");
       setTimeout(() => fpCode?.focus(), 50);
     } catch (err) {
       showMsg(err.message || "Αποτυχία αποστολής κωδικού.", "error");
@@ -337,7 +337,7 @@ document.addEventListener("DOMContentLoaded", function () {
       return;
     }
     if (!code || code.length < 4) {
-      showMsg("Συμπλήρωσε τον κωδικό που έλαβες.", "error");
+      showMsg("Συμπληρώστε τον κωδικό που λάβατε.", "error");
       fpCode?.focus();
       return;
     }
@@ -347,7 +347,7 @@ document.addEventListener("DOMContentLoaded", function () {
       const resp = await api.verifyResetCode(cachedEmail, code);
       resetToken = resp.resetToken;
       showStep("reset");
-      showMsg("Ο κωδικός επαληθεύτηκε. Βάλε νέο password.", "success");
+      showMsg("Ο κωδικός επαληθεύτηκε. Συμπληρώστε νέο κωδικό.", "success");
       setTimeout(() => fpNewPass?.focus(), 50);
     } catch (err) {
       showMsg(err.message || "Λάθος κωδικός.", "error");
@@ -381,7 +381,10 @@ document.addEventListener("DOMContentLoaded", function () {
     btnReset.disabled = true;
     try {
       await api.resetPassword(resetToken, p1);
-      showMsg("Έγινε! Ο κωδικός άλλαξε. Μπορείς να συνδεθείς.", "success");
+      showMsg(
+        "Ο κωδικός σας άλλαξε επιτυχώς. Μπορείς να συνδεθείτε.",
+        "success"
+      );
       setTimeout(() => {
         closeModal();
         // Προσυμπλήρωση για ευκολία
