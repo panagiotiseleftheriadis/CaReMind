@@ -65,7 +65,7 @@ class API {
 
       if (!response.ok) {
         const err = new Error(
-          (data && data.error) ||
+          (data && (data.message || data.error)) ||
             `Request failed with status ${response.status}`
         );
         if (data && data.code) {

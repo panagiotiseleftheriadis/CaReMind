@@ -237,6 +237,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   const msg = document.getElementById("fpMsg");
 
+  const fpEmailError = document.getElementById("fpEmailError");
   let cachedEmail = "";
   let resetToken = "";
 
@@ -254,6 +255,15 @@ document.addEventListener("DOMContentLoaded", function () {
     msg.className = "fp-message";
   }
 
+  function setEmailError(text) {
+    if (!fpEmailError) return;
+    fpEmailError.textContent = text || "";
+  }
+
+  function clearEmailError() {
+    setEmailError("");
+  }
+
   function showStep(which) {
     if (stepEmail)
       stepEmail.style.display = which === "email" ? "block" : "none";
@@ -261,6 +271,7 @@ document.addEventListener("DOMContentLoaded", function () {
     if (stepReset)
       stepReset.style.display = which === "reset" ? "block" : "none";
     hideMsg();
+    if (which === "email") clearEmailError();
   }
 
   function openModal() {
@@ -300,11 +311,14 @@ document.addEventListener("DOMContentLoaded", function () {
 
   btnSendCode?.addEventListener("click", async (e) => {
     e.preventDefault();
+    clearEmailError();
+
     const email = String(fpEmail?.value || "")
       .trim()
       .toLowerCase();
+
     if (!email) {
-      showMsg("Συμπληρώστε το email σας.", "error");
+      setEmailError("Πληκτρολογήστε έγκυρη διεύθυνση Email");
       fpEmail?.focus();
       return;
     }
@@ -316,7 +330,12 @@ document.addEventListener("DOMContentLoaded", function () {
       showStep("code");
       setTimeout(() => fpCode?.focus(), 50);
     } catch (err) {
-      showMsg(err.message || "Αποτυχία αποστολής κωδικού.", "error");
+      if (err?.code === "EMAIL_NOT_FOUND" || err?.status === 404) {
+        setEmailError("Πληκτρολογήστε έγκυρη διεύθυνση Email");
+        fpEmail?.focus();
+        return;
+      }
+      showMsg(err?.message || "Αποτυχία αποστολής κωδικού.", "error");
     } finally {
       btnSendCode.disabled = false;
     }
