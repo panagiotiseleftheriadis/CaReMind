@@ -43,7 +43,30 @@ router.get("/maintenance", async (req, res) => {
 
     if (rows.length > 0) {
       for (const item of rows) {
-        if (!item.email) {
+        // Build recipient list: user's main email + any extra notification recipients
+        const primaryEmail = String(item.email || "")
+          .trim()
+          .toLowerCase();
+        let recipients = [];
+        if (primaryEmail) recipients.push(primaryEmail);
+
+        try {
+          const [extra] = await db.query(
+            `SELECT value FROM notification_recipients
+             WHERE user_id = ? AND type = 'email' AND is_active = 1`,
+            [item.user_id]
+          );
+          for (const r of extra) {
+            const e = String(r.value || "")
+              .trim()
+              .toLowerCase();
+            if (e && !recipients.includes(e)) recipients.push(e);
+          }
+        } catch (_) {
+          // If table doesn't exist or query fails, we still send to primary
+        }
+
+        if (recipients.length === 0) {
           skipped++;
           continue;
         }
@@ -148,10 +171,12 @@ router.get("/maintenance", async (req, res) => {
 </div>
 `;
 
-        await sendMail(item.email, subject, messageHtml, []);
-        await new Promise((r) => setTimeout(r, 500));
-        console.log(`📩 Email στάλθηκε σε: ${item.email}`);
-        sent++;
+        for (const to of recipients) {
+          await sendMail(to, subject, messageHtml, []);
+          await new Promise((r) => setTimeout(r, 500));
+          console.log(`📩 Email στάλθηκε σε: ${to}`);
+          sent++;
+        }
       }
     } else {
       console.log("✔ Καμία ειδοποίηση σήμερα");

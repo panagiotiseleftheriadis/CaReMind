@@ -11,7 +11,7 @@ const maintenanceRoutes = require("./routes/maintenances");
 const costRoutes = require("./routes/costs");
 const interestRoutes = require("./routes/interest");
 const cronRoutes = require("./routes/cron");
-
+const accountRoutes = require("./routes/account");
 const { authenticateToken } = require("./middleware");
 
 const app = express();
@@ -62,7 +62,7 @@ app.use("/api/costs", authenticateToken, costRoutes);
 app.use("/api/interest", interestRoutes);
 app.use("/api/users", adminUsersRoutes);
 app.use("/api/cron", cronRoutes);
-
+app.use("/api/account", accountRoutes);
 /* ======================
    HEALTH CHECK
 ====================== */
