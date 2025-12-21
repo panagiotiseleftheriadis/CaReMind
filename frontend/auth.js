@@ -314,7 +314,6 @@ document.addEventListener("DOMContentLoaded", function () {
       await api.forgotPassword(email);
       cachedEmail = email;
       showStep("code");
-      showMsg("Έχει αποσταλθεί ένας κωδικός στο email σας.", "success");
       setTimeout(() => fpCode?.focus(), 50);
     } catch (err) {
       showMsg(err.message || "Αποτυχία αποστολής κωδικού.", "error");
