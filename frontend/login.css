@@ -216,6 +216,11 @@
 .forgot-password a:hover {
   text-decoration: underline;
 }
+.form-error {
+  color: #e53935;
+  font-size: 13px;
+  margin-top: 6px;
+}
 
 /* Modal (forgot password) */
 .modal {

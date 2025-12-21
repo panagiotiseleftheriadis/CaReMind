@@ -152,11 +152,11 @@ router.post("/forgot-password", async (req, res) => {
       [email]
     );
 
-    // Για ασφάλεια επιστρέφουμε ίδιο μήνυμα είτε υπάρχει είτε όχι.
+    // Αν δεν υπάρχει email στη βάση, επιστρέφουμε μήνυμα λάθους
     if (!rows.length) {
-      return res.json({
-        message:
-          "Αν το email υπάρχει στο σύστημα, θα λάβετε έναν κωδικό επαναφοράς.",
+      return res.status(404).json({
+        code: "EMAIL_NOT_FOUND",
+        message: "Πληκτρολογήστε έγκυρη διεύθυνση Email",
       });
     }
 
