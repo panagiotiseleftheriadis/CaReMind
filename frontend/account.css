@@ -1,0 +1,245 @@
+/* account.css - follows the same design language as dashboard/vehicles/maintenance/costs */
+
+.account-hero {
+  margin-bottom: 18px;
+}
+
+.account-hero-card {
+  background: white;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--gray-light);
+  padding: 18px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.hero-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--dark-color);
+}
+
+.hero-subtitle {
+  font-size: 13px;
+  color: var(--gray-dark);
+}
+
+.btn-outline {
+  padding: 11px 18px;
+  border-radius: var(--radius-md);
+  border: 2px solid var(--gray-light);
+  background: #fff;
+  color: var(--dark-color);
+  font-weight: 700;
+  cursor: pointer;
+  transition: all var(--transition-normal);
+}
+
+.btn-outline:hover {
+  border-color: var(--primary-light);
+  transform: translateY(-1px);
+}
+
+.account-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 18px;
+}
+
+@media (min-width: 980px) {
+  .account-grid {
+    grid-template-columns: 1fr 1fr;
+    align-items: start;
+  }
+}
+
+.account-card {
+  background: white;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--gray-light);
+  padding: 18px;
+}
+
+.card-head h2 {
+  font-size: 16px;
+  margin-bottom: 4px;
+  color: var(--dark-color);
+}
+
+.card-head p {
+  font-size: 13px;
+  color: var(--gray-dark);
+}
+
+.info-grid {
+  margin-top: 14px;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+@media (min-width: 560px) {
+  .info-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.info-item {
+  background: var(--light-color);
+  border: 1px solid var(--gray-light);
+  border-radius: var(--radius-md);
+  padding: 12px 12px;
+}
+
+.info-item .label {
+  font-size: 12px;
+  color: var(--gray-dark);
+  margin-bottom: 4px;
+}
+
+.info-item .value {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--dark-color);
+  overflow-wrap: anywhere;
+}
+
+.inline-note {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  background: rgba(66, 153, 225, 0.08);
+  border: 1px solid rgba(66, 153, 225, 0.18);
+  color: #1a365d;
+  font-size: 13px;
+}
+
+.form {
+  margin-top: 14px;
+}
+
+.form-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.form-row label {
+  font-size: 12px;
+  color: var(--gray-dark);
+  font-weight: 700;
+}
+
+.form-row input,
+.form-row select {
+  padding: 12px 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--gray-light);
+  outline: none;
+  font-size: 14px;
+  background: #fff;
+}
+
+.form-row input:focus,
+.form-row select:focus {
+  border-color: var(--primary-light);
+  box-shadow: 0 0 0 4px rgba(66, 153, 225, 0.12);
+}
+
+.form-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.divider {
+  height: 1px;
+  background: var(--gray-light);
+  margin: 14px 0;
+}
+
+.code-area {
+  margin-top: 10px;
+}
+
+.form-message {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  border: 1px solid transparent;
+}
+
+.form-message.success {
+  background: rgba(72, 187, 120, 0.12);
+  border-color: rgba(72, 187, 120, 0.25);
+  color: #22543d;
+}
+
+.form-message.error {
+  background: rgba(245, 101, 101, 0.12);
+  border-color: rgba(245, 101, 101, 0.25);
+  color: #742a2a;
+}
+
+.recipients-list {
+  display: grid;
+  gap: 10px;
+}
+
+.recipient-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--gray-light);
+  background: #fff;
+}
+
+.recipient-email {
+  font-weight: 700;
+  color: var(--dark-color);
+  overflow-wrap: anywhere;
+}
+
+.recipient-meta {
+  font-size: 12px;
+  color: var(--gray-dark);
+}
+
+.recipient-actions button {
+  border: 1px solid var(--gray-light);
+  background: #fff;
+  border-radius: var(--radius-md);
+  padding: 9px 10px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.recipient-actions button:hover {
+  border-color: var(--danger-color);
+  color: var(--danger-color);
+}
+
+.terms h3 {
+  font-size: 14px;
+  margin-top: 14px;
+  margin-bottom: 6px;
+}
+
+.terms p {
+  font-size: 13px;
+  color: var(--dark-color);
+}
+
+.muted {
+  color: var(--gray-dark);
+  font-size: 12px;
+}

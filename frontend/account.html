@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="el">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Λογαριασμός - CaReMind</title>
+    <link rel="icon" type="image/png" href="/favicon.png" />
+
+    <!-- 🔒 Route protection: if not logged in, redirect to index.html -->
+    <script src="auth-guard.js"></script>
+
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="account.css" />
+  </head>
+  <body>
+    <div class="container">
+      <header class="dashboard-header">
+        <div class="header-content">
+          <div class="header-main-row">
+            <h1>Λογαριασμός</h1>
+
+            <button class="nav-toggle" type="button" aria-label="Άνοιγμα μενού">
+              <span></span>
+              <span></span>
+              <span></span>
+            </button>
+          </div>
+
+          <nav class="dashboard-nav">
+            <a href="dashboard.html">Πίνακας</a>
+            <a href="vehicles.html">Οχήματα</a>
+            <a href="maintenance.html">Συντήρηση</a>
+            <a href="costs.html">Κόστη</a>
+            <a href="account.html" class="active">Λογαριασμός</a>
+          </nav>
+        </div>
+      </header>
+
+      <main>
+        <!-- TOP SUMMARY CARD -->
+        <section class="account-hero">
+          <div class="account-hero-card">
+            <div class="hero-left">
+              <div class="hero-title">Ο λογαριασμός σας</div>
+              <div class="hero-subtitle" id="heroSubtitle">Φόρτωση...</div>
+            </div>
+
+            <div class="hero-right">
+              <button class="btn-outline logout-link" id="logoutAccountBtn" type="button">
+                Αποσύνδεση
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <div class="account-grid">
+          <!-- ACCOUNT DETAILS -->
+          <section class="account-card">
+            <div class="card-head">
+              <h2>Στοιχεία Λογαριασμού</h2>
+              <p>Δείτε τα βασικά στοιχεία που έχετε δηλώσει.</p>
+            </div>
+
+            <div class="info-grid">
+              <div class="info-item">
+                <div class="label">Username</div>
+                <div class="value" id="infoUsername">—</div>
+              </div>
+              <div class="info-item">
+                <div class="label">Email</div>
+                <div class="value" id="infoEmail">—</div>
+              </div>
+              <div class="info-item">
+                <div class="label">Εταιρεία</div>
+                <div class="value" id="infoCompany">—</div>
+              </div>
+              <div class="info-item">
+                <div class="label">User Number</div>
+                <div class="value" id="infoUserNumber">—</div>
+              </div>
+            </div>
+
+            <div class="inline-note" id="accountInfoNote" style="display: none"></div>
+          </section>
+
+          <!-- SECURITY / CHANGES -->
+          <section class="account-card">
+            <div class="card-head">
+              <h2>Αλλαγή στοιχείων</h2>
+              <p>
+                Για αλλαγή Email / Username / Password θα σας σταλεί <b>6-ψήφιος</b> κωδικός στο email που
+                έχετε δηλώσει.
+              </p>
+            </div>
+
+            <form id="changeForm" class="form">
+              <div class="form-row">
+                <label for="changeType">Τι θέλετε να αλλάξετε;</label>
+                <select id="changeType" required>
+                  <option value="email">Email</option>
+                  <option value="username">Username</option>
+                  <option value="password">Password</option>
+                </select>
+              </div>
+
+              <div id="changeFields" class="change-fields">
+                <!-- populated by JS -->
+              </div>
+
+              <div class="form-actions">
+                <button class="btn-primary" type="button" id="sendCodeBtn">Αποστολή κωδικού</button>
+              </div>
+
+              <div id="codeArea" class="code-area" style="display: none">
+                <div class="divider"></div>
+                <div class="form-row">
+                  <label for="verifyCode">Κωδικός (6 ψηφία)</label>
+                  <input
+                    id="verifyCode"
+                    type="text"
+                    inputmode="numeric"
+                    autocomplete="one-time-code"
+                    placeholder="π.χ. 123456"
+                    maxlength="6"
+                  />
+                </div>
+                <div class="form-actions">
+                  <button class="btn-outline" type="button" id="resendCodeBtn">Επανάληψη αποστολής</button>
+                  <button class="btn-primary" type="submit" id="confirmChangeBtn">Επιβεβαίωση & Αλλαγή</button>
+                </div>
+              </div>
+
+              <div class="form-message" id="changeMsg" style="display: none"></div>
+            </form>
+          </section>
+
+          <!-- RECIPIENTS -->
+          <section class="account-card">
+            <div class="card-head">
+              <h2>Παραλήπτες ειδοποιήσεων</h2>
+              <p>
+                Προσθέστε επιπλέον emails που θα λαμβάνουν υπενθυμίσεις για τις συντηρήσεις.
+                <span class="muted">(Σύντομα και τηλέφωνα)</span>
+              </p>
+            </div>
+
+            <form id="recipientForm" class="form">
+              <div class="form-row">
+                <label for="recipientEmail">Νέο email</label>
+                <input id="recipientEmail" type="email" placeholder="name@company.gr" />
+              </div>
+
+              <div class="form-actions">
+                <button class="btn-primary" type="submit" id="addRecipientBtn">Προσθήκη</button>
+              </div>
+              <div class="form-message" id="recipientMsg" style="display: none"></div>
+            </form>
+
+            <div class="divider"></div>
+
+            <div class="recipients-list" id="recipientsList">
+              <!-- filled by JS -->
+            </div>
+          </section>
+
+          <!-- TERMS -->
+          <section class="account-card">
+            <div class="card-head">
+              <h2>Όροι & Προϋποθέσεις</h2>
+              <p>Βασικές πληροφορίες χρήσης της υπηρεσίας.</p>
+            </div>
+
+            <div class="terms">
+              <h3>1. Υπενθυμίσεις</h3>
+              <p>
+                Οι ειδοποιήσεις αποστέλλονται με βάση τις ημερομηνίες συντήρησης και τις ρυθμίσεις που ορίζετε
+                (π.χ. πόσες ημέρες νωρίτερα). Ελέγχετε πάντα ότι τα στοιχεία οχημάτων/συντηρήσεων είναι σωστά.
+              </p>
+
+              <h3>2. Email παραληπτών</h3>
+              <p>
+                Είστε υπεύθυνοι για τα emails που προσθέτετε ως παραλήπτες. Αν δεν θέλετε πλέον ένας παραλήπτης
+                να λαμβάνει ειδοποιήσεις, αφαιρέστε τον από τη λίστα.
+              </p>
+
+              <h3>3. Ασφάλεια</h3>
+              <p>
+                Για αλλαγή βασικών στοιχείων (Email / Username / Password) απαιτείται επιβεβαίωση με 6-ψήφιο
+                κωδικό που αποστέλλεται στο email του λογαριασμού.
+              </p>
+
+              <div class="muted">Το περιεχόμενο εδώ είναι ενημερωτικό και μπορεί να ενημερωθεί στο μέλλον.</div>
+            </div>
+          </section>
+        </div>
+      </main>
+    </div>
+
+    <script src="api.js"></script>
+    <script src="auth.js"></script>
+    <script src="account.js"></script>
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        const navToggle = document.querySelector(".nav-toggle");
+        if (navToggle) {
+          navToggle.addEventListener("click", function () {
+            document.body.classList.toggle("nav-open");
+          });
+        }
+      });
+    </script>
+  </body>
+</html>
