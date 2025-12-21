@@ -330,6 +330,7 @@
   position: absolute;
   right: 10px;
   top: 50%;
+  transform: translateY(-45%);
   background: transparent;
   border: none;
   cursor: pointer;
