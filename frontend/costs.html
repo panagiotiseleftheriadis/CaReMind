@@ -339,4 +339,15 @@
     <script src="auth.js"></script>
     <script src="costs.js"></script>
   </body>
+  <footer class="site-footer">
+    <div class="footer-container">
+      <p>
+        © <span id="year"></span> Panagiotis Eleftheriadis. All rights reserved.
+      </p>
+    </div>
+  </footer>
+
+  <script>
+    document.getElementById("year").textContent = new Date().getFullYear();
+  </script>
 </html>
