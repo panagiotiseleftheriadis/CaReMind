@@ -1597,23 +1597,6 @@ header::before {
   transform: translateY(-1px);
   box-shadow: 0 6px 12px rgba(52, 152, 219, 0.3);
 }
-
-/* 5) Mobile behavior (ίδιο με costs) */
-@media (max-width: 480px) {
-  #addVehicleModal form .form-actions,
-  #addVehicleModal .modal-footer,
-  #editVehicleModal form .form-actions,
-  #editVehicleModal .modal-actions,
-  #editVehicleModal .modal-footer {
-    flex-direction: column-reverse;
-    gap: 0.8rem;
-  }
-
-  #addVehicleModal button,
-  #editVehicleModal button {
-    width: 100%;
-  }
-}
 .site-footer {
   background-color: #0f172a; /* σκούρο μπλε/γκρι */
   color: #e5e7eb;
@@ -1630,4 +1613,21 @@ header::before {
 .site-footer p {
   margin: 0;
   letter-spacing: 0.5px;
+}
+
+/* 5) Mobile behavior (ίδιο με costs) */
+@media (max-width: 480px) {
+  #addVehicleModal form .form-actions,
+  #addVehicleModal .modal-footer,
+  #editVehicleModal form .form-actions,
+  #editVehicleModal .modal-actions,
+  #editVehicleModal .modal-footer {
+    flex-direction: column-reverse;
+    gap: 0.8rem;
+  }
+
+  #addVehicleModal button,
+  #editVehicleModal button {
+    width: 100%;
+  }
 }
