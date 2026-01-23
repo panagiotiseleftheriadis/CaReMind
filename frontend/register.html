@@ -14,32 +14,35 @@
 
       <!-- SIGNUP -->
       <div id="signupBlock">
-        <h2 class="reg-title">Εγγραφή</h2>
+        <h2 class="reg-title">Δημιουργία Λογαριασμού</h2>
         <form id="registerForm">
           <div class="form-group">
-            <input type="text" id="fullName" required placeholder="Ονοματεπώνυμο" />
+            <input type="text" id="username" required placeholder="Ονοματεπώνυμο" />
           </div>
           <div class="form-group">
             <input type="text" id="companyName" placeholder="Όνομα Εταιρίας (προαιρετικό)" />
           </div>
 
           <div class="form-group">
-            <input type="text" id="regUsername" required placeholder="Username" />
+            <input type="email" id="userEmail" required placeholder="Email" />
           </div>
 
           <div class="form-group">
-            <input type="email" id="regEmail" required placeholder="Email" />
+            <input type="text" id="userNumber" placeholder="Αριθμός Κινητού" />
           </div>
 
           <div class="form-group">
-            <input type="password" id="regPassword" required placeholder="Κωδικός" />
+            <input type="text" id="newUsername" required placeholder="Username" />
           </div>
+
+          <div class="form-group">
+            <input type="password" id="newPassword" required placeholder="Κωδικός" />
+          </div>
+
           <div class="form-group">
             <input type="password" id="regPassword" required placeholder="Επιβεβαίωση Κωδικού" />
           </div>
-          <div class="form-group">
-            <input type="text" id="phone" placeholder="Αριθμός Κινητού" />
-          </div>
+          
 
           <button type="submit" class="btn-primary">Δημιουργία λογαριασμού</button>
 
