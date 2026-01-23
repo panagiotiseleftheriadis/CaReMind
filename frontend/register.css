@@ -1,0 +1,58 @@
+.reg-title{
+  text-align:center;
+  margin: 8px 0 16px 0;
+}
+
+.reg-hint{
+  color:#666;
+  font-size:14px;
+  margin: 0 0 16px 0;
+  text-align:center;
+}
+
+.reg-message{
+  margin-top:12px;
+  padding:10px 12px;
+  border-radius:10px;
+  background:#f3f6f8;
+  color:#333;
+  font-size:14px;
+}
+
+.reg-message.error{
+  background:#fff0f0;
+  color:#b00020;
+}
+
+.reg-footer{
+  margin-top:14px;
+  text-align:center;
+}
+
+.reg-footer a{
+  color:#007bff;
+  text-decoration:none;
+  font-size:14px;
+}
+
+.verify-actions{
+  margin-top:10px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:12px;
+}
+
+.btn-link{
+  background:none;
+  border:none;
+  padding:0;
+  color:#007bff;
+  cursor:pointer;
+  font-size:14px;
+  text-decoration:none;
+}
+
+.btn-link:hover{
+  text-decoration:underline;
+}

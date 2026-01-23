@@ -6,11 +6,6 @@ const jwt = require("jsonwebtoken");
 const { JWT_SECRET, authenticateToken } = require("../middleware");
 const crypto = require("crypto");
 const sendMail = require("../emailService");
-const bcrypt = require("bcrypt");
-
-// Αν δεν υπάρχει env var, κρατάμε ένα ασφαλές default.
-// (10 είναι συνηθισμένη τιμή για projects και demo εφαρμογές)
-const BCRYPT_SALT_ROUNDS = Number(process.env.BCRYPT_SALT_ROUNDS || 10);
 
 // POST /api/login
 // router.post("/login", async (req, res) => {
@@ -70,9 +65,11 @@ router.post("/login", async (req, res) => {
          users.id,
          users.username,
          users.password,
+         users.email,
          users.role,
          users.company_id,
          users.is_active,
+         users.email_verified,
          companies.name AS companyName
        FROM users
        LEFT JOIN companies ON users.company_id = companies.id
@@ -90,28 +87,7 @@ router.post("/login", async (req, res) => {
     const user = found[0];
 
     // 2) Έλεγχος password
-    // Υποστηρίζουμε και παλιούς χρήστες που μπορεί να έχουν αποθηκευμένο password "χύμα".
-    // - Αν είναι bcrypt hash -> bcrypt.compare
-    // - Αν είναι plain text -> απλή σύγκριση, και αν είναι σωστό κάνουμε auto-upgrade σε bcrypt.
-
-    const stored = String(user.password || "");
-    const looksBcrypt = stored.startsWith("$2a$") || stored.startsWith("$2b$") || stored.startsWith("$2y$");
-
-    let isMatch = false;
-    if (looksBcrypt) {
-      isMatch = await bcrypt.compare(password, stored);
-    } else {
-      // legacy/plain
-      isMatch = stored === password;
-
-      // Αν είναι σωστό, το αναβαθμίζουμε άμεσα σε bcrypt ώστε να "καθαρίσει" η βάση σταδιακά.
-      if (isMatch) {
-        const newHash = await bcrypt.hash(password, BCRYPT_SALT_ROUNDS);
-        await db.query("UPDATE users SET password = ? WHERE id = ?", [newHash, user.id]);
-      }
-    }
-
-    if (!isMatch) {
+    if (user.password !== password) {
       return res
         .status(401)
         .json({ error: "Λάθος κωδικός", code: "INVALID_PASSWORD" });
@@ -121,6 +97,20 @@ router.post("/login", async (req, res) => {
       return res
         .status(403)
         .json({ error: "Ο λογαριασμός είναι απενεργοποιημένος" });
+    }
+
+    // 3) Email verification gate (εκτός admin/guest)
+    if (
+      user.role !== "admin" &&
+      user.role !== "guest" &&
+      user.email &&
+      String(user.email_verified || 0) !== "1"
+    ) {
+      return res.status(403).json({
+        error: "Πρέπει να επιβεβαιώσετε το email σας πριν συνδεθείτε.",
+        code: "EMAIL_NOT_VERIFIED",
+        email: user.email,
+      });
     }
 
     const payload = {
@@ -137,6 +127,193 @@ router.post("/login", async (req, res) => {
   } catch (err) {
     console.error("Login error:", err);
     res.status(500).json({ error: "Σφάλμα διακομιστή κατά το login" });
+  }
+});
+
+/* ==========================
+   SELF SIGN-UP + EMAIL VERIFY
+   ==========================
+   1) POST /api/register { username, email, password, fullName? }
+      - δημιουργεί χρήστη με email_verified=0 και στέλνει 6-ψήφιο κωδικό
+   2) POST /api/verify-email { email, code }
+      - επιβεβαιώνει το email
+   3) POST /api/resend-verification { email }
+      - ξαναστέλνει κωδικό (5 λεπτά ισχύς)
+*/
+
+function normalizeEmail(v) {
+  return String(v || "")
+    .trim()
+    .toLowerCase();
+}
+
+async function createAndSendVerificationCode(user) {
+  const code = generate6DigitCode();
+  const codeHash = hashCode(code);
+
+  // 5 λεπτά ισχύς
+  await db.query(
+    `INSERT INTO email_verification_codes (user_id, code_hash, expires_at)
+     VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 5 MINUTE))`,
+    [user.id, codeHash]
+  );
+
+  const subject = "CaReMind - Επιβεβαίωση Email";
+  const html = `
+    <div style="font-family: Arial, sans-serif; line-height:1.5">
+      <h2 style="margin:0 0 12px 0">Επιβεβαίωση email</h2>
+      <p>Γεια σας <b>${user.username || ""}</b>,</p>
+      <p>Ο 6-ψήφιος κωδικός επιβεβαίωσης είναι:</p>
+      <div style="font-size:28px; letter-spacing:6px; font-weight:700; padding:12px 16px; background:#f3f6f8; display:inline-block; border-radius:10px;">${code}</div>
+      <p style="margin-top:14px">Ο κωδικός λήγει σε <b>5 λεπτά</b>.</p>
+      <p style="color:#666; font-size:13px">Αν δεν κάνατε εσείς την εγγραφή, αγνοήστε αυτό το email.</p>
+    </div>
+  `;
+
+  await sendMail(user.email, subject, html);
+}
+
+// POST /api/register
+router.post("/register", async (req, res) => {
+  const username = String(req.body?.username || "").trim();
+  const email = normalizeEmail(req.body?.email);
+  const password = String(req.body?.password || "");
+  const fullName = String(req.body?.fullName || req.body?.full_name || "").trim();
+
+  if (!username || !email || !password) {
+    return res
+      .status(400)
+      .json({ error: "Username, email και password είναι υποχρεωτικά" });
+  }
+
+  try {
+    // Έλεγχος duplicates
+    const [dups] = await db.query(
+      "SELECT id, username, email FROM users WHERE username = ? OR email = ? LIMIT 1",
+      [username, email]
+    );
+    if (dups.length) {
+      const d = dups[0];
+      if (d.username === username) {
+        return res
+          .status(409)
+          .json({ error: "Το username χρησιμοποιείται ήδη", code: "USERNAME_TAKEN" });
+      }
+      if ((d.email || "").toLowerCase() === email) {
+        return res
+          .status(409)
+          .json({ error: "Το email χρησιμοποιείται ήδη", code: "EMAIL_TAKEN" });
+      }
+      return res.status(409).json({ error: "Υπάρχει ήδη χρήστης" });
+    }
+
+    // Δημιουργία χρήστη (company_id NULL, role user)
+    const [result] = await db.query(
+      `INSERT INTO users (username, password, full_name, email, role, company_id, is_active, email_verified)
+       VALUES (?, ?, ?, ?, 'user', NULL, 1, 0)`,
+      [username, password, fullName || null, email]
+    );
+
+    const userId = result.insertId;
+
+    await createAndSendVerificationCode({ id: userId, username, email });
+
+    return res.json({
+      message: "Η εγγραφή ολοκληρώθηκε. Στάλθηκε κωδικός επιβεβαίωσης στο email σας.",
+      email,
+    });
+  } catch (err) {
+    console.error("register error:", err);
+    return res.status(500).json({ error: "Σφάλμα διακομιστή" });
+  }
+});
+
+// POST /api/verify-email
+router.post("/verify-email", async (req, res) => {
+  const email = normalizeEmail(req.body?.email);
+  const code = String(req.body?.code || "").trim();
+  if (!email || !code || code.length !== 6) {
+    return res.status(400).json({ error: "Email και 6-ψήφιος κωδικός απαιτούνται" });
+  }
+
+  try {
+    const [urows] = await db.query(
+      "SELECT id, username, email_verified FROM users WHERE email = ? LIMIT 1",
+      [email]
+    );
+    if (!urows.length) {
+      return res.status(404).json({ error: "Δεν βρέθηκε χρήστης", code: "EMAIL_NOT_FOUND" });
+    }
+
+    const user = urows[0];
+    if (String(user.email_verified || 0) === "1") {
+      return res.json({ message: "Το email είναι ήδη επιβεβαιωμένο." });
+    }
+
+    const codeHash = hashCode(code);
+    const [codes] = await db.query(
+      `SELECT id, code_hash
+       FROM email_verification_codes
+       WHERE user_id = ?
+         AND used_at IS NULL
+         AND expires_at > NOW()
+       ORDER BY created_at DESC
+       LIMIT 1`,
+      [user.id]
+    );
+
+    if (!codes.length) {
+      return res.status(400).json({
+        error: "Ο κωδικός έληξε ή δεν υπάρχει. Πατήστε 'Αποστολή ξανά'.",
+        code: "CODE_EXPIRED",
+      });
+    }
+
+    const row = codes[0];
+    if (row.code_hash !== codeHash) {
+      return res.status(400).json({ error: "Λάθος κωδικός", code: "INVALID_CODE" });
+    }
+
+    await db.query("UPDATE email_verification_codes SET used_at = NOW() WHERE id = ?", [
+      row.id,
+    ]);
+    await db.query("UPDATE users SET email_verified = 1 WHERE id = ?", [user.id]);
+
+    return res.json({ message: "Το email επιβεβαιώθηκε επιτυχώς. Μπορείτε να συνδεθείτε." });
+  } catch (err) {
+    console.error("verify-email error:", err);
+    return res.status(500).json({ error: "Σφάλμα διακομιστή" });
+  }
+});
+
+// POST /api/resend-verification
+router.post("/resend-verification", async (req, res) => {
+  const email = normalizeEmail(req.body?.email);
+  if (!email) {
+    return res.status(400).json({ error: "Το email είναι υποχρεωτικό" });
+  }
+
+  try {
+    const [rows] = await db.query(
+      "SELECT id, username, email, email_verified FROM users WHERE email = ? LIMIT 1",
+      [email]
+    );
+    if (!rows.length) {
+      // κρατάμε generic απάντηση για να μην αποκαλύπτουμε αν υπάρχει email
+      return res.json({ message: "Αν το email υπάρχει στο σύστημα, στάλθηκε νέος κωδικός." });
+    }
+
+    const user = rows[0];
+    if (String(user.email_verified || 0) === "1") {
+      return res.json({ message: "Το email είναι ήδη επιβεβαιωμένο." });
+    }
+
+    await createAndSendVerificationCode(user);
+
+    return res.json({ message: "Στάλθηκε νέος κωδικός επιβεβαίωσης." });
+  } catch (err) {
+    console.error("resend-verification error:", err);
+    return res.status(500).json({ error: "Σφάλμα διακομιστή" });
   }
 });
 
@@ -161,6 +338,10 @@ function generate6DigitCode() {
   // 000000 - 999999
   const n = crypto.randomInt(0, 1000000);
   return String(n).padStart(6, "0");
+}
+
+function hashCode(code) {
+  return crypto.createHash("sha256").update(String(code)).digest("hex");
 }
 
 // POST /api/forgot-password
@@ -308,9 +489,10 @@ router.post("/reset-password", async (req, res) => {
       return res.status(401).json({ error: "Ο κωδικός έχει λήξει" });
     }
 
-    // Από εδώ και πέρα αποθηκεύουμε ΠΑΝΤΑ hashed passwords
-    const newHash = await bcrypt.hash(newPassword, BCRYPT_SALT_ROUNDS);
-    await db.query("UPDATE users SET password = ? WHERE id = ?", [newHash, userId]);
+    await db.query("UPDATE users SET password = ? WHERE id = ?", [
+      newPassword,
+      userId,
+    ]);
 
     await db.query(
       "UPDATE password_reset_codes SET used_at = NOW() WHERE id = ?",

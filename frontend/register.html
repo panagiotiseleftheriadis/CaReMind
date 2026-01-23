@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Εγγραφή - CaReMind</title>
+  <link rel="icon" type="image/png" href="/favicon.png" />
+  <link rel="stylesheet" href="login.css" />
+  <link rel="stylesheet" href="register.css" />
+</head>
+<body class="login-body">
+  <div class="login-container">
+    <div class="login-form">
+      <div class="logo-wrapper">
+        <img src="logo.svg" alt="CaReMind Logo" />
+      </div>
+
+      <!-- SIGNUP -->
+      <div id="signupBlock">
+        <h2 class="reg-title">Εγγραφή</h2>
+        <form id="registerForm">
+          <div class="form-group">
+            <label for="fullName">Ονοματεπώνυμο (προαιρετικό)</label>
+            <input type="text" id="fullName" placeholder="Π.χ. Γιώργος Παπαδόπουλος" />
+          </div>
+
+          <div class="form-group">
+            <label for="regUsername">Username</label>
+            <input type="text" id="regUsername" required placeholder="Π.χ. gpap" />
+          </div>
+
+          <div class="form-group">
+            <label for="regEmail">Email</label>
+            <input type="email" id="regEmail" required placeholder="name@example.com" />
+          </div>
+
+          <div class="form-group">
+            <label for="regPassword">Κωδικός</label>
+            <input type="password" id="regPassword" required placeholder="Κωδικός" />
+          </div>
+
+          <button type="submit" class="btn-primary">Δημιουργία λογαριασμού</button>
+
+          <p class="reg-message" id="registerMsg" style="display:none"></p>
+        </form>
+
+        <div class="reg-footer">
+          <a href="index.html">Έχω ήδη λογαριασμό</a>
+        </div>
+      </div>
+
+      <!-- VERIFY -->
+      <div id="verifyBlock" style="display:none">
+        <h2 class="reg-title">Επιβεβαίωση Email</h2>
+        <p class="reg-hint">Στείλαμε έναν 6-ψήφιο κωδικό στο email σας. Ο κωδικός λήγει σε 5 λεπτά.</p>
+
+        <form id="verifyForm">
+          <div class="form-group">
+            <label for="verEmail">Email</label>
+            <input type="email" id="verEmail" required placeholder="name@example.com" />
+          </div>
+
+          <div class="form-group">
+            <label for="verCode">Κωδικός</label>
+            <input type="text" id="verCode" inputmode="numeric" maxlength="6" required placeholder="000000" />
+          </div>
+
+          <button type="submit" class="btn-primary">Επιβεβαίωση</button>
+
+          <div class="verify-actions">
+            <button type="button" class="btn-link" id="resendBtn">Αποστολή ξανά</button>
+            <a class="btn-link" href="index.html">Πίσω στο login</a>
+          </div>
+
+          <p class="reg-message" id="verifyMsg" style="display:none"></p>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script src="api.js"></script>
+  <script src="register.js"></script>
+</body>
+</html>
