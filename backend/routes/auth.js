@@ -6,6 +6,11 @@ const jwt = require("jsonwebtoken");
 const { JWT_SECRET, authenticateToken } = require("../middleware");
 const crypto = require("crypto");
 const sendMail = require("../emailService");
+const bcrypt = require("bcrypt");
+
+// Αν δεν υπάρχει env var, κρατάμε ένα ασφαλές default.
+// (10 είναι συνηθισμένη τιμή για projects και demo εφαρμογές)
+const BCRYPT_SALT_ROUNDS = Number(process.env.BCRYPT_SALT_ROUNDS || 10);
 
 // POST /api/login
 // router.post("/login", async (req, res) => {
@@ -85,7 +90,28 @@ router.post("/login", async (req, res) => {
     const user = found[0];
 
     // 2) Έλεγχος password
-    if (user.password !== password) {
+    // Υποστηρίζουμε και παλιούς χρήστες που μπορεί να έχουν αποθηκευμένο password "χύμα".
+    // - Αν είναι bcrypt hash -> bcrypt.compare
+    // - Αν είναι plain text -> απλή σύγκριση, και αν είναι σωστό κάνουμε auto-upgrade σε bcrypt.
+
+    const stored = String(user.password || "");
+    const looksBcrypt = stored.startsWith("$2a$") || stored.startsWith("$2b$") || stored.startsWith("$2y$");
+
+    let isMatch = false;
+    if (looksBcrypt) {
+      isMatch = await bcrypt.compare(password, stored);
+    } else {
+      // legacy/plain
+      isMatch = stored === password;
+
+      // Αν είναι σωστό, το αναβαθμίζουμε άμεσα σε bcrypt ώστε να "καθαρίσει" η βάση σταδιακά.
+      if (isMatch) {
+        const newHash = await bcrypt.hash(password, BCRYPT_SALT_ROUNDS);
+        await db.query("UPDATE users SET password = ? WHERE id = ?", [newHash, user.id]);
+      }
+    }
+
+    if (!isMatch) {
       return res
         .status(401)
         .json({ error: "Λάθος κωδικός", code: "INVALID_PASSWORD" });
@@ -282,10 +308,9 @@ router.post("/reset-password", async (req, res) => {
       return res.status(401).json({ error: "Ο κωδικός έχει λήξει" });
     }
 
-    await db.query("UPDATE users SET password = ? WHERE id = ?", [
-      newPassword,
-      userId,
-    ]);
+    // Από εδώ και πέρα αποθηκεύουμε ΠΑΝΤΑ hashed passwords
+    const newHash = await bcrypt.hash(newPassword, BCRYPT_SALT_ROUNDS);
+    await db.query("UPDATE users SET password = ? WHERE id = ?", [newHash, userId]);
 
     await db.query(
       "UPDATE password_reset_codes SET used_at = NOW() WHERE id = ?",
