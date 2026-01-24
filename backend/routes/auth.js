@@ -5,6 +5,7 @@ const db = require("../db");
 const jwt = require("jsonwebtoken");
 const { JWT_SECRET, authenticateToken } = require("../middleware");
 const crypto = require("crypto");
+const bcrypt = require("bcrypt");
 const sendMail = require("../emailService");
 
 // POST /api/login
@@ -86,8 +87,19 @@ router.post("/login", async (req, res) => {
 
     const user = found[0];
 
-    // 2) Έλεγχος password
-    if (user.password !== password) {
+    // 2) Έλεγχος password (bcrypt hash, με fallback για παλιούς plaintext χρήστες)
+    const stored = String(user.password || "");
+    let ok = false;
+
+    // bcrypt hashes ξεκινάνε συνήθως με $2a$ / $2b$ / $2y$
+    if (stored.startsWith("$2a$") || stored.startsWith("$2b$") || stored.startsWith("$2y$")) {
+      ok = await bcrypt.compare(password, stored);
+    } else {
+      // fallback: παλιός χρήστης με plaintext password
+      ok = stored === password;
+    }
+
+    if (!ok) {
       return res
         .status(401)
         .json({ error: "Λάθος κωδικός", code: "INVALID_PASSWORD" });
@@ -147,6 +159,25 @@ function normalizeEmail(v) {
     .toLowerCase();
 }
 
+
+async function getOrCreateCompanyId(companyNameRaw) {
+  const name = String(companyNameRaw || "").trim();
+  if (!name) return null;
+
+  // Βρίσκουμε εταιρεία (case-insensitive)
+  const [rows] = await db.query(
+    "SELECT id, name FROM companies WHERE LOWER(name) = LOWER(?) LIMIT 1",
+    [name]
+  );
+
+  if (rows.length) return rows[0].id;
+
+  // Δημιουργούμε εταιρεία
+  const [ins] = await db.query("INSERT INTO companies (name) VALUES (?)", [name]);
+  return ins.insertId;
+}
+
+
 async function createAndSendVerificationCode(user) {
   const code = generate6DigitCode();
   const codeHash = hashCode(code);
@@ -177,6 +208,8 @@ async function createAndSendVerificationCode(user) {
 router.post("/register", async (req, res) => {
   const username = String(req.body?.username || "").trim();
   const email = normalizeEmail(req.body?.email);
+  const phone = String(req.body?.phone || req.body?.user_number || req.body?.userNumber || "").trim();
+  const companyName = String(req.body?.companyName || req.body?.company || "").trim();
   const password = String(req.body?.password || "");
   const fullName = String(req.body?.fullName || req.body?.full_name || "").trim();
 
@@ -207,11 +240,21 @@ router.post("/register", async (req, res) => {
       return res.status(409).json({ error: "Υπάρχει ήδη χρήστης" });
     }
 
-    // Δημιουργία χρήστη (company_id NULL, role user)
+    // Hash password (bcrypt)
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    // company_id (find or create)
+    let companyId = null;
+    if (companyName) {
+      companyId = await getOrCreateCompanyId(companyName);
+    }
+
+    // Δημιουργία χρήστη (role user, email_verified=0)
+    // Σημείωση: κρατάμε το πεδίο users.password ως hash για να μην χρειαστεί rename στήλης.
     const [result] = await db.query(
-      `INSERT INTO users (username, password, full_name, email, role, company_id, is_active, email_verified)
-       VALUES (?, ?, ?, ?, 'user', NULL, 1, 0)`,
-      [username, password, fullName || null, email]
+      `INSERT INTO users (username, password, full_name, email, role, company_id, user_number, is_active, email_verified)
+       VALUES (?, ?, ?, ?, 'user', ?, ?, 1, 0)`,
+      [username, passwordHash, fullName || null, email, companyId, phone || null]
     );
 
     const userId = result.insertId;
@@ -227,6 +270,8 @@ router.post("/register", async (req, res) => {
     return res.status(500).json({ error: "Σφάλμα διακομιστή" });
   }
 });
+
+
 
 // POST /api/verify-email
 router.post("/verify-email", async (req, res) => {
@@ -507,6 +552,36 @@ router.post("/reset-password", async (req, res) => {
 });
 
 // POST /api/logout
+
+// GET /api/account/me  (στοιχεία λογαριασμού)
+router.get("/account/me", authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ error: "Unauthorized" });
+
+    const [rows] = await db.query(
+      `SELECT 
+         users.username,
+         users.email,
+         users.user_number AS phone,
+         companies.name AS companyName
+       FROM users
+       LEFT JOIN companies ON users.company_id = companies.id
+       WHERE users.id = ?
+       LIMIT 1`,
+      [userId]
+    );
+
+    if (!rows.length) return res.status(404).json({ error: "User not found" });
+
+    return res.json(rows[0]);
+  } catch (err) {
+    console.error("account/me error:", err);
+    return res.status(500).json({ error: "Σφάλμα διακομιστή" });
+  }
+});
+
+
 router.post("/logout", authenticateToken, async (req, res) => {
   try {
     const userId = req.user.id;

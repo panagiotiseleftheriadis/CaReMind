@@ -48,11 +48,20 @@ document.addEventListener('DOMContentLoaded', () => {
       hideMsg(registerMsg);
 
       const payload = {
-        fullName: qs('fullName').value.trim(),
-        username: qs('regUsername').value.trim(),
-        email: qs('regEmail').value.trim(),
-        password: qs('regPassword').value,
+        username: qs('newUsername').value.trim(),
+        email: qs('userEmail').value.trim(),
+        companyName: qs('companyName') ? qs('companyName').value.trim() : '',
+        phone: qs('userNumber') ? qs('userNumber').value.trim() : '',
+        password: qs('newPassword').value,
       };
+
+      // Extra safety: μην επιτρέπεις submit αν οι κωδικοί δεν ταιριάζουν
+      const confirm = qs('regPassword') ? qs('regPassword').value : '';
+      if (payload.password !== confirm) {
+        showMsg(registerMsg, 'Οι κωδικοί δεν ταιριάζουν.', true);
+        return;
+      }
+
 
       try{
         await api.register(payload);
