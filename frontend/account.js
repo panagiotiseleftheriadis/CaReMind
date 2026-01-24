@@ -132,7 +132,8 @@ async function loadMe() {
     $("infoUsername").textContent = me?.username || "—";
     $("infoEmail").textContent = me?.email || "—";
     $("infoCompany").textContent = me?.companyName || "—";
-    $("infoUserNumber").textContent = me?.user_number || me?.userNumber || "—";
+    $("infoUserNumber").textContent = me?.user_number || me?.userNumber || me?.phone || "—";
+
 
     if (hero) {
       // Show only the company name (fallback to username)
