@@ -83,3 +83,22 @@
   height: 22px;
   display: block;
 }
+/* default: άστο όπως είναι, δεν πειράζουμε */
+
+/* όταν δεν ταιριάζουν */
+.input-error {
+  border: 2px solid #e53935 !important;
+  outline: none;
+}
+
+/* όταν ταιριάζουν */
+.input-success {
+  border: 2px solid #43a047 !important;
+  outline: none;
+}
+
+.pass-msg {
+  margin-top: 6px;
+  font-size: 13px;
+  color: #e53935;
+}

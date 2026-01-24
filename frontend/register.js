@@ -129,3 +129,83 @@ document.querySelectorAll(".toggle-pass").forEach((btn) => {
     btn.setAttribute("aria-label", isHidden ? "Απόκρυψη κωδικού" : "Εμφάνιση κωδικού");
   });
 });
+const pass1 = document.getElementById("newPassword");
+const pass2 = document.getElementById("regPassword");
+const msg = document.getElementById("passMatchMsg");
+
+function clearStates() {
+  pass1.classList.remove("input-error", "input-success");
+  pass2.classList.remove("input-error", "input-success");
+  msg.style.display = "none";
+  msg.textContent = "";
+}
+
+function setError(text) {
+  pass1.classList.remove("input-success");
+  pass2.classList.remove("input-success");
+
+  pass1.classList.add("input-error");
+  pass2.classList.add("input-error");
+
+  msg.textContent = text;
+  msg.style.display = "block";
+}
+
+function setSuccess() {
+  pass1.classList.remove("input-error");
+  pass2.classList.remove("input-error");
+
+  pass1.classList.add("input-success");
+  pass2.classList.add("input-success");
+
+  msg.style.display = "none";
+  msg.textContent = "";
+}
+
+function validatePasswords() {
+  const p1 = pass1.value;
+  const p2 = pass2.value;
+
+  // Αν είναι άδεια, μην δείχνεις τίποτα ακόμα
+  if (!p1 && !p2) {
+    clearStates();
+    return false;
+  }
+
+  // Αν ο χρήστης δεν έχει αρχίσει να γράφει confirm, μην “κοκκινίσεις” και τα δύο
+  if (p1 && !p2) {
+    pass1.classList.remove("input-error", "input-success");
+    pass2.classList.remove("input-error", "input-success");
+    msg.style.display = "none";
+    msg.textContent = "";
+    return false;
+  }
+
+  // Αν γράφει confirm
+  if (p1 !== p2) {
+    setError("Οι κωδικοί δεν ταιριάζουν.");
+    return false;
+  }
+
+  setSuccess();
+  return true;
+}
+
+// live validation
+pass1.addEventListener("input", validatePasswords);
+pass2.addEventListener("input", validatePasswords);
+
+// Αν έχεις form submit, μπλοκάρουμε αν δεν ταιριάζουν
+const form = document.querySelector("form"); // ή βάλε το id του form αν έχεις
+if (form) {
+  form.addEventListener("submit", (e) => {
+    const ok = validatePasswords();
+    if (!ok) {
+      e.preventDefault();
+      // Αν και τα 2 έχουν τιμή αλλά δεν ταιριάζουν, το μήνυμα θα φαίνεται ήδη
+      if (pass1.value && pass2.value && pass1.value !== pass2.value) {
+        setError("Οι κωδικοί δεν ταιριάζουν.");
+      }
+    }
+  });
+}
