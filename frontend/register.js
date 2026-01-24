@@ -109,3 +109,23 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 });
+document.querySelectorAll(".toggle-pass").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const inputId = btn.dataset.target;
+    const input = document.getElementById(inputId);
+    if (!input) return;
+
+    const icon = btn.querySelector(".toggle-icon");
+    const isHidden = input.type === "password";
+
+    input.type = isHidden ? "text" : "password";
+
+    // αλλάζουμε εικόνα
+    if (icon) {
+      icon.src = isHidden ? "visible.png" : "eye.png";
+    }
+
+    // accessibility
+    btn.setAttribute("aria-label", isHidden ? "Απόκρυψη κωδικού" : "Εμφάνιση κωδικού");
+  });
+});
