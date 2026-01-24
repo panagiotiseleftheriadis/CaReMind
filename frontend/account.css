@@ -47,7 +47,8 @@
 }
 
 .btn-logout:hover {
-  border-color: #cfd8e6;
+  background-color: red;
+  color: white;
   transform: translateY(-1px);
 }
 
