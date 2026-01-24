@@ -129,83 +129,98 @@ document.querySelectorAll(".toggle-pass").forEach((btn) => {
     btn.setAttribute("aria-label", isHidden ? "Απόκρυψη κωδικού" : "Εμφάνιση κωδικού");
   });
 });
-const pass1 = document.getElementById("newPassword");
-const pass2 = document.getElementById("regPassword");
-const msg = document.getElementById("passMatchMsg");
+document.addEventListener("DOMContentLoaded", () => {
+  const pass1 = document.getElementById("newPassword");
+  const pass2 = document.getElementById("regPassword");
+  const msg = document.getElementById("passMatchMsg");
 
-function clearStates() {
-  pass1.classList.remove("input-error", "input-success");
-  pass2.classList.remove("input-error", "input-success");
-  msg.style.display = "none";
-  msg.textContent = "";
-}
-
-function setError(text) {
-  pass1.classList.remove("input-success");
-  pass2.classList.remove("input-success");
-
-  pass1.classList.add("input-error");
-  pass2.classList.add("input-error");
-
-  msg.textContent = text;
-  msg.style.display = "block";
-}
-
-function setSuccess() {
-  pass1.classList.remove("input-error");
-  pass2.classList.remove("input-error");
-
-  pass1.classList.add("input-success");
-  pass2.classList.add("input-success");
-
-  msg.style.display = "none";
-  msg.textContent = "";
-}
-
-function validatePasswords() {
-  const p1 = pass1.value;
-  const p2 = pass2.value;
-
-  // Αν είναι άδεια, μην δείχνεις τίποτα ακόμα
-  if (!p1 && !p2) {
-    clearStates();
-    return false;
+  // Αν κάτι λείπει από το HTML, μην σκάει όλο το register
+  if (!pass1 || !pass2) {
+    console.warn("Password inputs not found. Check IDs: newPassword / regPassword");
+    return;
   }
 
-  // Αν ο χρήστης δεν έχει αρχίσει να γράφει confirm, μην “κοκκινίσεις” και τα δύο
-  if (p1 && !p2) {
+  // Αν δεν υπάρχει το message element, το δημιουργούμε δυναμικά κάτω από το confirm
+  let messageEl = msg;
+  if (!messageEl) {
+    messageEl = document.createElement("p");
+    messageEl.id = "passMatchMsg";
+    messageEl.className = "pass-msg";
+    messageEl.style.display = "none";
+    pass2.closest(".form-group")?.insertAdjacentElement("afterend", messageEl);
+  }
+
+  function clearStates() {
     pass1.classList.remove("input-error", "input-success");
     pass2.classList.remove("input-error", "input-success");
-    msg.style.display = "none";
-    msg.textContent = "";
-    return false;
+    messageEl.style.display = "none";
+    messageEl.textContent = "";
   }
 
-  // Αν γράφει confirm
-  if (p1 !== p2) {
-    setError("Οι κωδικοί δεν ταιριάζουν.");
-    return false;
+  function setError(text) {
+    pass1.classList.remove("input-success");
+    pass2.classList.remove("input-success");
+
+    pass1.classList.add("input-error");
+    pass2.classList.add("input-error");
+
+    messageEl.textContent = text;
+    messageEl.style.display = "block";
   }
 
-  setSuccess();
-  return true;
-}
+  function setSuccess() {
+    pass1.classList.remove("input-error");
+    pass2.classList.remove("input-error");
 
-// live validation
-pass1.addEventListener("input", validatePasswords);
-pass2.addEventListener("input", validatePasswords);
+    pass1.classList.add("input-success");
+    pass2.classList.add("input-success");
 
-// Αν έχεις form submit, μπλοκάρουμε αν δεν ταιριάζουν
-const form = document.querySelector("form"); // ή βάλε το id του form αν έχεις
-if (form) {
-  form.addEventListener("submit", (e) => {
-    const ok = validatePasswords();
-    if (!ok) {
-      e.preventDefault();
-      // Αν και τα 2 έχουν τιμή αλλά δεν ταιριάζουν, το μήνυμα θα φαίνεται ήδη
-      if (pass1.value && pass2.value && pass1.value !== pass2.value) {
+    messageEl.style.display = "none";
+    messageEl.textContent = "";
+  }
+
+  function validatePasswords() {
+    const p1 = pass1.value || "";
+    const p2 = pass2.value || "";
+
+    if (!p1 && !p2) {
+      clearStates();
+      return false;
+    }
+
+    if (p1 && !p2) {
+      pass1.classList.remove("input-error", "input-success");
+      pass2.classList.remove("input-error", "input-success");
+      messageEl.style.display = "none";
+      messageEl.textContent = "";
+      return false;
+    }
+
+    if (p1 !== p2) {
+      setError("Οι κωδικοί δεν ταιριάζουν.");
+      return false;
+    }
+
+    setSuccess();
+    return true;
+  }
+
+  pass1.addEventListener("input", validatePasswords);
+  pass2.addEventListener("input", validatePasswords);
+
+  // Βρες το form με πιο ασφαλή τρόπο
+  const form = pass1.closest("form") || document.querySelector("form");
+  if (form) {
+    form.addEventListener("submit", (e) => {
+      // Αν ο χρήστης έχει γράψει confirm και δεν ταιριάζει, μπλοκάρουμε
+      const p1 = pass1.value || "";
+      const p2 = pass2.value || "";
+
+      if (p2 && p1 !== p2) {
+        e.preventDefault();
         setError("Οι κωδικοί δεν ταιριάζουν.");
       }
-    }
-  });
-}
+    });
+  }
+});
+
