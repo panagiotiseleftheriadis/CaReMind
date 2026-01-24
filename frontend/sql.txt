@@ -1,8 +1,9 @@
 // Pws blepw tis vaseis mou
 mysql -h ballast.proxy.rlwy.net -P 55124 -u root -p --ssl-mode=REQUIRED
 password: YsKBrSdMTfOfFRJzygjhoJYhlCjuKPmY
-SHOW DATABASES;
-USE carcare; 
-SHOW TABLES;
+SHOW DATABASES; // gia na dw tis diathesimes vaseis
+USE carcare; // dialegw thn vash mou
+SHOW TABLES; //gia na vlepw ta tables px users, costs, vehicles klp
+DESCRIBE users; //gia na vlepw ti periexei to kathe table 
 SELECT id, username, password FROM users; // gia na vlepw tous xrhstes
 //paste thn vash mou

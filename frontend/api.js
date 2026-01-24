@@ -138,14 +138,23 @@ class API {
 
     return response; // { token, user }
   }
+  /* ------------ ACCOUNT ------------ */
+
+async getAccountMe() {
+  return this.request("/account/me", {
+    method: "GET",
+  });
+}
+
 
   /* ------------ REGISTER / EMAIL VERIFY ------------ */
-  async register({ username, email, password, fullName }) {
-    return this.request("/register", {
-      method: "POST",
-      body: { username, email, password, fullName },
-    });
-  }
+async register({ username, email, password, fullName, companyName, phone }) {
+  return this.request("/register", {
+    method: "POST",
+    body: { username, email, password, fullName, companyName, phone },
+  });
+}
+
 
   async verifyEmail(email, code) {
     return this.request("/verify-email", {
