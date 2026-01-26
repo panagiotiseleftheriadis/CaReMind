@@ -560,17 +560,20 @@ router.get("/account/me", authenticateToken, async (req, res) => {
     if (!userId) return res.status(401).json({ error: "Unauthorized" });
 
     const [rows] = await db.query(
-      `SELECT 
-         users.username,
-         users.email,
-         users.user_number AS phone,
-         companies.name AS companyName
-       FROM users
-       LEFT JOIN companies ON users.company_id = companies.id
-       WHERE users.id = ?
-       LIMIT 1`,
-      [userId]
-    );
+  `SELECT 
+     users.id,
+     users.username,
+     users.email,
+     users.user_number AS phone,
+     users.role,
+     companies.name AS companyName
+   FROM users
+   LEFT JOIN companies ON users.company_id = companies.id
+   WHERE users.id = ?
+   LIMIT 1`,
+  [userId]
+);
+
 
     if (!rows.length) return res.status(404).json({ error: "User not found" });
 
