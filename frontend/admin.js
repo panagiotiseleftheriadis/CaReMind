@@ -15,26 +15,26 @@ class AdminPanel {
   }
 
   ensureAdminAccess() {
-    const raw = localStorage.getItem("currentUser");
-    if (!raw) {
-      window.location.href = "login.html";
-      return;
-    }
-
-    let currentUser = null;
-    try {
-      currentUser = JSON.parse(raw);
-    } catch (e) {
-      console.error("Failed to parse currentUser:", e);
-      window.location.href = "login.html";
-      return;
-    }
-
-    // Έλεγχος με username αντί για role
-    if (!currentUser || currentUser.username !== "admin") {
-      window.location.href = "dashboard.html";
-    }
+  const raw = localStorage.getItem("currentUser");
+  if (!raw) {
+    window.location.href = "login.html";
+    return;
   }
+
+  let currentUser = null;
+  try {
+    currentUser = JSON.parse(raw);
+  } catch (e) {
+    console.error("Failed to parse currentUser:", e);
+    window.location.href = "login.html";
+    return;
+  }
+
+  // ✅ Έλεγχος με role και όχι με username
+  if (!currentUser || currentUser.role !== "admin") {
+    window.location.href = "dashboard.html";
+  }
+}
 
   setupEventListeners() {
     const createUserForm = document.getElementById("createUserForm");
