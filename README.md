@@ -146,9 +146,6 @@ CaReMind/
 
 ![Maintenances](screenshots/maintenances.png)
 
-### 🔔 Notifications
-
-![Notifications](screenshots/notifications.png)
 
 ### 👤 Account Settings
 
