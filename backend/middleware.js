@@ -1,5 +1,6 @@
 const jwt = require("jsonwebtoken");
-const db = require("../db"); // ⚠️ βάλε το σωστό path (π.χ. ../db ή ./db ανάλογα που είναι)
+const db = require("./db");
+
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
