@@ -1,34 +1,71 @@
 // frontend/auth-guard.js
-(async function () {
-  const isAuthPage = window.location.pathname.endsWith("index.html") || 
-                     window.location.pathname.endsWith("login.html") ||
-                     window.location.pathname.endsWith("register.html");
 
-  // Αν είμαστε ήδη στη σελίδα login/register, δεν κάνουμε έλεγχο
-  if (isAuthPage) return;
+async function checkAuth() {
+  // 1. Έλεγχος αν είμαστε σε σελίδα που ΔΕΝ χρειάζεται προστασία
+  const path = window.location.pathname;
+  const isPublicPage = path.endsWith("index.html") || 
+                       path.endsWith("login.html") ||
+                       path.endsWith("register.html") ||
+                       path === "/" ||
+                       path.endsWith("/");
 
-  try {
-    // 🔥 Η ΑΛΛΑΓΗ: Αντί να ψάχνουμε localStorage, καλούμε το refresh
-    // Αυτό ελέγχει αν υπάρχει το HttpOnly Cookie στον browser
-    console.log("🔒 Auth Guard: Checking session...");
-    await api.refreshToken();
-    
-    // Αν πετύχει, το token μπήκε στη μνήμη (RAM) και ο χρήστης μένει στη σελίδα.
-    console.log("✅ Session valid.");
-
-  } catch (e) {
-    console.warn("⛔ Auth Guard: No valid session, redirecting...", e);
-
-    // Αν αποτύχει, κρατάμε πού ήθελε να πάει ο χρήστης
-    const attempted = (window.location.pathname + window.location.search).replace(/^\//, "");
-    
-    const inSubfolder = window.location.href.includes("/pages/") || 
-                        window.location.href.includes("/views/");
-                        
-    const loginPage = inSubfolder ? "../index.html" : "index.html";
-    const next = encodeURIComponent(attempted || "dashboard.html");
-
-    // Redirect στο Login
-    window.location.replace(`${loginPage}?next=${next}`);
+  if (isPublicPage) {
+     // Αν είμαστε ήδη στο login και έχουμε cookie, ίσως θέλουμε να πάμε dashboard
+     // Προαιρετικό: Αν θες auto-redirect από login σε dashboard, ξε-σχολίασε τα παρακάτω:
+     /*
+     try {
+       await api.refreshToken();
+       window.location.replace("dashboard.html");
+     } catch (e) { } // Αν αποτύχει, μένουμε στο login
+     */
+     return;
   }
-})();
+
+  // 2. Προσπάθεια ανανέωσης Token
+  try {
+    console.log("🔒 Auth Guard: Validating session...");
+    
+    // Αυτό θα στείλει το cookie στο /refresh
+    const data = await api.refreshToken();
+    
+    if (!data || !data.accessToken) {
+      throw new Error("No access token received");
+    }
+
+    console.log("✅ Session verified. Access Token set.");
+    // Δεν χρειάζεται να κάνουμε κάτι άλλο, ο χρήστης μένει στη σελίδα.
+
+  } catch (error) {
+    console.warn("⛔ Auth Guard: Session invalid or expired.", error);
+    redirectToLogin();
+  }
+}
+
+function redirectToLogin() {
+  // Κρατάμε πού ήθελε να πάει
+  const currentPath = (window.location.pathname + window.location.search).replace(/^\//, "");
+  
+  // Έλεγχος αν είμαστε σε υποφάκελο
+  const inSubfolder = window.location.href.includes("/pages/") || 
+                      window.location.href.includes("/views/");
+                      
+  const loginPage = inSubfolder ? "../index.html" : "index.html";
+  
+  // Αποφεύγουμε λούπα αν είμαστε ήδη στο index.html
+  if (!window.location.pathname.endsWith(loginPage)) {
+      const next = encodeURIComponent(currentPath || "dashboard.html");
+      window.location.replace(`${loginPage}?next=${next}`);
+  }
+}
+
+// Εκτέλεση μόλις φορτώσει το DOM, για να είμαστε σίγουροι ότι το api.js υπάρχει
+document.addEventListener("DOMContentLoaded", () => {
+    // Αν το window.api δεν υπάρχει ακόμα, περιμένουμε λίγο
+    if (window.api) {
+        checkAuth();
+    } else {
+        console.error("Critical: api.js not loaded before auth-guard.js");
+        // Fallback: προσπάθεια μετά από 100ms
+        setTimeout(checkAuth, 100);
+    }
+});
