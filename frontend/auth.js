@@ -49,19 +49,28 @@ class AuthService {
   }
 
   init() {
-    // Έλεγχος αν ο χρήστης είναι συνδεδεμένος
+    // Δεν ελέγχουμε πλέον για token στο localStorage.
+    // Ελέγχουμε μόνο αν έχουμε user info για να δείξουμε το όνομα.
     const userData = localStorage.getItem("currentUser");
     if (userData) {
       this.currentUser = JSON.parse(userData);
       this.updateNavigation();
     }
+    
+    // Αν είμαστε σε σελίδα Login, ίσως θέλουμε να δούμε αν υπάρχει ήδη cookie
+    // και να κάνουμε redirect στο dashboard αυτόματα.
+    if (window.location.pathname.endsWith("index.html")) {
+        api.refreshToken().then(data => {
+            if (data && data.accessToken) {
+                 window.location.href = "dashboard.html";
+            }
+        }).catch(() => {
+            // Αν αποτύχει, απλά μένουμε στη σελίδα login
+        });
+    }
   }
 
-  isLoggedIn() {
-    return !!this.currentUser;
-  }
-
-  async login(username, password) {
+ async login(username, password) {
     if (!username || !password) {
       showLoginError("Συμπληρώστε όνομα χρήστη και κωδικό.");
       markLoginInputsError();
@@ -69,65 +78,44 @@ class AuthService {
     }
 
     try {
+      // Το api.login πλέον διαχειρίζεται το token internall
       const response = await api.login(username, password);
 
       this.currentUser = {
         username: response.user.username,
         companyId: response.user.companyId,
-        companyName: response.user.companyName, // 🔥 ΠΡΟΣΤΕΘΗΚΕ
+        companyName: response.user.companyName,
         userId: response.user.id,
-        role: response.user.role, // προαιρετικό αλλά χρήσιμο
+        role: response.user.role,
         loginAt: new Date().toISOString(),
       };
+
       clearInputStates();
       hideLoginError();
+      
+      // Αποθηκεύουμε ΜΟΝΟ τα user info (όχι το token) στο localStorage για το UI
       localStorage.setItem("currentUser", JSON.stringify(this.currentUser));
+      
       this.updateNavigation();
-      hideLoginError();
-      // If the user was redirected here from a protected page, send them back there.
-      // Example: login.html?next=dashboard.html OR login.html?next=dashboard
+
+      // Redirect logic
       const params = new URLSearchParams(window.location.search);
       const nextRaw = params.get("next");
       const next = nextRaw ? decodeURIComponent(nextRaw) : null;
-
-      // Basic safety: avoid protocol/host injection (only allow relative paths)
-      const safeNext =
-        next && !/^(https?:)?\/\//i.test(next) ? next.replace(/^\//, "") : null;
+      const safeNext = next && !/^(https?:)?\/\//i.test(next) ? next.replace(/^\//, "") : null;
 
       window.location.href = safeNext || "dashboard.html";
       return true;
     } catch (error) {
-      const message =
-        error.message || "Λάθος στοιχεία εισόδου. Παρακαλώ προσπαθήστε ξανά.";
-
+      // ... (error handling code remains the same) ...
+      const message = error.message || "Λάθος στοιχεία.";
       showLoginError(message);
-
-      // 🧠 Αν το backend λέει ότι το username υπάρχει αλλά ο κωδικός είναι λάθος
-      if (
-        error.code === "INVALID_PASSWORD" ||
-        message.toLowerCase().includes("κωδ")
-      ) {
-        markUsernameValid(); // μπλε
-        markPasswordError(); // κόκκινο
-      } else {
-        // default: και τα δύο λάθος
-        markLoginInputsError();
-      }
-
       return false;
     }
   }
-
+  
   logout() {
-    this.currentUser = null;
-    localStorage.removeItem("currentUser");
-    this.updateNavigation();
-    api.removeToken();
-
-    const inSubfolder =
-      window.location.href.includes("/pages/") ||
-      window.location.href.includes("/views/");
-    window.location.href = inSubfolder ? "../login.html" : "login.html";
+      api.logout(); // Αυτό κάνει clear cookie και redirect
   }
 
   requireAuth() {

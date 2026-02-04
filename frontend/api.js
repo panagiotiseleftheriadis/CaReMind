@@ -1,51 +1,47 @@
 // frontend/api.js
 
 class API {
-  // Προσθέστε αυτό το έλεγχο στο api.js στο constructor:
   constructor() {
+    // ΣΗΜΕΙΩΣΗ: Άλλαξε το URL αν τρέχεις τοπικά (π.χ. "http://localhost:3000/api")
+    // Τώρα είναι ρυθμισμένο στο production URL που είχες.
     this.baseURL = "https://caremind-bzv3.onrender.com/api";
-    this.token = localStorage.getItem("authToken");
-
-    // Έλεγχος αν ο χρήστης είναι συνδεδεμένος
-    if (!this.token) {
-      console.warn("⚠️ No auth token found in localStorage");
-      // Μπορείτε να ανακατευθύνετε στη σελίδα login
-      // window.location.href = "login.html";
-    }
+    
+    // Το token αποθηκεύεται ΜΟΝΟ στη μνήμη (RAM), όχι στο localStorage
+    this.accessToken = null; 
   }
 
   /* ------------ Token helpers ------------ */
 
   setToken(token) {
-    this.token = token;
-    if (token) {
-      localStorage.setItem("authToken", token);
-    } else {
-      localStorage.removeItem("authToken");
-    }
+    this.accessToken = token;
+  }
+
+  getToken() {
+    return this.accessToken;
   }
 
   removeToken() {
-    this.setToken(null);
+    this.accessToken = null;
   }
 
   getHeaders() {
     const headers = {
       "Content-Type": "application/json",
     };
-    if (this.token) {
-      headers["Authorization"] = `Bearer ${this.token}`;
+    if (this.accessToken) {
+      headers["Authorization"] = `Bearer ${this.accessToken}`;
     }
     return headers;
   }
 
-  /* ------------ Βασική μέθοδος request ------------ */
+  /* ------------ Βασική μέθοδος request (με Auto-Refresh) ------------ */
 
-  async request(endpoint, options = {}) {
+  async request(endpoint, options = {}, isRetry = false) {
     const url = `${this.baseURL}${endpoint}`;
     const config = {
       method: options.method || "GET",
       headers: this.getHeaders(),
+      credentials: "include", // ✅ ΣΗΜΑΝΤΙΚΟ: Επιτρέπει την αποστολή cookies (Refresh Token)
     };
 
     if (options.body) {
@@ -53,7 +49,38 @@ class API {
     }
 
     try {
-      const response = await fetch(url, config);
+      let response = await fetch(url, config);
+
+      // --- ΛΟΓΙΚΗ ΑΥΤΟΜΑΤΗΣ ΑΝΑΝΕΩΣΗΣ (INTERCEPTOR) ---
+      // Αν πάρουμε 401 Unauthorized και δεν είναι ήδη προσπάθεια επαανάληψης (retry)
+      if (response.status === 401 && !isRetry) {
+        try {
+          console.log("🔄 Access token expired. Refreshing...");
+          await this.refreshToken();
+          
+          // Αν το refresh πετύχει, ενημερώνουμε τα headers με το νέο token
+          config.headers = this.getHeaders();
+          // Ξανακάνουμε το αρχικό request
+          response = await fetch(url, config);
+        } catch (refreshError) {
+          console.error("Session expired completely.", refreshError);
+          // Αν αποτύχει και το refresh, ο χρήστης πρέπει να κάνει login
+          this.setToken(null);
+          localStorage.removeItem("currentUser"); // Καθαρίζουμε και τα user data
+          
+          // Redirect στο login (αν δεν είμαστε ήδη εκεί)
+          const isAuthPage = window.location.pathname.endsWith("index.html") || 
+                             window.location.pathname.endsWith("login.html") ||
+                             window.location.pathname.endsWith("register.html");
+                             
+          if (!isAuthPage) {
+             window.location.href = "index.html"; 
+          }
+          throw refreshError;
+        }
+      }
+      // --------------------------------------------------
+
       const text = await response.text();
 
       let data = null;
@@ -81,40 +108,61 @@ class API {
       throw error;
     }
   }
-  // // ADMIN USERS
-  // async createUser(data) {
-  //   return this.request("/users", {
-  //     method: "POST",
-  //     body: data,
-  //   });
-  // }
 
-  // async getUsers() {
-  //   return this.request("/users", {
-  //     method: "GET",
-  //   });
-  // }
+  /* ------------ AUTH Methods ------------ */
 
-  async updateUser(id, updates) {
-    return this.request(`/users/${id}`, {
-      method: "PUT",
-      body: updates,
+  // ΝΕΟ: Login που αποθηκεύει το token στη μνήμη
+  async login(username, password) {
+    const response = await this.request("/login", {
+      method: "POST",
+      body: { username, password },
     });
+
+    // Το backend επιστρέφει { accessToken, user }
+    if (response.accessToken) {
+      this.setToken(response.accessToken);
+    }
+
+    return response; 
   }
 
-  // async toggleUserActive(id) {
-  //   return this.request(`/users/${id}/toggle-active`, {
-  //     method: "PATCH",
-  //   });
-  // }
-
-  async deleteUser(id) {
-    return this.request(`/users/${id}`, {
-      method: "DELETE",
-    });
+  // ΝΕΟ: Logout που καλεί το server για να καθαρίσει το cookie
+  async logout() {
+    try {
+        await this.request("/logout", { method: "POST" });
+    } catch (e) {
+        console.warn("Logout request failed, clearing local state anyway");
+    }
+    this.removeToken();
+    localStorage.removeItem("currentUser");
+    window.location.href = "index.html";
   }
 
-  /* ------------ AUTH ------------ */
+  // ΝΕΟ: Refresh Token Method
+  async refreshToken() {
+    // Κάνει POST στο /refresh. Ο browser στέλνει αυτόματα το HttpOnly cookie.
+    // Χρησιμοποιούμε fetch απευθείας για να αποφύγουμε λούπα στο request()
+    const response = await fetch(`${this.baseURL}/refresh`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include", 
+    });
+
+    if (!response.ok) {
+      throw new Error("Refresh failed");
+    }
+
+    const data = await response.json();
+    if (data.accessToken) {
+      this.setToken(data.accessToken);
+      return data;
+    } else {
+      throw new Error("No access token returned");
+    }
+  }
+
+  /* ------------ USERS (ADMIN) ------------ */
+
   async createUser({ username, password, companyName, email, userNumber }) {
     return this.request("/users", {
       method: "POST",
@@ -126,35 +174,35 @@ class API {
     return this.request("/users", { method: "GET" });
   }
 
-  async login(username, password) {
-    const response = await this.request("/login", {
-      method: "POST",
-      body: { username, password },
+  async updateUser(id, updates) {
+    return this.request(`/users/${id}`, {
+      method: "PUT",
+      body: updates,
     });
-
-    if (response.token) {
-      this.setToken(response.token);
-    }
-
-    return response; // { token, user }
   }
+
+  async deleteUser(id) {
+    return this.request(`/users/${id}`, {
+      method: "DELETE",
+    });
+  }
+
   /* ------------ ACCOUNT ------------ */
 
-async getAccountMe() {
-  return this.request("/account/me", {
-    method: "GET",
-  });
-}
-
+  async getAccountMe() {
+    return this.request("/account/me", {
+      method: "GET",
+    });
+  }
 
   /* ------------ REGISTER / EMAIL VERIFY ------------ */
-async register({ username, email, password, fullName, companyName, phone }) {
-  return this.request("/register", {
-    method: "POST",
-    body: { username, email, password, fullName, companyName, phone },
-  });
-}
-
+  
+  async register({ username, email, password, fullName, companyName, phone }) {
+    return this.request("/register", {
+      method: "POST",
+      body: { username, email, password, fullName, companyName, phone },
+    });
+  }
 
   async verifyEmail(email, code) {
     return this.request("/verify-email", {
@@ -171,6 +219,7 @@ async register({ username, email, password, fullName, companyName, phone }) {
   }
 
   /* ------------ FORGOT PASSWORD ------------ */
+  
   async forgotPassword(email) {
     return this.request("/forgot-password", {
       method: "POST",
@@ -191,7 +240,9 @@ async register({ username, email, password, fullName, companyName, phone }) {
       body: { resetToken, newPassword },
     });
   }
-  // NOTIFICATIONS
+
+  /* ------------ NOTIFICATIONS ------------ */
+  
   async getNotifications() {
     return this.request("/notifications", {
       method: "GET",
@@ -262,27 +313,28 @@ async register({ username, email, password, fullName, companyName, phone }) {
       body: costData,
     });
   }
+  
   async updateCost(id, costData) {
     return await this.request(`/costs/${id}`, {
       method: "PUT",
       body: costData,
     });
   }
+  
   async deleteCost(id) {
     return await this.request(`/costs/${id}`, {
       method: "DELETE",
     });
   }
+  
   /* ------------ NOTIFICATION RECIPIENTS ------------ */
 
-  // Φέρνει όλους τους παραλήπτες ειδοποιήσεων για μια εταιρία
   async getNotificationRecipients(companyId) {
     return await this.request(`/notification-recipients/${companyId}`, {
       method: "GET",
     });
   }
 
-  // Προσθέτει νέο παραλήπτη ειδοποιήσεων
   async addNotificationRecipient(recipientData) {
     return await this.request("/notification-recipients", {
       method: "POST",

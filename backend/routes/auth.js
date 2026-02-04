@@ -3,186 +3,57 @@ const express = require("express");
 const router = express.Router();
 const db = require("../db");
 const jwt = require("jsonwebtoken");
-const { JWT_SECRET, authenticateToken } = require("../middleware");
 const crypto = require("crypto");
 const bcrypt = require("bcrypt");
+const { JWT_SECRET, authenticateToken } = require("../middleware");
 const sendMail = require("../emailService");
 
-// POST /api/login
-// router.post("/login", async (req, res) => {
-//   const { username, password } = req.body || {};
-//   if (!username || !password) {
-//     return res.status(400).json({ error: "Username και password απαιτούνται" });
-//   }
+// --- CONFIGURATION ---
+const COOKIE_OPTIONS = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production", // True μόνο σε production (HTTPS)
+  sameSite: process.env.NODE_ENV === "production" ? "None" : "Lax",
+  path: "/api",
+  maxAge: 30 * 24 * 60 * 60 * 1000, // 30 ημέρες
+};
 
-//   try {
-//     const [rows] = await db.query(
-//       "SELECT id, username, role, company_id, is_active FROM users WHERE username = ? AND password = ? LIMIT 1",
-//       [username, password]
-//     );
+// --- HELPER FUNCTIONS ---
 
-//     if (!rows.length) {
-//       return res.status(401).json({ error: "Λάθος στοιχεία σύνδεσης" });
-//     }
-
-//     const user = rows[0];
-//     if (!user.is_active) {
-//       return res
-//         .status(403)
-//         .json({ error: "Ο λογαριασμός είναι απενεργοποιημένος" });
-//     }
-
-//     const payload = {
-//       id: user.id,
-//       username: user.username,
-//       role: user.role,
-//       companyId: user.company_id,
-//     };
-
-//     const token = jwt.sign(payload, JWT_SECRET, { expiresIn: "8h" });
-
-//     res.json({ token, user: payload });
-//   } catch (err) {
-//     console.error("Login error:", err);
-//     res.status(500).json({ error: "Σφάλμα διακομιστή κατά το login" });
-//   }
-// });
-// POST /api/login
-router.post("/login", async (req, res) => {
-  // Για backward compatibility κρατάμε το πεδίο "username" από το frontend,
-  // αλλά πλέον μπορεί να είναι είτε username είτε email.
-  const { username, password } = req.body || {};
-  const identifier = (username || "").trim();
-  if (!identifier || !password) {
-    return res
-      .status(400)
-      .json({ error: "Username/Email και password απαιτούνται" });
-  }
-
-  try {
-    // 1) Βρίσκουμε χρήστη με username Ή email
-    const [found] = await db.query(
-      `SELECT 
-         users.id,
-         users.username,
-         users.password,
-         users.email,
-         users.role,
-         users.company_id,
-         users.is_active,
-         users.email_verified,
-         companies.name AS companyName
-       FROM users
-       LEFT JOIN companies ON users.company_id = companies.id
-       WHERE (users.username = ? OR users.email = ?)
-       LIMIT 1`,
-      [identifier, identifier]
-    );
-
-    if (!found.length) {
-      return res
-        .status(401)
-        .json({ error: "Λάθος στοιχεία σύνδεσης", code: "INVALID_USER" });
-    }
-
-    const user = found[0];
-
-    // 2) Έλεγχος password (bcrypt hash, με fallback για παλιούς plaintext χρήστες)
-    const stored = String(user.password || "");
-    let ok = false;
-
-    // bcrypt hashes ξεκινάνε συνήθως με $2a$ / $2b$ / $2y$
-    if (stored.startsWith("$2a$") || stored.startsWith("$2b$") || stored.startsWith("$2y$")) {
-      ok = await bcrypt.compare(password, stored);
-    } else {
-      // fallback: παλιός χρήστης με plaintext password
-      ok = stored === password;
-    }
-
-    if (!ok) {
-      return res
-        .status(401)
-        .json({ error: "Λάθος κωδικός", code: "INVALID_PASSWORD" });
-    }
-
-    if (!user.is_active) {
-      return res
-        .status(403)
-        .json({ error: "Ο λογαριασμός είναι απενεργοποιημένος" });
-    }
-
-    // 3) Email verification gate (εκτός admin/guest)
-    if (
-      user.role !== "admin" &&
-      user.role !== "guest" &&
-      user.email &&
-      String(user.email_verified || 0) !== "1"
-    ) {
-      return res.status(403).json({
-        error: "Πρέπει να επιβεβαιώσετε το email σας πριν συνδεθείτε.",
-        code: "EMAIL_NOT_VERIFIED",
-        email: user.email,
-      });
-    }
-
-    const payload = {
-      id: user.id,
-      username: user.username,
-      role: user.role,
-      companyId: user.company_id,
-      companyName: user.companyName, // 🔥 εδώ μπαίνει το όνομα της εταιρείας
-    };
-
-    const token = jwt.sign(payload, JWT_SECRET, { expiresIn: "8h" });
-
-    res.json({ token, user: payload });
-  } catch (err) {
-    console.error("Login error:", err);
-    res.status(500).json({ error: "Σφάλμα διακομιστή κατά το login" });
-  }
-});
-
-/* ==========================
-   SELF SIGN-UP + EMAIL VERIFY
-   ==========================
-   1) POST /api/register { username, email, password, fullName? }
-      - δημιουργεί χρήστη με email_verified=0 και στέλνει 6-ψήφιο κωδικό
-   2) POST /api/verify-email { email, code }
-      - επιβεβαιώνει το email
-   3) POST /api/resend-verification { email }
-      - ξαναστέλνει κωδικό (5 λεπτά ισχύς)
-*/
-
-function normalizeEmail(v) {
-  return String(v || "")
-    .trim()
-    .toLowerCase();
+function generateRefreshToken() {
+  const token = crypto.randomBytes(32).toString("hex");
+  const hash = crypto.createHash("sha256").update(token).digest("hex");
+  return { token, hash };
 }
 
+function hashToken(token) {
+  return crypto.createHash("sha256").update(token).digest("hex");
+}
+
+function generate6DigitCode() {
+  const n = crypto.randomInt(0, 1000000);
+  return String(n).padStart(6, "0");
+}
+
+function normalizeEmail(v) {
+  return String(v || "").trim().toLowerCase();
+}
 
 async function getOrCreateCompanyId(companyNameRaw) {
   const name = String(companyNameRaw || "").trim();
   if (!name) return null;
-
-  // Βρίσκουμε εταιρεία (case-insensitive)
   const [rows] = await db.query(
     "SELECT id, name FROM companies WHERE LOWER(name) = LOWER(?) LIMIT 1",
     [name]
   );
-
   if (rows.length) return rows[0].id;
-
-  // Δημιουργούμε εταιρεία
   const [ins] = await db.query("INSERT INTO companies (name) VALUES (?)", [name]);
   return ins.insertId;
 }
 
-
 async function createAndSendVerificationCode(user) {
   const code = generate6DigitCode();
-  const codeHash = hashCode(code);
+  const codeHash = crypto.createHash("sha256").update(code).digest("hex");
 
-  // 5 λεπτά ισχύς
   await db.query(
     `INSERT INTO email_verification_codes (user_id, code_hash, expires_at)
      VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 5 MINUTE))`,
@@ -194,413 +65,386 @@ async function createAndSendVerificationCode(user) {
     <div style="font-family: Arial, sans-serif; line-height:1.5">
       <h2 style="margin:0 0 12px 0">Επιβεβαίωση email</h2>
       <p>Γεια σας <b>${user.username || ""}</b>,</p>
-      <p>Ο 6-ψήφιος κωδικός επιβεβαίωσης είναι:</p>
+      <p>Ο κωδικός επιβεβαίωσης είναι:</p>
       <div style="font-size:28px; letter-spacing:6px; font-weight:700; padding:12px 16px; background:#f3f6f8; display:inline-block; border-radius:10px;">${code}</div>
-      <p style="margin-top:14px">Ο κωδικός λήγει σε <b>5 λεπτά</b>.</p>
-      <p style="color:#666; font-size:13px">Αν δεν κάνατε εσείς την εγγραφή, αγνοήστε αυτό το email.</p>
+      <p>Λήγει σε 5 λεπτά.</p>
     </div>
   `;
-
   await sendMail(user.email, subject, html);
 }
 
-// POST /api/register
-router.post("/register", async (req, res) => {
-  const username = String(req.body?.username || "").trim();
-  const email = normalizeEmail(req.body?.email);
-  const phone = String(req.body?.phone || req.body?.user_number || req.body?.userNumber || "").trim();
-  const companyName = String(req.body?.companyName || req.body?.company || "").trim();
-  const password = String(req.body?.password || "");
-  const fullName = String(req.body?.fullName || req.body?.full_name || "").trim();
+// =============================================================================
+// AUTH ROUTES
+// =============================================================================
 
-  if (!username || !email || !password) {
-    return res
-      .status(400)
-      .json({ error: "Username, email και password είναι υποχρεωτικά" });
+// 1. LOGIN
+router.post("/login", async (req, res) => {
+  const { username, password } = req.body || {};
+  const identifier = (username || "").trim();
+
+  if (!identifier || !password) {
+    return res.status(400).json({ error: "Username/Email και password απαιτούνται" });
   }
 
   try {
-    // Έλεγχος duplicates
+    // Εύρεση χρήστη (με username ή email)
+    const [found] = await db.query(
+      `SELECT users.*, companies.name AS companyName
+       FROM users
+       LEFT JOIN companies ON users.company_id = companies.id
+       WHERE (users.username = ? OR users.email = ?) LIMIT 1`,
+      [identifier, identifier]
+    );
+
+    if (!found.length) {
+      return res.status(401).json({ error: "Λάθος στοιχεία", code: "INVALID_USER" });
+    }
+
+    const user = found[0];
+
+    // Έλεγχος Password (υποστήριξη bcrypt & fallback plaintext)
+    const stored = String(user.password || "");
+    let ok = false;
+    if (stored.startsWith("$2a$") || stored.startsWith("$2b$") || stored.startsWith("$2y$")) {
+      ok = await bcrypt.compare(password, stored);
+    } else {
+      ok = stored === password;
+    }
+
+    if (!ok) {
+      return res.status(401).json({ error: "Λάθος κωδικός", code: "INVALID_PASSWORD" });
+    }
+
+    if (!user.is_active) {
+      return res.status(403).json({ error: "Ο λογαριασμός είναι απενεργοποιημένος" });
+    }
+
+    // Email verification check
+    if (user.role !== "admin" && user.role !== "guest" && user.email && String(user.email_verified) !== "1") {
+      return res.status(403).json({
+        error: "Πρέπει να επιβεβαιώσετε το email σας.",
+        code: "EMAIL_NOT_VERIFIED",
+        email: user.email,
+      });
+    }
+
+    // Access Token (JWT) - Μικρή διάρκεια (15 λεπτά)
+    const payload = {
+      id: user.id,
+      username: user.username,
+      role: user.role,
+      companyId: user.company_id,
+      companyName: user.companyName,
+    };
+    const accessToken = jwt.sign(payload, JWT_SECRET, { expiresIn: "15m" });
+
+    // Refresh Token - Μεγάλη διάρκεια (30 μέρες)
+    const { token: refreshToken, hash } = generateRefreshToken();
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 30);
+
+    // Αποθήκευση Refresh Token Hash στη βάση
+    await db.query(
+      `INSERT INTO refresh_tokens (user_id, token_hash, expires_at) VALUES (?, ?, ?)`,
+      [user.id, hash, expiresAt]
+    );
+
+    // Αποστολή Cookie (HttpOnly)
+    res.cookie("refreshToken", refreshToken, COOKIE_OPTIONS);
+
+    // Επιστροφή απάντησης
+    res.json({ accessToken, user: payload });
+
+  } catch (err) {
+    console.error("Login error:", err);
+    res.status(500).json({ error: "Σφάλμα διακομιστή κατά το login" });
+  }
+});
+
+// 2. REFRESH TOKEN
+router.post("/refresh", async (req, res) => {
+  const refreshToken = req.cookies.refreshToken;
+  
+  if (!refreshToken) {
+    return res.status(401).json({ error: "No refresh token" });
+  }
+
+  try {
+    const hash = hashToken(refreshToken);
+
+    const [rows] = await db.query(
+      `SELECT rt.*, u.username, u.role, u.company_id, u.is_active, c.name as companyName
+       FROM refresh_tokens rt
+       JOIN users u ON rt.user_id = u.id
+       LEFT JOIN companies c ON u.company_id = c.id
+       WHERE rt.token_hash = ?`,
+      [hash]
+    );
+
+    if (!rows.length) {
+      res.clearCookie("refreshToken", { path: "/api" });
+      return res.status(403).json({ error: "Invalid refresh token" });
+    }
+
+    const record = rows[0];
+
+    // Checks: Expired? Revoked? User inactive?
+    if (new Date() > new Date(record.expires_at) || record.revoked_at) {
+      res.clearCookie("refreshToken", { path: "/api" });
+      return res.status(403).json({ error: "Token expired or revoked" });
+    }
+
+    if (!record.is_active) {
+      return res.status(403).json({ error: "User inactive" });
+    }
+
+    // Issue new Access Token
+    const payload = {
+      id: record.user_id,
+      username: record.username,
+      role: record.role,
+      companyId: record.company_id,
+      companyName: record.companyName,
+    };
+
+    const newAccessToken = jwt.sign(payload, JWT_SECRET, { expiresIn: "15m" });
+
+    res.json({ accessToken: newAccessToken, user: payload });
+
+  } catch (err) {
+    console.error("Refresh error:", err);
+    res.status(500).json({ error: "Server error during refresh" });
+  }
+});
+
+// 3. LOGOUT
+router.post("/logout", async (req, res) => {
+  const refreshToken = req.cookies.refreshToken;
+  
+  // Revoke token στη βάση
+  if (refreshToken) {
+    const hash = hashToken(refreshToken);
+    await db.query(
+      "UPDATE refresh_tokens SET revoked_at = NOW() WHERE token_hash = ?",
+      [hash]
+    );
+  }
+
+  // Cleanup για Guest χρήστες
+  const userId = req.user?.id || (req.body?.user?.id); // Προσπάθεια ανάκτησης ID
+  const username = req.user?.username || req.body?.username;
+  
+  if (username === "guest" && userId) {
+      await db.query("DELETE FROM costs WHERE user_id = ?", [userId]);
+      await db.query("DELETE FROM maintenances WHERE user_id = ?", [userId]);
+      await db.query("DELETE FROM vehicles WHERE user_id = ?", [userId]);
+  }
+
+  // Καθαρισμός Cookie
+  res.clearCookie("refreshToken", { path: "/api" });
+  res.json({ message: "Logged out successfully" });
+});
+
+// 4. GET CURRENT USER
+router.get("/account/me", authenticateToken, async (req, res) => {
+  try {
+    // Το req.user έχει ήδη γεμίσει από το authenticateToken
+    return res.json(req.user);
+  } catch (err) {
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+// 5. REGISTER
+router.post("/register", async (req, res) => {
+  const username = String(req.body?.username || "").trim();
+  const email = normalizeEmail(req.body?.email);
+  const phone = String(req.body?.phone || req.body?.userNumber || "").trim();
+  const companyName = String(req.body?.companyName || "").trim();
+  const password = String(req.body?.password || "");
+  const fullName = String(req.body?.fullName || "").trim();
+
+  if (!username || !email || !password) {
+    return res.status(400).json({ error: "Username, email, password υποχρεωτικά" });
+  }
+
+  try {
+    // Check duplicates
     const [dups] = await db.query(
       "SELECT id, username, email FROM users WHERE username = ? OR email = ? LIMIT 1",
       [username, email]
     );
     if (dups.length) {
       const d = dups[0];
-      if (d.username === username) {
-        return res
-          .status(409)
-          .json({ error: "Το username χρησιμοποιείται ήδη", code: "USERNAME_TAKEN" });
-      }
-      if ((d.email || "").toLowerCase() === email) {
-        return res
-          .status(409)
-          .json({ error: "Το email χρησιμοποιείται ήδη", code: "EMAIL_TAKEN" });
-      }
-      return res.status(409).json({ error: "Υπάρχει ήδη χρήστης" });
+      if (d.username === username) return res.status(409).json({ error: "Username taken", code: "USERNAME_TAKEN" });
+      if (d.email.toLowerCase() === email) return res.status(409).json({ error: "Email taken", code: "EMAIL_TAKEN" });
     }
 
-    // Hash password (bcrypt)
     const passwordHash = await bcrypt.hash(password, 10);
-
-    // company_id (find or create)
+    
     let companyId = null;
     if (companyName) {
       companyId = await getOrCreateCompanyId(companyName);
     }
 
-    // Δημιουργία χρήστη (role user, email_verified=0)
-    // Σημείωση: κρατάμε το πεδίο users.password ως hash για να μην χρειαστεί rename στήλης.
     const [result] = await db.query(
       `INSERT INTO users (username, password, full_name, email, role, company_id, user_number, is_active, email_verified)
        VALUES (?, ?, ?, ?, 'user', ?, ?, 1, 0)`,
-      [username, passwordHash, fullName || null, email, companyId, phone || null]
+      [username, passwordHash, fullName, email, companyId, phone]
     );
 
-    const userId = result.insertId;
+    await createAndSendVerificationCode({ id: result.insertId, username, email });
 
-    await createAndSendVerificationCode({ id: userId, username, email });
-
-    return res.json({
-      message: "Η εγγραφή ολοκληρώθηκε. Στάλθηκε κωδικός επιβεβαίωσης στο email σας.",
-      email,
-    });
+    res.json({ message: "Εγγραφή επιτυχής. Στάλθηκε κωδικός στο email.", email });
   } catch (err) {
-    console.error("register error:", err);
-    return res.status(500).json({ error: "Σφάλμα διακομιστή" });
+    console.error("Register error:", err);
+    res.status(500).json({ error: "Σφάλμα εγγραφής" });
   }
 });
 
-
-
-// POST /api/verify-email
+// 6. VERIFY EMAIL
 router.post("/verify-email", async (req, res) => {
   const email = normalizeEmail(req.body?.email);
   const code = String(req.body?.code || "").trim();
-  if (!email || !code || code.length !== 6) {
-    return res.status(400).json({ error: "Email και 6-ψήφιος κωδικός απαιτούνται" });
-  }
+
+  if (!email || !code || code.length !== 6) return res.status(400).json({ error: "Email & Code required" });
 
   try {
-    const [urows] = await db.query(
-      "SELECT id, username, email_verified FROM users WHERE email = ? LIMIT 1",
-      [email]
-    );
-    if (!urows.length) {
-      return res.status(404).json({ error: "Δεν βρέθηκε χρήστης", code: "EMAIL_NOT_FOUND" });
-    }
+    const [users] = await db.query("SELECT id, email_verified FROM users WHERE email = ? LIMIT 1", [email]);
+    if (!users.length) return res.status(404).json({ error: "User not found" });
 
-    const user = urows[0];
-    if (String(user.email_verified || 0) === "1") {
-      return res.json({ message: "Το email είναι ήδη επιβεβαιωμένο." });
-    }
+    const user = users[0];
+    if (String(user.email_verified) === "1") return res.json({ message: "Email already verified" });
 
-    const codeHash = hashCode(code);
+    const codeHash = crypto.createHash("sha256").update(code).digest("hex");
     const [codes] = await db.query(
-      `SELECT id, code_hash
-       FROM email_verification_codes
-       WHERE user_id = ?
-         AND used_at IS NULL
-         AND expires_at > NOW()
-       ORDER BY created_at DESC
-       LIMIT 1`,
-      [user.id]
+      `SELECT id FROM email_verification_codes 
+       WHERE user_id = ? AND code_hash = ? AND used_at IS NULL AND expires_at > NOW() LIMIT 1`,
+      [user.id, codeHash]
     );
 
-    if (!codes.length) {
-      return res.status(400).json({
-        error: "Ο κωδικός έληξε ή δεν υπάρχει. Πατήστε 'Αποστολή ξανά'.",
-        code: "CODE_EXPIRED",
-      });
-    }
+    if (!codes.length) return res.status(400).json({ error: "Λάθος ή ληγμένος κωδικός" });
 
-    const row = codes[0];
-    if (row.code_hash !== codeHash) {
-      return res.status(400).json({ error: "Λάθος κωδικός", code: "INVALID_CODE" });
-    }
-
-    await db.query("UPDATE email_verification_codes SET used_at = NOW() WHERE id = ?", [
-      row.id,
-    ]);
+    await db.query("UPDATE email_verification_codes SET used_at = NOW() WHERE id = ?", [codes[0].id]);
     await db.query("UPDATE users SET email_verified = 1 WHERE id = ?", [user.id]);
 
-    return res.json({ message: "Το email επιβεβαιώθηκε επιτυχώς. Μπορείτε να συνδεθείτε." });
+    res.json({ message: "Email verified successfully" });
   } catch (err) {
-    console.error("verify-email error:", err);
-    return res.status(500).json({ error: "Σφάλμα διακομιστή" });
+    console.error("Verify error:", err);
+    res.status(500).json({ error: "Server error" });
   }
 });
 
-// POST /api/resend-verification
+// 7. RESEND VERIFICATION
 router.post("/resend-verification", async (req, res) => {
   const email = normalizeEmail(req.body?.email);
-  if (!email) {
-    return res.status(400).json({ error: "Το email είναι υποχρεωτικό" });
-  }
+  if (!email) return res.status(400).json({ error: "Email required" });
 
   try {
-    const [rows] = await db.query(
-      "SELECT id, username, email, email_verified FROM users WHERE email = ? LIMIT 1",
-      [email]
-    );
-    if (!rows.length) {
-      // κρατάμε generic απάντηση για να μην αποκαλύπτουμε αν υπάρχει email
-      return res.json({ message: "Αν το email υπάρχει στο σύστημα, στάλθηκε νέος κωδικός." });
+    const [rows] = await db.query("SELECT id, username, email, email_verified FROM users WHERE email = ?", [email]);
+    if (rows.length && String(rows[0].email_verified) !== "1") {
+      await createAndSendVerificationCode(rows[0]);
     }
-
-    const user = rows[0];
-    if (String(user.email_verified || 0) === "1") {
-      return res.json({ message: "Το email είναι ήδη επιβεβαιωμένο." });
-    }
-
-    await createAndSendVerificationCode(user);
-
-    return res.json({ message: "Στάλθηκε νέος κωδικός επιβεβαίωσης." });
+    res.json({ message: "Αν το email υπάρχει, στάλθηκε νέος κωδικός." });
   } catch (err) {
-    console.error("resend-verification error:", err);
-    return res.status(500).json({ error: "Σφάλμα διακομιστή" });
+    res.status(500).json({ error: "Server error" });
   }
 });
 
-/* ==========================
-   FORGOT PASSWORD FLOW
-   ==========================
-   1) POST /api/forgot-password  { email }
-      - στέλνει 6-ψήφιο κωδικό στο email
-   2) POST /api/verify-reset-code { email, code }
-      - αν είναι σωστό, επιστρέφει resetToken (JWT)
-   3) POST /api/reset-password { resetToken, newPassword }
-      - αλλάζει τον κωδικό
-
-   Σημείωση: το project αυτή τη στιγμή κρατά password "χύμα".
-*/
-
-function hashResetCode(code) {
-  return crypto.createHash("sha256").update(String(code)).digest("hex");
-}
-
-function generate6DigitCode() {
-  // 000000 - 999999
-  const n = crypto.randomInt(0, 1000000);
-  return String(n).padStart(6, "0");
-}
-
-function hashCode(code) {
-  return crypto.createHash("sha256").update(String(code)).digest("hex");
-}
-
-// POST /api/forgot-password
+// 8. FORGOT PASSWORD
 router.post("/forgot-password", async (req, res) => {
-  const email = String(req.body?.email || "")
-    .trim()
-    .toLowerCase();
-  if (!email) {
-    return res.status(400).json({ error: "Το email είναι υποχρεωτικό" });
-  }
+  const email = normalizeEmail(req.body?.email);
+  if (!email) return res.status(400).json({ error: "Email required" });
 
   try {
-    const [rows] = await db.query(
-      "SELECT id, username, email FROM users WHERE email = ? LIMIT 1",
-      [email]
-    );
-
-    // Αν δεν υπάρχει email στη βάση, επιστρέφουμε μήνυμα λάθους
-    if (!rows.length) {
-      return res.status(404).json({
-        code: "EMAIL_NOT_FOUND",
-        message: "Πληκτρολογήστε έγκυρη διεύθυνση Email",
-      });
-    }
+    const [rows] = await db.query("SELECT id, username FROM users WHERE email = ?", [email]);
+    if (!rows.length) return res.status(404).json({ message: "Email not found", code: "EMAIL_NOT_FOUND" });
 
     const user = rows[0];
     const code = generate6DigitCode();
-    const codeHash = hashResetCode(code);
+    const codeHash = crypto.createHash("sha256").update(code).digest("hex");
 
-    // 10 λεπτά ισχύς
     await db.query(
       `INSERT INTO password_reset_codes (user_id, code_hash, expires_at)
        VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 10 MINUTE))`,
       [user.id, codeHash]
     );
 
-    const subject = "CaReMind - Κωδικός επαναφοράς";
+    const subject = "CaReMind - Επαναφορά Κωδικού";
     const html = `
-      <div style="font-family: Arial, sans-serif; line-height:1.5">
-        <h2 style="margin:0 0 12px 0">Επαναφορά κωδικού</h2>
-        <p>Γεια σας <b>${user.username || ""}</b>,</p>
-        <p>Ο κωδικός επαναφοράς σας είναι:</p>
-        <div style="font-size:28px; letter-spacing:6px; font-weight:700; padding:12px 16px; background:#f3f6f8; display:inline-block; border-radius:10px;">${code}</div>
-        <p style="margin-top:14px">Ο κωδικός λήγει σε <b>10 λεπτά</b>.</p>
-        <p style="color:#666; font-size:13px">Αν δεν ζητήσατε επαναφορά, αγνοήστε αυτό το email.</p>
+      <div style="font-family: Arial, sans-serif;">
+        <h2>Επαναφορά Κωδικού</h2>
+        <p>Ο κωδικός σας είναι: <b>${code}</b></p>
+        <p>Λήγει σε 10 λεπτά.</p>
       </div>
     `;
-
     await sendMail(email, subject, html);
 
-    return res.json({
-      message:
-        "Αν το email υπάρχει στο σύστημα, θα λάβετε έναν κωδικό επαναφοράς.",
-    });
+    res.json({ message: "Code sent to email" });
   } catch (err) {
-    console.error("forgot-password error:", err);
-    return res.status(500).json({ error: "Σφάλμα διακομιστή" });
+    console.error("Forgot pass error:", err);
+    res.status(500).json({ error: "Server error" });
   }
 });
 
-// POST /api/verify-reset-code
+// 9. VERIFY RESET CODE
 router.post("/verify-reset-code", async (req, res) => {
-  const email = String(req.body?.email || "")
-    .trim()
-    .toLowerCase();
+  const email = normalizeEmail(req.body?.email);
   const code = String(req.body?.code || "").trim();
 
-  if (!email || !code) {
-    return res.status(400).json({ error: "Email και κωδικός απαιτούνται" });
-  }
+  if (!email || !code) return res.status(400).json({ error: "Missing data" });
 
   try {
-    const [users] = await db.query(
-      "SELECT id FROM users WHERE email = ? LIMIT 1",
-      [email]
-    );
-    if (!users.length) {
-      return res.status(401).json({ error: "Λάθος κωδικός" });
-    }
-    const userId = users[0].id;
-    const codeHash = hashResetCode(code);
+    const [users] = await db.query("SELECT id FROM users WHERE email = ?", [email]);
+    if (!users.length) return res.status(401).json({ error: "User not found" });
 
+    const codeHash = crypto.createHash("sha256").update(code).digest("hex");
     const [rows] = await db.query(
-      `SELECT id
-       FROM password_reset_codes
-       WHERE user_id = ?
-         AND code_hash = ?
-         AND used_at IS NULL
-         AND expires_at > NOW()
-       ORDER BY created_at DESC
-       LIMIT 1`,
-      [userId, codeHash]
+      `SELECT id FROM password_reset_codes 
+       WHERE user_id = ? AND code_hash = ? AND used_at IS NULL AND expires_at > NOW()`,
+      [users[0].id, codeHash]
     );
 
-    if (!rows.length) {
-      return res.status(401).json({ error: "Λάθος κωδικός" });
-    }
+    if (!rows.length) return res.status(401).json({ error: "Invalid or expired code" });
 
-    const resetCodeId = rows[0].id;
     const resetToken = jwt.sign(
-      { userId, resetCodeId, purpose: "password_reset" },
+      { userId: users[0].id, resetCodeId: rows[0].id, purpose: "password_reset" },
       JWT_SECRET,
       { expiresIn: "15m" }
     );
-
-    return res.json({ resetToken });
+    res.json({ resetToken });
   } catch (err) {
-    console.error("verify-reset-code error:", err);
-    return res.status(500).json({ error: "Σφάλμα διακομιστή" });
+    res.status(500).json({ error: "Server error" });
   }
 });
 
-// POST /api/reset-password
+// 10. RESET PASSWORD (BCRYPT HASH)
 router.post("/reset-password", async (req, res) => {
-  const resetToken = String(req.body?.resetToken || "").trim();
-  const newPassword = String(req.body?.newPassword || "");
+  const { resetToken, newPassword } = req.body || {};
 
-  if (!resetToken || !newPassword) {
-    return res
-      .status(400)
-      .json({ error: "resetToken και νέος κωδικός απαιτούνται" });
-  }
+  if (!resetToken || !newPassword) return res.status(400).json({ error: "Missing data" });
 
   try {
     const payload = jwt.verify(resetToken, JWT_SECRET);
-    if (payload?.purpose !== "password_reset") {
-      return res.status(401).json({ error: "Μη έγκυρο token" });
-    }
-
-    const { userId, resetCodeId } = payload;
-
-    // Έλεγχος ότι ο κωδικός δεν έχει χρησιμοποιηθεί/λήξει
-    const [rows] = await db.query(
-      `SELECT id
-       FROM password_reset_codes
-       WHERE id = ?
-         AND user_id = ?
-         AND used_at IS NULL
-         AND expires_at > NOW()
-       LIMIT 1`,
-      [resetCodeId, userId]
-    );
-
-    if (!rows.length) {
-      return res.status(401).json({ error: "Ο κωδικός έχει λήξει" });
-    }
-
-    await db.query("UPDATE users SET password = ? WHERE id = ?", [
-      newPassword,
-      userId,
-    ]);
-
-    await db.query(
-      "UPDATE password_reset_codes SET used_at = NOW() WHERE id = ?",
-      [resetCodeId]
-    );
-
-    return res.json({ message: "Ο κωδικός άλλαξε επιτυχώς" });
-  } catch (err) {
-    console.error("reset-password error:", err);
-    return res.status(401).json({ error: "Μη έγκυρο ή ληγμένο token" });
-  }
-});
-
-// POST /api/logout
-
-// GET /api/account/me  (στοιχεία λογαριασμού)
-router.get("/account/me", authenticateToken, async (req, res) => {
-  try {
-    const userId = req.user?.id;
-    if (!userId) return res.status(401).json({ error: "Unauthorized" });
+    if (payload.purpose !== "password_reset") return res.status(401).json({ error: "Invalid token purpose" });
 
     const [rows] = await db.query(
-  `SELECT 
-     users.id,
-     users.username,
-     users.email,
-     users.user_number AS phone,
-     users.role,
-     companies.name AS companyName
-   FROM users
-   LEFT JOIN companies ON users.company_id = companies.id
-   WHERE users.id = ?
-   LIMIT 1`,
-  [userId]
-);
+      `SELECT id FROM password_reset_codes WHERE id = ? AND used_at IS NULL AND expires_at > NOW()`,
+      [payload.resetCodeId]
+    );
 
+    if (!rows.length) return res.status(401).json({ error: "Code already used or expired" });
 
-    if (!rows.length) return res.status(404).json({ error: "User not found" });
+    // Hash the new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
 
-    return res.json(rows[0]);
+    await db.query("UPDATE users SET password = ? WHERE id = ?", [hashedPassword, payload.userId]);
+    await db.query("UPDATE password_reset_codes SET used_at = NOW() WHERE id = ?", [payload.resetCodeId]);
+
+    res.json({ message: "Password updated successfully" });
   } catch (err) {
-    console.error("account/me error:", err);
-    return res.status(500).json({ error: "Σφάλμα διακομιστή" });
-  }
-});
-
-
-router.post("/logout", authenticateToken, async (req, res) => {
-  try {
-    const userId = req.user.id;
-    const username = req.user.username;
-
-    // Αν είναι guest, καθαρίζουμε ΟΛΑ τα δεδομένα του
-    if (username === "guest") {
-      await db.query("DELETE FROM costs WHERE user_id = ?", [userId]);
-      await db.query("DELETE FROM maintenances WHERE user_id = ?", [userId]);
-      await db.query("DELETE FROM vehicles WHERE user_id = ?", [userId]);
-    }
-
-    res.json({ message: "Logged out successfully" });
-  } catch (err) {
-    console.error("Logout error:", err);
-    res.status(500).json({ error: "Σφάλμα διακομιστή κατά το logout" });
+    console.error("Reset pass error:", err);
+    res.status(401).json({ error: "Invalid or expired token" });
   }
 });
 

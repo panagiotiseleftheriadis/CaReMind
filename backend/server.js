@@ -2,7 +2,7 @@
 const path = require("path");
 const express = require("express");
 const cors = require("cors");
-
+const cookieParser = require("cookie-parser"); // ✅ NEW: Import cookie-parser
 const adminUsersRoutes = require("./routes/adminUsers");
 const notificationsRoutes = require("./routes/notifications");
 const authRoutes = require("./routes/auth");
@@ -16,13 +16,13 @@ const { authenticateToken } = require("./middleware");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-
+app.set("trust proxy", 1);
 /* ======================
    BODY PARSERS
 ====================== */
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
+app.use(cookieParser());
 /* ======================
    CORS
 ====================== */
