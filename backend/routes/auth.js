@@ -89,7 +89,7 @@ router.post("/login", async (req, res) => {
   }
 
   try {
-    // Εύρεση χρήστη (με username ή email)
+    // 1. Εύρεση χρήστη (με username ή email)
     const [found] = await db.query(
       `SELECT users.*, companies.name AS companyName
        FROM users
@@ -104,7 +104,7 @@ router.post("/login", async (req, res) => {
 
     const user = found[0];
 
-    // Έλεγχος Password (υποστήριξη bcrypt & fallback plaintext)
+    // 2. Έλεγχος Password (υποστήριξη bcrypt & fallback plaintext)
     const stored = String(user.password || "");
     let ok = false;
     if (stored.startsWith("$2a$") || stored.startsWith("$2b$") || stored.startsWith("$2y$")) {
@@ -121,7 +121,7 @@ router.post("/login", async (req, res) => {
       return res.status(403).json({ error: "Ο λογαριασμός είναι απενεργοποιημένος" });
     }
 
-    // Email verification check
+    // 3. Email verification check
     if (user.role !== "admin" && user.role !== "guest" && user.email && String(user.email_verified) !== "1") {
       return res.status(403).json({
         error: "Πρέπει να επιβεβαιώσετε το email σας.",
@@ -130,7 +130,7 @@ router.post("/login", async (req, res) => {
       });
     }
 
-    // Access Token (JWT) - Μικρή διάρκεια (15 λεπτά)
+    // 4. Access Token (JWT) - Μικρή διάρκεια (15 λεπτά)
     const payload = {
       id: user.id,
       username: user.username,
@@ -140,7 +140,7 @@ router.post("/login", async (req, res) => {
     };
     const accessToken = jwt.sign(payload, JWT_SECRET, { expiresIn: "15m" });
 
-    // Refresh Token - Μεγάλη διάρκεια (30 μέρες)
+    // 5. Refresh Token - Μεγάλη διάρκεια (30 μέρες)
     const { token: refreshToken, hash } = generateRefreshToken();
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 30);
@@ -150,14 +150,21 @@ router.post("/login", async (req, res) => {
       `INSERT INTO refresh_tokens (user_id, token_hash, expires_at) VALUES (?, ?, ?)`,
       [user.id, hash, expiresAt]
     );
-    console.log("--- DEBUG COOKIE ---");
-console.log("Secure connection?", req.secure); // Πρέπει να βγάλει true
-console.log("Protocol:", req.protocol);        // Πρέπει να βγάλει https
-console.log("Setting cookie with options:", COOKIE_OPTIONS);
-    // Αποστολή Cookie (HttpOnly)
-    res.cookie("refreshToken", refreshToken, COOKIE_OPTIONS);
 
-    // Επιστροφή απάντησης
+    // -------------------------------------------------------------------------
+    // ΑΛΛΑΓΗ: Χειροκίνητη αποστολή Header (Manual Set-Cookie)
+    // Αυτό παρακάμπτει τυχόν ελέγχους του Express για το αν είναι secure η σύνδεση
+    // και αναγκάζει τον browser να λάβει το cookie.
+    // -------------------------------------------------------------------------
+    
+    // Max-Age=2592000 είναι 30 ημέρες σε δευτερόλεπτα
+    const cookieString = `refreshToken=${refreshToken}; Path=/api; Max-Age=2592000; HttpOnly; Secure; SameSite=None`;
+    
+    res.setHeader('Set-Cookie', cookieString);
+    
+    console.log("✅ Manual Cookie Header Set:", cookieString);
+
+    // 6. Επιστροφή απάντησης
     res.json({ accessToken, user: payload });
 
   } catch (err) {
