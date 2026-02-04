@@ -150,7 +150,10 @@ router.post("/login", async (req, res) => {
       `INSERT INTO refresh_tokens (user_id, token_hash, expires_at) VALUES (?, ?, ?)`,
       [user.id, hash, expiresAt]
     );
-
+    console.log("--- DEBUG COOKIE ---");
+console.log("Secure connection?", req.secure); // Πρέπει να βγάλει true
+console.log("Protocol:", req.protocol);        // Πρέπει να βγάλει https
+console.log("Setting cookie with options:", COOKIE_OPTIONS);
     // Αποστολή Cookie (HttpOnly)
     res.cookie("refreshToken", refreshToken, COOKIE_OPTIONS);
 
