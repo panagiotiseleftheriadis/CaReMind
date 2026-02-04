@@ -11,7 +11,6 @@ function hideLoginError() {
   if (!el) return;
   el.style.display = "none";
 }
-
 function markLoginInputsError() {
   document.getElementById("username")?.classList.add("input-error");
   document.getElementById("password")?.classList.add("input-error");
@@ -21,7 +20,6 @@ function clearLoginInputsError() {
   document.getElementById("username")?.classList.remove("input-error");
   document.getElementById("password")?.classList.remove("input-error");
 }
-
 function markUsernameValid() {
   const u = document.getElementById("username");
   if (!u) return;
@@ -50,36 +48,17 @@ class AuthService {
     this.init();
   }
 
-  async init() {
-    // 1. Φόρτωση βασικών στοιχείων από localStorage για το UI
+  init() {
+    // Έλεγχος αν ο χρήστης είναι συνδεδεμένος
     const userData = localStorage.getItem("currentUser");
     if (userData) {
       this.currentUser = JSON.parse(userData);
       this.updateNavigation();
     }
-
-    // 2. Persistent Login Check: Προσπάθεια ανανέωσης session από το cookie
-    // Αν είμαστε σε προστατευμένη σελίδα και δεν έχουμε token στη μνήμη
-    const isLoginPage = window.location.pathname.endsWith("index.html") || window.location.pathname.endsWith("/");
-    
-    try {
-      const success = await api.refreshToken();
-      if (success) {
-        // Αν βρήκαμε token, ενημερώνουμε το user object
-        this.currentUser = JSON.parse(localStorage.getItem("currentUser"));
-        this.updateNavigation();
-        if (isLoginPage) window.location.href = "dashboard.html";
-      } else if (!isLoginPage && !this.isLoggedIn()) {
-        // Αν αποτύχει το refresh και είμαστε σε εσωτερική σελίδα, logout
-        this.logout();
-      }
-    } catch (e) {
-      console.log("No existing session.");
-    }
   }
 
   isLoggedIn() {
-    return !!this.currentUser && !!api.token;
+    return !!this.currentUser;
   }
 
   async login(username, password) {
@@ -92,62 +71,93 @@ class AuthService {
     try {
       const response = await api.login(username, password);
 
-      // Σώζουμε μόνο τα στοιχεία του χρήστη (όχι το token)
       this.currentUser = {
         username: response.user.username,
         companyId: response.user.companyId,
-        companyName: response.user.companyName,
+        companyName: response.user.companyName, // 🔥 ΠΡΟΣΤΕΘΗΚΕ
         userId: response.user.id,
-        role: response.user.role,
+        role: response.user.role, // προαιρετικό αλλά χρήσιμο
         loginAt: new Date().toISOString(),
       };
-
       clearInputStates();
       hideLoginError();
       localStorage.setItem("currentUser", JSON.stringify(this.currentUser));
       this.updateNavigation();
-
+      hideLoginError();
+      // If the user was redirected here from a protected page, send them back there.
+      // Example: login.html?next=dashboard.html OR login.html?next=dashboard
       const params = new URLSearchParams(window.location.search);
       const nextRaw = params.get("next");
       const next = nextRaw ? decodeURIComponent(nextRaw) : null;
-      const safeNext = next && !/^(https?:)?\/\//i.test(next) ? next.replace(/^\//, "") : null;
+
+      // Basic safety: avoid protocol/host injection (only allow relative paths)
+      const safeNext =
+        next && !/^(https?:)?\/\//i.test(next) ? next.replace(/^\//, "") : null;
 
       window.location.href = safeNext || "dashboard.html";
       return true;
     } catch (error) {
-      const message = error.message || "Λάθος στοιχεία εισόδου.";
+      const message =
+        error.message || "Λάθος στοιχεία εισόδου. Παρακαλώ προσπαθήστε ξανά.";
+
       showLoginError(message);
 
-      if (error.code === "INVALID_PASSWORD" || message.toLowerCase().includes("κωδ")) {
-        markUsernameValid();
-        markPasswordError();
+      // 🧠 Αν το backend λέει ότι το username υπάρχει αλλά ο κωδικός είναι λάθος
+      if (
+        error.code === "INVALID_PASSWORD" ||
+        message.toLowerCase().includes("κωδ")
+      ) {
+        markUsernameValid(); // μπλε
+        markPasswordError(); // κόκκινο
       } else {
+        // default: και τα δύο λάθος
         markLoginInputsError();
       }
+
       return false;
     }
   }
 
-  async logout() {
+  logout() {
     this.currentUser = null;
     localStorage.removeItem("currentUser");
-    await api.logout(); // Καθαρίζει token και cookies
-    
-    const inSubfolder = window.location.href.includes("/pages/") || window.location.href.includes("/views/");
-    window.location.href = inSubfolder ? "../index.html" : "index.html";
+    this.updateNavigation();
+    api.removeToken();
+
+    const inSubfolder =
+      window.location.href.includes("/pages/") ||
+      window.location.href.includes("/views/");
+    window.location.href = inSubfolder ? "../login.html" : "login.html";
+  }
+
+  requireAuth() {
+    if (!this.isLoggedIn()) {
+      const inSubfolder =
+        window.location.href.includes("/pages/") ||
+        window.location.href.includes("/views/");
+      window.location.href = inSubfolder ? "../login.html" : "login.html";
+      return false;
+    }
+    return true;
   }
 
   updateNavigation() {
     const userNameEl = document.getElementById("userName");
     if (userNameEl) {
-      userNameEl.textContent = this.currentUser ? this.currentUser.username : "";
+      userNameEl.textContent = this.currentUser
+        ? this.currentUser.username
+        : "";
     }
 
     const loggedInEls = document.querySelectorAll('[data-show="logged-in"]');
     const loggedOutEls = document.querySelectorAll('[data-show="logged-out"]');
 
-    loggedInEls.forEach((el) => (el.style.display = this.isLoggedIn() ? "" : "none"));
-    loggedOutEls.forEach((el) => (el.style.display = this.isLoggedIn() ? "none" : ""));
+    loggedInEls.forEach(
+      (el) => (el.style.display = this.isLoggedIn() ? "" : "none")
+    );
+    loggedOutEls.forEach(
+      (el) => (el.style.display = this.isLoggedIn() ? "none" : "")
+    );
   }
 }
 
@@ -172,17 +182,28 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
+  // Login form handler
   const loginForm = document.getElementById("loginForm");
   if (loginForm) {
     loginForm.addEventListener("submit", async function (e) {
       e.preventDefault();
+
       const username = document.getElementById("username")?.value?.trim();
       const password = document.getElementById("password")?.value;
-      await auth.login(username, password);
+
+      const ok = await auth.login(username, password);
+      // Το μήνυμα για κενά πεδία το δείχνει ήδη το auth.login()
+      // Αν θες επιπλέον handling:
+      if (!ok) {
+        console.warn("Login δεν ολοκληρώθηκε");
+      }
     });
   }
 
-  const logoutButtons = document.querySelectorAll("#logoutButton, .logout-link");
+  // Logout buttons/links
+  const logoutButtons = document.querySelectorAll(
+    "#logoutButton, .logout-link"
+  );
   logoutButtons.forEach((btn) =>
     btn.addEventListener("click", (e) => {
       e.preventDefault();
@@ -190,8 +211,20 @@ document.addEventListener("DOMContentLoaded", function () {
     })
   );
 
+  // Έλεγχος authentication σε προστατευμένες σελίδες
+  const protectedPages = [
+    "dashboard.html",
+    "vehicles.html",
+    "maintenance.html",
+  ];
+  const currentPage = window.location.pathname.split("/").pop();
+
+  if (protectedPages.includes(currentPage)) {
+    auth.requireAuth();
+  }
+
   /* ==========================
-      Forgot password modal logic
+     Forgot password modal logic
      ========================== */
   const modal = document.getElementById("forgotModal");
   const openLink = document.getElementById("forgotPasswordLink");
@@ -212,8 +245,8 @@ document.addEventListener("DOMContentLoaded", function () {
   const btnReset = document.getElementById("fpDoReset");
 
   const msg = document.getElementById("fpMsg");
+
   const fpEmailError = document.getElementById("fpEmailError");
-  
   let cachedEmail = "";
   let resetToken = "";
 
@@ -227,86 +260,181 @@ document.addEventListener("DOMContentLoaded", function () {
   function hideMsg() {
     if (!msg) return;
     msg.style.display = "none";
+    msg.textContent = "";
+    msg.className = "fp-message";
   }
 
   function setEmailError(text) {
-    if (fpEmailError) fpEmailError.textContent = text || "";
+    if (!fpEmailError) return;
+    fpEmailError.textContent = text || "";
+  }
+
+  function clearEmailError() {
+    setEmailError("");
   }
 
   function showStep(which) {
-    if (stepEmail) stepEmail.style.display = which === "email" ? "block" : "none";
+    if (stepEmail)
+      stepEmail.style.display = which === "email" ? "block" : "none";
     if (stepCode) stepCode.style.display = which === "code" ? "block" : "none";
-    if (stepReset) stepReset.style.display = which === "reset" ? "block" : "none";
+    if (stepReset)
+      stepReset.style.display = which === "reset" ? "block" : "none";
     hideMsg();
+    if (which === "email") clearEmailError();
   }
-
-  openLink?.addEventListener("click", (e) => { e.preventDefault(); openModal(); });
-  closeBtn?.addEventListener("click", (e) => { e.preventDefault(); closeModal(); });
 
   function openModal() {
     if (!modal) return;
     modal.classList.add("open");
+    modal.setAttribute("aria-hidden", "false");
+    resetToken = "";
+    cachedEmail = "";
+    if (fpEmail) fpEmail.value = "";
+    if (fpCode) fpCode.value = "";
+    if (fpNewPass) fpNewPass.value = "";
+    if (fpNewPass2) fpNewPass2.value = "";
     showStep("email");
+    setTimeout(() => fpEmail?.focus(), 50);
   }
 
   function closeModal() {
-    modal?.classList.remove("open");
+    if (!modal) return;
+    modal.classList.remove("open");
+    modal.setAttribute("aria-hidden", "true");
   }
+
+  openLink?.addEventListener("click", (e) => {
+    e.preventDefault();
+    openModal();
+  });
+  closeBtn?.addEventListener("click", (e) => {
+    e.preventDefault();
+    closeModal();
+  });
+  modal?.addEventListener("click", (e) => {
+    if (e.target === modal) closeModal();
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && modal?.classList.contains("open")) closeModal();
+  });
 
   btnSendCode?.addEventListener("click", async (e) => {
     e.preventDefault();
-    const email = fpEmail?.value?.trim().toLowerCase();
-    if (!email) { setEmailError("Πληκτρολογήστε Email"); return; }
-    
+    clearEmailError();
+
+    const email = String(fpEmail?.value || "")
+      .trim()
+      .toLowerCase();
+
+    if (!email) {
+      setEmailError("Πληκτρολογήστε έγκυρη διεύθυνση Email");
+      fpEmail?.focus();
+      return;
+    }
+
     btnSendCode.disabled = true;
     try {
       await api.forgotPassword(email);
       cachedEmail = email;
       showStep("code");
+      setTimeout(() => fpCode?.focus(), 50);
     } catch (err) {
-      showMsg(err.message, "error");
+      if (err?.code === "EMAIL_NOT_FOUND" || err?.status === 404) {
+        setEmailError("Πληκτρολογήστε έγκυρη διεύθυνση Email");
+        fpEmail?.focus();
+        return;
+      }
+      showMsg(err?.message || "Αποτυχία αποστολής κωδικού.", "error");
     } finally {
       btnSendCode.disabled = false;
     }
   });
 
+  btnBack?.addEventListener("click", (e) => {
+    e.preventDefault();
+    showStep("email");
+    setTimeout(() => fpEmail?.focus(), 50);
+  });
+
   btnVerify?.addEventListener("click", async (e) => {
     e.preventDefault();
-    const code = fpCode?.value?.trim();
+    const code = String(fpCode?.value || "").trim();
+    if (!cachedEmail) {
+      showStep("email");
+      return;
+    }
+    if (!code || code.length < 4) {
+      showMsg("Συμπληρώστε τον κωδικό που λάβατε.", "error");
+      fpCode?.focus();
+      return;
+    }
+
+    btnVerify.disabled = true;
     try {
       const resp = await api.verifyResetCode(cachedEmail, code);
       resetToken = resp.resetToken;
       showStep("reset");
+      setTimeout(() => fpNewPass?.focus(), 50);
     } catch (err) {
-      showMsg(err.message, "error");
+      showMsg(err.message || "Λάθος κωδικός.", "error");
+    } finally {
+      btnVerify.disabled = false;
     }
   });
 
   btnReset?.addEventListener("click", async (e) => {
     e.preventDefault();
-    const p1 = fpNewPass?.value;
-    const p2 = fpNewPass2?.value;
-    if (p1 !== p2) { showMsg("Οι κωδικοί δεν ταιριάζουν", "error"); return; }
+    const p1 = String(fpNewPass?.value || "");
+    const p2 = String(fpNewPass2?.value || "");
+    if (!resetToken) {
+      showStep("email");
+      return;
+    }
+    if (!p1 || p1.length < 6) {
+      showMsg(
+        "Ο νέος κωδικός πρέπει να είναι τουλάχιστον 6 χαρακτήρες.",
+        "error"
+      );
+      fpNewPass?.focus();
+      return;
+    }
+    if (p1 !== p2) {
+      showMsg("Οι κωδικοί δεν ταιριάζουν.", "error");
+      fpNewPass2?.focus();
+      return;
+    }
 
+    btnReset.disabled = true;
     try {
       await api.resetPassword(resetToken, p1);
-      showMsg("Επιτυχής αλλαγή!", "success");
-      setTimeout(closeModal, 1500);
+      showMsg(
+        "Ο κωδικός σας άλλαξε επιτυχώς. Μπορείς να συνδεθείτε.",
+        "success"
+      );
+      setTimeout(() => {
+        closeModal();
+        // Προσυμπλήρωση για ευκολία
+        const userInput = document.getElementById("username");
+        if (userInput && cachedEmail) userInput.value = cachedEmail;
+        document.getElementById("password")?.focus();
+      }, 900);
     } catch (err) {
-      showMsg(err.message, "error");
+      showMsg(err.message || "Αποτυχία αλλαγής κωδικού.", "error");
+    } finally {
+      btnReset.disabled = false;
     }
   });
-
-  // Password Visibility Toggle
   document.addEventListener("click", (e) => {
     const btn = e.target.closest(".toggle-password");
     if (!btn) return;
+
     const input = document.getElementById(btn.dataset.target);
     const img = btn.querySelector("img");
-    if (input && img) {
-      const isPass = input.type === "password";
-      input.type = isPass ? "text" : "password";
-      img.src = isPass ? "visible.png" : "eye.png";
-    }
+    if (!input || !img) return;
+
+    const show = input.type === "password";
+
+    input.type = show ? "text" : "password";
+    img.src = show ? "visible.png" : "eye.png";
   });
 });
