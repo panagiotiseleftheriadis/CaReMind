@@ -3,3 +3,4 @@ backend/node_modules/
 .env
 backend/.env
 *.log
+/frontend/sql.txt

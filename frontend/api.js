@@ -4,25 +4,16 @@ class API {
   // Προσθέστε αυτό το έλεγχο στο api.js στο constructor:
   constructor() {
     this.baseURL = "https://caremind-bzv3.onrender.com/api";
-    this.token = localStorage.getItem("authToken");
-
-    // Έλεγχος αν ο χρήστης είναι συνδεδεμένος
-    if (!this.token) {
-      console.warn("⚠️ No auth token found in localStorage");
-      // Μπορείτε να ανακατευθύνετε στη σελίδα login
-      // window.location.href = "login.html";
-    }
+    // Πλέον το token μένει μόνο στη μνήμη (RAM)
+    this.token = null; 
+    this.user = null;
+    this.isRefreshing = false;
   }
 
   /* ------------ Token helpers ------------ */
 
   setToken(token) {
     this.token = token;
-    if (token) {
-      localStorage.setItem("authToken", token);
-    } else {
-      localStorage.removeItem("authToken");
-    }
   }
 
   removeToken() {
@@ -38,14 +29,34 @@ class API {
     }
     return headers;
   }
+  async refreshToken() {
+    try {
+      const response = await fetch(`${this.baseURL}/refresh`, {
+        method: "POST",
+        credentials: "include", // ΠΟΛΥ ΣΗΜΑΝΤΙΚΟ: Στέλνει το HttpOnly cookie
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        this.setToken(data.accessToken);
+        this.user = data.user;
+        return true;
+      }
+      return false;
+    } catch (err) {
+      console.error("Refresh error:", err);
+      return false;
+    }
+  }
 
   /* ------------ Βασική μέθοδος request ------------ */
 
-  async request(endpoint, options = {}) {
+async request(endpoint, options = {}) {
     const url = `${this.baseURL}${endpoint}`;
     const config = {
       method: options.method || "GET",
       headers: this.getHeaders(),
+      credentials: "include", // Επιτρέπει την αποστολή cookies αν χρειαστεί
     };
 
     if (options.body) {
@@ -53,47 +64,32 @@ class API {
     }
 
     try {
-      const response = await fetch(url, config);
-      const text = await response.text();
+      let response = await fetch(url, config);
 
-      let data = null;
-      try {
-        data = text ? JSON.parse(text) : null;
-      } catch (e) {
-        console.error("JSON parse error:", e, text);
-      }
+      // Αν το token έληξε (401) και δεν είμαστε ήδη σε φάση refresh
+      if (response.status === 401 && !this.isRefreshing && !endpoint.includes("/login")) {
+        this.isRefreshing = true;
+        const success = await this.refreshToken();
+        this.isRefreshing = false;
 
-      if (!response.ok) {
-        const err = new Error(
-          (data && (data.message || data.error)) ||
-            `Request failed with status ${response.status}`
-        );
-        if (data && data.code) {
-          err.code = data.code;
+        if (success) {
+          // Ξαναδοκιμάζουμε το αρχικό request με το νέο token
+          config.headers = this.getHeaders();
+          response = await fetch(url, config);
+        } else {
+          // Αν αποτύχει και το refresh, στέλνουμε στο login
+          this.logout();
+          throw new Error("Session expired");
         }
-        err.status = response.status;
-        throw err;
       }
 
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Request failed");
       return data;
     } catch (error) {
-      console.error("API Error:", error);
       throw error;
     }
   }
-  // // ADMIN USERS
-  // async createUser(data) {
-  //   return this.request("/users", {
-  //     method: "POST",
-  //     body: data,
-  //   });
-  // }
-
-  // async getUsers() {
-  //   return this.request("/users", {
-  //     method: "GET",
-  //   });
-  // }
 
   async updateUser(id, updates) {
     return this.request(`/users/${id}`, {
@@ -137,6 +133,15 @@ class API {
     }
 
     return response; // { token, user }
+  }
+  async logout() {
+    try {
+      await fetch(`${this.baseURL}/logout`, { method: "POST", credentials: "include" });
+    } catch (e) {}
+    this.token = null;
+    this.user = null;
+    localStorage.removeItem("currentUser");
+    window.location.href = "index.html";
   }
   /* ------------ ACCOUNT ------------ */
 

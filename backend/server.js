@@ -2,7 +2,7 @@
 const path = require("path");
 const express = require("express");
 const cors = require("cors");
-
+const cookieParser = require("cookie-parser"); // <-- ΠΡΟΣΘΗΚΗ
 const adminUsersRoutes = require("./routes/adminUsers");
 const notificationsRoutes = require("./routes/notifications");
 const authRoutes = require("./routes/auth");
@@ -22,7 +22,7 @@ const PORT = process.env.PORT || 3000;
 ====================== */
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
+app.use(cookieParser()); // <-- ΠΡΟΣΘΗΚΗ
 /* ======================
    CORS
 ====================== */
@@ -34,17 +34,15 @@ const allowedOrigins = new Set([
 
 const corsOptions = {
   origin: (origin, cb) => {
-    // allow server-to-server / curl / healthchecks with no Origin
+    // ... (κρατάς τον κώδικα που έχεις για το allowedOrigins) ...
+    // Σιγουρέψου ότι το allowedOrigins περιέχει το frontend URL σου ακριβώς
     if (!origin) return cb(null, true);
-
-    const isVercelPreview = origin.endsWith(".vercel.app");
-    const isAllowed = allowedOrigins.has(origin) || isVercelPreview;
-
+    const isAllowed = allowedOrigins.has(origin) || origin.endsWith(".vercel.app");
     return isAllowed ? cb(null, true) : cb(new Error("Not allowed by CORS"));
   },
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
-  credentials: true,
+  credentials: true, // <-- ΑΛΛΑΓΗ: Πρέπει να είναι true για να περάσουν τα cookies
 };
 
 app.use(cors(corsOptions));

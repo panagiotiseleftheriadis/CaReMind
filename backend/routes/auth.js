@@ -7,46 +7,28 @@ const { JWT_SECRET, authenticateToken } = require("../middleware");
 const crypto = require("crypto");
 const bcrypt = require("bcrypt");
 const sendMail = require("../emailService");
+const crypto = require("crypto"); // Για το hashing και το jti
 
-// POST /api/login
-// router.post("/login", async (req, res) => {
-//   const { username, password } = req.body || {};
-//   if (!username || !password) {
-//     return res.status(400).json({ error: "Username και password απαιτούνται" });
-//   }
+// Χρόνοι λήξης
+const ACCESS_TOKEN_EXPIRY = "15m";
+const REFRESH_TOKEN_EXPIRY_DAYS = 30;
 
-//   try {
-//     const [rows] = await db.query(
-//       "SELECT id, username, role, company_id, is_active FROM users WHERE username = ? AND password = ? LIMIT 1",
-//       [username, password]
-//     );
+// Helper για το hashing του refresh token
+function hashToken(token) {
+  return crypto.createHash("sha256").update(token).digest("hex");
+}
 
-//     if (!rows.length) {
-//       return res.status(401).json({ error: "Λάθος στοιχεία σύνδεσης" });
-//     }
-
-//     const user = rows[0];
-//     if (!user.is_active) {
-//       return res
-//         .status(403)
-//         .json({ error: "Ο λογαριασμός είναι απενεργοποιημένος" });
-//     }
-
-//     const payload = {
-//       id: user.id,
-//       username: user.username,
-//       role: user.role,
-//       companyId: user.company_id,
-//     };
-
-//     const token = jwt.sign(payload, JWT_SECRET, { expiresIn: "8h" });
-
-//     res.json({ token, user: payload });
-//   } catch (err) {
-//     console.error("Login error:", err);
-//     res.status(500).json({ error: "Σφάλμα διακομιστή κατά το login" });
-//   }
-// });
+// Ρυθμίσεις για το HttpOnly Cookie
+function getCookieOptions(req) {
+  const isSecure = process.env.NODE_ENV === "production" || req.secure;
+  return {
+    httpOnly: true,
+    secure: isSecure, 
+    sameSite: isSecure ? "none" : "lax", 
+    path: "/api/refresh",
+    maxAge: REFRESH_TOKEN_EXPIRY_DAYS * 24 * 60 * 60 * 1000,
+  };
+}
 // POST /api/login
 router.post("/login", async (req, res) => {
   // Για backward compatibility κρατάμε το πεδίο "username" από το frontend,
@@ -125,33 +107,77 @@ router.post("/login", async (req, res) => {
       });
     }
 
-    const payload = {
+const userPayload = {
       id: user.id,
       username: user.username,
       role: user.role,
       companyId: user.company_id,
-      companyName: user.companyName, // 🔥 εδώ μπαίνει το όνομα της εταιρείας
+      companyName: user.companyName,
     };
 
-    const token = jwt.sign(payload, JWT_SECRET, { expiresIn: "8h" });
+    // 1. Παραγωγή Access Token (Short-lived)
+    const accessToken = jwt.sign(userPayload, JWT_SECRET, { expiresIn: ACCESS_TOKEN_EXPIRY });
 
-    res.json({ token, user: payload });
+    // 2. Παραγωγή Refresh Token (Long-lived)
+    const jti = crypto.randomUUID(); 
+    const refreshToken = jwt.sign(
+      { id: user.id, jti, type: "refresh" }, 
+      JWT_SECRET, 
+      { expiresIn: `${REFRESH_TOKEN_EXPIRY_DAYS}d` }
+    );
+
+    // 3. Αποθήκευση Hash στη βάση
+    const hashedToken = hashToken(refreshToken);
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + REFRESH_TOKEN_EXPIRY_DAYS);
+
+    await db.query(
+      `INSERT INTO refresh_tokens (user_id, token_hash, expires_at) VALUES (?, ?, ?)`,
+      [user.id, hashedToken, expiresAt]
+    );
+
+    // 4. Αποστολή Cookie και JSON
+    res.cookie("refreshToken", refreshToken, getCookieOptions(req));
+    return res.json({ accessToken, user: userPayload });
   } catch (err) {
     console.error("Login error:", err);
     res.status(500).json({ error: "Σφάλμα διακομιστή κατά το login" });
   }
 });
 
-/* ==========================
-   SELF SIGN-UP + EMAIL VERIFY
-   ==========================
-   1) POST /api/register { username, email, password, fullName? }
-      - δημιουργεί χρήστη με email_verified=0 και στέλνει 6-ψήφιο κωδικό
-   2) POST /api/verify-email { email, code }
-      - επιβεβαιώνει το email
-   3) POST /api/resend-verification { email }
-      - ξαναστέλνει κωδικό (5 λεπτά ισχύς)
-*/
+router.post("/refresh", async (req, res) => {
+  const refreshToken = req.cookies.refreshToken;
+  if (!refreshToken) return res.status(401).json({ error: "No refresh token" });
+
+  try {
+    const decoded = jwt.verify(refreshToken, JWT_SECRET);
+    if (decoded.type !== "refresh") return res.status(403).json({ error: "Invalid type" });
+
+    const hashedToken = hashToken(refreshToken);
+    const [rows] = await db.query(
+      "SELECT user_id FROM refresh_tokens WHERE token_hash = ? AND revoked_at IS NULL AND expires_at > NOW() LIMIT 1",
+      [hashedToken]
+    );
+
+    if (!rows.length) {
+      res.clearCookie("refreshToken", { path: "/api/refresh" });
+      return res.status(403).json({ error: "Invalid refresh token" });
+    }
+
+    // Φέρνουμε τα στοιχεία του χρήστη για το νέο access token
+    const [users] = await db.query("SELECT id, username, role, company_id FROM users WHERE id = ? LIMIT 1", [decoded.id]);
+    const user = users[0];
+    
+    const newAccessToken = jwt.sign({
+      id: user.id, username: user.username, role: user.role, companyId: user.company_id
+    }, JWT_SECRET, { expiresIn: ACCESS_TOKEN_EXPIRY });
+
+    res.json({ accessToken: newAccessToken, user });
+  } catch (err) {
+    res.clearCookie("refreshToken", { path: "/api/refresh" });
+    res.status(403).json({ error: "Token expired" });
+  }
+});
 
 function normalizeEmail(v) {
   return String(v || "")
@@ -362,18 +388,6 @@ router.post("/resend-verification", async (req, res) => {
   }
 });
 
-/* ==========================
-   FORGOT PASSWORD FLOW
-   ==========================
-   1) POST /api/forgot-password  { email }
-      - στέλνει 6-ψήφιο κωδικό στο email
-   2) POST /api/verify-reset-code { email, code }
-      - αν είναι σωστό, επιστρέφει resetToken (JWT)
-   3) POST /api/reset-password { resetToken, newPassword }
-      - αλλάζει τον κωδικό
-
-   Σημείωση: το project αυτή τη στιγμή κρατά password "χύμα".
-*/
 
 function hashResetCode(code) {
   return crypto.createHash("sha256").update(String(code)).digest("hex");
@@ -534,10 +548,8 @@ router.post("/reset-password", async (req, res) => {
       return res.status(401).json({ error: "Ο κωδικός έχει λήξει" });
     }
 
-    await db.query("UPDATE users SET password = ? WHERE id = ?", [
-      newPassword,
-      userId,
-    ]);
+   const hashedPassword = await bcrypt.hash(newPassword, 10); 
+await db.query("UPDATE users SET password = ? WHERE id = ?", [hashedPassword, userId]); 
 
     await db.query(
       "UPDATE password_reset_codes SET used_at = NOW() WHERE id = ?",
@@ -551,7 +563,6 @@ router.post("/reset-password", async (req, res) => {
   }
 });
 
-// POST /api/logout
 
 // GET /api/account/me  (στοιχεία λογαριασμού)
 router.get("/account/me", authenticateToken, async (req, res) => {
@@ -585,23 +596,13 @@ router.get("/account/me", authenticateToken, async (req, res) => {
 });
 
 
-router.post("/logout", authenticateToken, async (req, res) => {
-  try {
-    const userId = req.user.id;
-    const username = req.user.username;
-
-    // Αν είναι guest, καθαρίζουμε ΟΛΑ τα δεδομένα του
-    if (username === "guest") {
-      await db.query("DELETE FROM costs WHERE user_id = ?", [userId]);
-      await db.query("DELETE FROM maintenances WHERE user_id = ?", [userId]);
-      await db.query("DELETE FROM vehicles WHERE user_id = ?", [userId]);
-    }
-
-    res.json({ message: "Logged out successfully" });
-  } catch (err) {
-    console.error("Logout error:", err);
-    res.status(500).json({ error: "Σφάλμα διακομιστή κατά το logout" });
+router.post("/logout", async (req, res) => {
+  const refreshToken = req.cookies.refreshToken;
+  if (refreshToken) {
+    await db.query("UPDATE refresh_tokens SET revoked_at = NOW() WHERE token_hash = ?", [hashToken(refreshToken)]);
   }
+  res.clearCookie("refreshToken", getCookieOptions(req));
+  res.json({ message: "Logged out" });
 });
 
 module.exports = router;

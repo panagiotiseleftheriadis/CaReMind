@@ -174,4 +174,14 @@
   <script>
     document.getElementById("year").textContent = new Date().getFullYear();
   </script>
+  <script>
+  (async () => {
+    // Προσπάθεια να πάρουμε token μέσω του HttpOnly cookie
+    const isAuthorized = await api.refreshToken();
+    if (!isAuthorized) {
+      // Αν δεν υπάρχει cookie, πίσω στο login
+      window.location.href = "index.html";
+    }
+  })();
+</script>
 </html>
