@@ -1,31 +1,34 @@
 // frontend/auth-guard.js
 
 async function checkAuth() {
-  // 1. Έλεγχος αν είμαστε σε σελίδα που ΔΕΝ χρειάζεται προστασία
   const path = window.location.pathname;
+  // Ελέγχουμε αν είμαστε σε σελίδα που δεν θέλει login (login/register)
   const isPublicPage = path.endsWith("index.html") || 
                        path.endsWith("login.html") ||
                        path.endsWith("register.html") ||
                        path === "/" ||
                        path.endsWith("/");
 
+  // ΠΕΡΙΠΤΩΣΗ 1: Είμαστε στη σελίδα Login/Register (Public)
   if (isPublicPage) {
-     // Αν είμαστε ήδη στο login και έχουμε cookie, ίσως θέλουμε να πάμε dashboard
-     // Προαιρετικό: Αν θες auto-redirect από login σε dashboard, ξε-σχολίασε τα παρακάτω:
-     /*
+     // 🔥 ΕΔΩ ΗΤΑΝ ΤΟ ΠΡΟΒΛΗΜΑ: Το είχες σε σχόλια.
+     // Τώρα το ενεργοποιούμε για να σε βάζει αυτόματα αν έχεις cookie.
      try {
+       console.log("🔍 Checking for existing session on login page...");
        await api.refreshToken();
+       console.log("✅ Session found! Redirecting to dashboard...");
        window.location.replace("dashboard.html");
-     } catch (e) { } // Αν αποτύχει, μένουμε στο login
-     */
+     } catch (e) { 
+       console.log("ℹ️ No active session, user must log in manually.");
+     } 
      return;
   }
 
-  // 2. Προσπάθεια ανανέωσης Token
+  // ΠΕΡΙΠΤΩΣΗ 2: Είμαστε σε Protected Page (π.χ. Dashboard)
   try {
     console.log("🔒 Auth Guard: Validating session...");
     
-    // Αυτό θα στείλει το cookie στο /refresh
+    // Αυτό στέλνει το cookie στο /refresh για να δει αν είναι έγκυρο
     const data = await api.refreshToken();
     
     if (!data || !data.accessToken) {
@@ -33,7 +36,7 @@ async function checkAuth() {
     }
 
     console.log("✅ Session verified. Access Token set.");
-    // Δεν χρειάζεται να κάνουμε κάτι άλλο, ο χρήστης μένει στη σελίδα.
+    // Ο χρήστης μένει εδώ, όλα καλά.
 
   } catch (error) {
     console.warn("⛔ Auth Guard: Session invalid or expired.", error);
@@ -42,30 +45,28 @@ async function checkAuth() {
 }
 
 function redirectToLogin() {
-  // Κρατάμε πού ήθελε να πάει
+  // Κρατάμε πού ήθελε να πάει ο χρήστης
   const currentPath = (window.location.pathname + window.location.search).replace(/^\//, "");
   
-  // Έλεγχος αν είμαστε σε υποφάκελο
   const inSubfolder = window.location.href.includes("/pages/") || 
                       window.location.href.includes("/views/");
                       
   const loginPage = inSubfolder ? "../index.html" : "index.html";
   
   // Αποφεύγουμε λούπα αν είμαστε ήδη στο index.html
-  if (!window.location.pathname.endsWith(loginPage)) {
+  if (!window.location.pathname.endsWith("index.html") && !window.location.pathname.endsWith("login.html")) {
       const next = encodeURIComponent(currentPath || "dashboard.html");
       window.location.replace(`${loginPage}?next=${next}`);
   }
 }
 
-// Εκτέλεση μόλις φορτώσει το DOM, για να είμαστε σίγουροι ότι το api.js υπάρχει
+// Εκτέλεση μόλις φορτώσει το DOM
 document.addEventListener("DOMContentLoaded", () => {
     // Αν το window.api δεν υπάρχει ακόμα, περιμένουμε λίγο
     if (window.api) {
         checkAuth();
     } else {
-        console.error("Critical: api.js not loaded before auth-guard.js");
-        // Fallback: προσπάθεια μετά από 100ms
+        // Fallback: προσπάθεια μετά από 100ms αν το api.js δεν έχει φορτώσει ακόμα
         setTimeout(checkAuth, 100);
     }
 });
