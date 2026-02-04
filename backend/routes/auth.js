@@ -11,9 +11,11 @@ const sendMail = require("../emailService");
 // --- CONFIGURATION ---
 const COOKIE_OPTIONS = {
   httpOnly: true,
-  secure: process.env.NODE_ENV === "production", // True μόνο σε production (HTTPS)
-  sameSite: process.env.NODE_ENV === "production" ? "None" : "Lax",
-  path: "/api",
+  // Αφού το backend είναι στο Render (HTTPS), το secure ΠΡΕΠΕΙ να είναι true
+  secure: true, 
+  // Αφού front (car-remind.gr) και back (onrender.com) είναι διαφορετικά, ΠΡΕΠΕΙ να είναι None
+  sameSite: "None", 
+  path: "/api", // Το cookie ισχύει μόνο για routes που ξεκινάνε με /api
   maxAge: 30 * 24 * 60 * 60 * 1000, // 30 ημέρες
 };
 
