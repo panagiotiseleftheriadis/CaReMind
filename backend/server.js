@@ -1,3 +1,4 @@
+require("dotenv").config();
 // server.js
 const path = require("path");
 const express = require("express");
@@ -30,6 +31,10 @@ const allowedOrigins = new Set([
   "http://localhost:5173",
   "https://car-remind.gr",
   "https://www.car-remind.gr",
+  // 👇 ΠΡΟΣΘΗΚΕΣ ΓΙΑ ΤΟΠΙΚΗ ΔΟΥΛΕΙΑ:
+  "http://localhost:5500",      // Live Server (συνήθως)
+  "http://127.0.0.1:5500",      // Live Server IP
+  "http://localhost:3000"       // Backend Local
 ]);
 
 const corsOptions = {

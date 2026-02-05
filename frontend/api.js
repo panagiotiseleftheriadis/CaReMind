@@ -1,12 +1,21 @@
 // frontend/api.js
 
 class API {
-  constructor() {
-    // Βεβαιώσου ότι αυτό είναι το σωστό URL του backend σου
-    this.baseURL = "https://api.car-remind.gr/api";
+ constructor() {
+    // Ελέγχουμε αν το site τρέχει τοπικά (στον υπολογιστή σου)
+    const isLocal = 
+      window.location.hostname === "localhost" || 
+      window.location.hostname === "127.0.0.1";
+
+    // Αν είναι Local -> μίλα στο localhost:3000
+    // Αν είναι Live -> μίλα στο κανονικό σου domain
+    this.baseURL = isLocal 
+      ? "http://localhost:3000/api" 
+      : "https://api.car-remind.gr/api"; 
+
+    this.accessToken = null;
     
-    // Το token αποθηκεύεται ΜΟΝΟ στη μνήμη (RAM), όχι στο localStorage
-    this.accessToken = null; 
+    console.log("🔗 API Base URL set to:", this.baseURL); // Για να βλέπεις πού συνδέεται
   }
 
   /* ------------ Token helpers ------------ */

@@ -157,9 +157,25 @@ router.post("/login", async (req, res) => {
     // -------------------------------------------------------------------------
     
     // Max-Age=2592000 είναι 30 ημέρες σε δευτερόλεπτα
-    const cookieString = `refreshToken=${refreshToken}; Path=/api; Max-Age=2592000; HttpOnly; Secure; SameSite=Lax; Domain=.car-remind.gr`;
+   // -------------------------------------------------------------------------
+    // ΔΥΝΑΜΙΚΗ ΡΥΘΜΙΣΗ COOKIE (ΓΙΑ ΝΑ ΔΟΥΛΕΥΕΙ ΚΑΙ ΤΟΠΙΚΑ)
+    // -------------------------------------------------------------------------
+    
+    // Ελέγχουμε αν το αίτημα έρχεται από Localhost
+    const origin = req.headers.origin || "";
+    const isLocal = origin.includes("localhost") || origin.includes("127.0.0.1");
 
-res.setHeader('Set-Cookie', cookieString);
+    // Βασικό cookie (χωρίς Secure/Domain αρχικά)
+    let cookieString = `refreshToken=${refreshToken}; Path=/api; Max-Age=2592000; HttpOnly; SameSite=Lax`;
+
+    if (!isLocal) {
+      // ΑΝ ΕΙΜΑΣΤΕ ΣΤΟ RENDER (Production):
+      // Προσθέτουμε Secure (για HTTPS) και το Domain
+      cookieString += `; Secure; Domain=.car-remind.gr`;
+    } 
+    // ΑΝ ΕΙΜΑΣΤΕ LOCAL: Το αφήνουμε απλό για να το δεχτεί ο browser
+
+    res.setHeader('Set-Cookie', cookieString);
     
     console.log("✅ Manual Cookie Header Set:", cookieString);
 
