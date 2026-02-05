@@ -18,7 +18,8 @@ router.get("/", async (req, res) => {
          next_mileage AS nextMileage,
          notification_days AS notificationDays,
          status,
-         notes
+         notes,
+         created_at    -- ✅ ΠΡΟΣΘΗΚΗ ΕΔΩ
        FROM maintenances
        WHERE user_id = ?
        ORDER BY id DESC`,

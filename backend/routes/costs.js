@@ -15,7 +15,8 @@ router.get("/", async (req, res) => {
          amount,
          cost_date AS date,
          description,
-         receipt_number AS receiptNumber
+         receipt_number AS receiptNumber,
+         created_at  -- ✅ ΠΡΟΣΘΗΚΗ ΕΔΩ
        FROM costs
        WHERE user_id = ?
        ORDER BY cost_date DESC, id DESC`,

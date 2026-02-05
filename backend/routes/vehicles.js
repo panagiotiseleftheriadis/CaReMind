@@ -17,7 +17,8 @@ router.get("/", async (req, res) => {
          v.model,
          v.year,
          v.current_mileage AS currentMileage,
-         u.company_id      AS companyId
+         u.company_id      AS companyId,
+         v.created_at      -- ✅ ΠΡΟΣΘΗΚΗ ΕΔΩ (με το v. μπροστά)
        FROM vehicles v
        JOIN users u ON v.user_id = u.id
        WHERE v.user_id = ?
