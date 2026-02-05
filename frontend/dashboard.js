@@ -133,7 +133,7 @@ class DashboardManager {
 
     const companyNameEl = document.getElementById("companyName");
     if (companyNameEl) {
-      companyNameEl.textContent = user.companyName || "Χωρίς Επωνυμία";
+      companyNameEl.textContent = user.companyName || user.username || "Χρήστης";
     }
   }
 

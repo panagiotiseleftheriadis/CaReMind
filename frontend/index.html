@@ -105,7 +105,6 @@
         <div class="fp-step" id="fpStepEmail">
           <p>Συμπληρώστε το email σας.</p>
           <div class="form-group">
-            <label for="fpEmail">Email:</label>
             <input type="email" id="fpEmail" placeholder="Διεύθυνση email" />
             <p id="fpEmailError" class="form-error"></p>
           </div>
@@ -116,13 +115,13 @@
         <div class="fp-step" id="fpStepCode" style="display: none">
           <p>Σας έχει σταλθεί ένας 6-ψήφιος κωδικός στο email σας.</p>
           <div class="form-group">
-            <label for="fpCode">Κωδικός:</label>
+            <label for="fpCode">Κωδικός Επιβεβαίωσης:</label>
             <input
               type="text"
               id="fpCode"
               inputmode="numeric"
               maxlength="6"
-              placeholder="000000"
+              
             />
           </div>
           <button class="btn-primary" id="fpVerifyCode">Επιβεβαίωση</button>
@@ -130,17 +129,15 @@
 
         <!-- Step 3: new password -->
         <div class="fp-step" id="fpStepReset" style="display: none">
-          <p>Συμπληρώστε τον νεό κωδικό.</p>
+          <p>Συμπληρώστε τον νεό σας κωδικό:</p>
           <div class="form-group">
-            <label for="fpNewPass">Νέος κωδικός:</label>
             <input type="password" id="fpNewPass" placeholder="Νέος κωδικός" />
           </div>
           <div class="form-group">
-            <label for="fpNewPass2">Επιβεβαίωση:</label>
             <input
               type="password"
               id="fpNewPass2"
-              placeholder="Επανάληψη νέου κωδικού"
+              placeholder="Επιβεβαίωση κωδικού"
             />
           </div>
           <button class="btn-primary" id="fpDoReset">Αλλαγή κωδικού</button>
