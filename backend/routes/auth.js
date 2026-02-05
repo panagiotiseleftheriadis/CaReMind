@@ -272,6 +272,7 @@ router.post("/register", async (req, res) => {
   const email = normalizeEmail(req.body?.email);
   const phone = String(req.body?.phone || req.body?.userNumber || "").trim();
   const companyName = String(req.body?.companyName || "").trim();
+  const account_type = req.body?.account_type || "individual";
   const password = String(req.body?.password || "");
   const fullName = String(req.body?.fullName || "").trim();
 
@@ -299,9 +300,11 @@ router.post("/register", async (req, res) => {
     }
 
     const [result] = await db.query(
-      `INSERT INTO users (username, password, full_name, email, role, company_id, user_number, is_active, email_verified)
-       VALUES (?, ?, ?, ?, 'user', ?, ?, 1, 0)`,
-      [username, passwordHash, fullName, email, companyId, phone]
+      // ✅ ΝΕΟ: Προσθέσαμε το account_type στη λίστα των πεδίων και ένα ? στο VALUES
+      `INSERT INTO users (username, password, full_name, email, role, company_id, user_number, account_type, is_active, email_verified)
+       VALUES (?, ?, ?, ?, 'user', ?, ?, ?, 1, 0)`,
+      // ✅ ΝΕΟ: Προσθέσαμε το account_type στη λίστα των τιμών (ανάμεσα σε phone και 1/0 που ήταν πριν hardcoded)
+      [username, passwordHash, fullName, email, companyId, phone, account_type]
     );
 
     await createAndSendVerificationCode({ id: result.insertId, username, email });

@@ -50,7 +50,10 @@ document.addEventListener('DOMContentLoaded', () => {
       const payload = {
         username: qs('newUsername').value.trim(),
         email: qs('userEmail').value.trim(),
-        companyName: qs('companyName') ? qs('companyName').value.trim() : '',
+        // ΝΕΟ: Στέλνουμε τον τύπο
+        account_type: qs('accountType').value, 
+        // Αν είναι ιδιώτης, στέλνουμε κενό string, αλλιώς το όνομα
+        companyName: qs('accountType').value === 'company' ? qs('companyName').value.trim() : '',
         phone: qs('userNumber') ? qs('userNumber').value.trim() : '',
         password: qs('newPassword').value,
       };
@@ -232,4 +235,20 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 });
-
+// Συνάρτηση για εμφάνιση/απόκρυψη πεδίου εταιρίας
+function toggleCompanyField() {
+  const type = document.getElementById("accountType").value;
+  const wrapper = document.getElementById("companyFieldWrapper");
+  const input = document.getElementById("companyName");
+  
+  if (type === "company") {
+    wrapper.style.display = "block";
+    input.setAttribute("required", "true"); // Το κάνουμε υποχρεωτικό αν είναι εταιρία
+  } else {
+    wrapper.style.display = "none";
+    input.value = ""; // Καθαρίζουμε αν το γύρισε σε ιδιώτη
+    input.removeAttribute("required");
+  }
+}
+// Καλό είναι να το τρέξουμε μία φορά στην αρχή για να είμαστε σίγουροι
+window.onload = toggleCompanyField;
