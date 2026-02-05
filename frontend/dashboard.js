@@ -28,12 +28,19 @@ class DashboardManager {
 
   /* ================== INIT ================== */
 
+ /* ================== INIT ================== */
+
   async init() {
     console.log("📊 DashboardManager initialized");
 
-    await this.loadDashboardData();
-    this.updateCompanyName(); // 🔥 ΠΡΟΣΤΕΘΗΚΕ ΕΔΩ
+    // 1. 🔥 ΑΛΛΑΓΗ: Φτιάχνουμε τα γραφήματα ΑΜΕΣΩΣ (έστω και κενά)
     this.setupCharts();
+
+    // 2. Μετά ζητάμε τα δεδομένα από τον server
+    await this.loadDashboardData();
+    
+    this.updateCompanyName();
+    // this.setupCharts(); // <-- ΑΥΤΟ ΤΟ ΣΒΗΝΕΙΣ ΑΠΟ ΕΔΩ (το βάλαμε πάνω)
     this.setupEventListeners();
     this.updateActivityFeed();
     this.updateNotifications();
@@ -117,6 +124,7 @@ class DashboardManager {
 
     this.updateStats(vehicles, maintenance, costs);
     this.updateActivityFeed();
+    this.updateCharts(vehicles, maintenance, costs);
   }
 
   normalizeList(data, key) {
