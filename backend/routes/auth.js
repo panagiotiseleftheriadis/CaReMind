@@ -11,12 +11,11 @@ const sendMail = require("../emailService");
 // --- CONFIGURATION ---
 const COOKIE_OPTIONS = {
   httpOnly: true,
-  // Αφού το backend είναι στο Render (HTTPS), το secure ΠΡΕΠΕΙ να είναι true
-  secure: true, 
-  // Αφού front (car-remind.gr) και back (onrender.com) είναι διαφορετικά, ΠΡΕΠΕΙ να είναι None
-  sameSite: "None", 
-  path: "/api", // Το cookie ισχύει μόνο για routes που ξεκινάνε με /api
-  maxAge: 30 * 24 * 60 * 60 * 1000, // 30 ημέρες
+  secure: true,
+  sameSite: "Lax",          // ✅ ΑΛΛΑΓΗ: Το "Lax" είναι φιλικό για τα iPhones όταν έχουμε ίδιο domain
+  domain: ".car-remind.gr", // ✅ ΑΛΛΑΓΗ: Λέμε ότι το cookie είναι για όλη την οικογένεια του car-remind.gr
+  path: "/api",
+  maxAge: 30 * 24 * 60 * 60 * 1000,
 };
 
 // --- HELPER FUNCTIONS ---
@@ -158,9 +157,9 @@ router.post("/login", async (req, res) => {
     // -------------------------------------------------------------------------
     
     // Max-Age=2592000 είναι 30 ημέρες σε δευτερόλεπτα
-    const cookieString = `refreshToken=${refreshToken}; Path=/api; Max-Age=2592000; HttpOnly; Secure; SameSite=None`;
-    
-    res.setHeader('Set-Cookie', cookieString);
+    const cookieString = `refreshToken=${refreshToken}; Path=/api; Max-Age=2592000; HttpOnly; Secure; SameSite=Lax; Domain=.car-remind.gr`;
+
+res.setHeader('Set-Cookie', cookieString);
     
     console.log("✅ Manual Cookie Header Set:", cookieString);
 

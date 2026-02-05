@@ -3,7 +3,7 @@
 class API {
   constructor() {
     // Βεβαιώσου ότι αυτό είναι το σωστό URL του backend σου
-    this.baseURL = "https://caremind-bzv3.onrender.com/api"; 
+    this.baseURL = "https://api.car-remind.gr/api";
     
     // Το token αποθηκεύεται ΜΟΝΟ στη μνήμη (RAM), όχι στο localStorage
     this.accessToken = null; 
