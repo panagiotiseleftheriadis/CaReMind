@@ -374,13 +374,23 @@ class DashboardManager {
   }
 
   // Επιστρέφει ISO string από το πρώτο διαθέσιμο πεδίο (createdAt, created_at, κ.λπ.)
+// Επιστρέφει ISO string από το πρώτο διαθέσιμο πεδίο
   resolveTimestamp(obj, candidates) {
+    if (!obj) return null;
+    
+    // Πρώτα ψάχνουμε τα candidates που δώσαμε
     for (const key of candidates) {
-      if (obj && Object.prototype.hasOwnProperty.call(obj, key)) {
+      if (Object.prototype.hasOwnProperty.call(obj, key)) {
         const d = this.toDate(obj[key]);
         if (d) return d.toISOString();
       }
     }
+    
+    // Fallback: Αν δεν βρέθηκε στα candidates, ψάχνουμε τα κλασικά πεδία της βάσης
+    // Πολλές φορές το API επιστρέφει created_at ή createdAt
+    if (obj.created_at) return this.toDate(obj.created_at)?.toISOString();
+    if (obj.createdAt) return this.toDate(obj.createdAt)?.toISOString();
+    
     return null;
   }
 
@@ -406,74 +416,59 @@ class DashboardManager {
 
     const allActivities = [];
 
-    // ✅ Συντηρήσεις (ΗΜΕΡΟΜΗΝΙΑ ΚΑΤΑΧΩΡΗΣΗΣ ΜΟΝΟ)
+    // --- 1. ΣΥΝΤΗΡΗΣΕΙΣ ---
     maintenance.forEach((item) => {
       const vehicle = vehicles.find((v) => v.id === item.vehicleId);
-      if (!vehicle) return;
-
+      // Χρησιμοποιούμε το created_at (πότε καταχωρήθηκε)
+      const time = item.created_at || item.createdAt || item.date || new Date(); 
+      
       allActivities.push({
         type: "maintenance",
         message: `Συντήρηση ${this.getMaintenanceTypeLabel(
           item.maintenanceType
-        )} για ${vehicle.vehicleType} ${vehicle.model || ""}`.trim(),
-        // ✅ ΜΟΝΟ καταχώρηση, όχι ημερομηνία εργασίας
-        time: this.resolveTimestamp(item, [
-          "createdAt",
-          "created_at",
-          "createdOn",
-          "created",
-          "timestamp",
-        ]),
+        )} ${vehicle ? `για ${vehicle.vehicleType} ${vehicle.model || ""}` : ""}`.trim(),
+        time: time, 
       });
     });
 
-    // ✅ Κόστη (ΗΜΕΡΟΜΗΝΙΑ ΚΑΤΑΧΩΡΗΣΗΣ ΜΟΝΟ)
+    // --- 2. ΚΟΣΤΗ ---
     costs.forEach((cost) => {
       const vehicle = vehicles.find((v) => v.id === cost.vehicleId);
-      if (!vehicle) return;
+      // Χρησιμοποιούμε το created_at (πότε καταχωρήθηκε)
+      const time = cost.created_at || cost.createdAt || cost.date || new Date();
 
       allActivities.push({
         type: "cost",
-        message: `Κόστος €${(Number(cost.amount) || 0).toFixed(2)} για ${
+        message: `Κόστος €${(Number(cost.amount) || 0).toFixed(2)} ${vehicle ? `για ${
           vehicle.vehicleType
-        } ${vehicle.model || ""}`.trim(),
-        // ✅ ΜΟΝΟ καταχώρηση, όχι ημερομηνία κόστους
-        time: this.resolveTimestamp(cost, [
-          "createdAt",
-          "created_at",
-          "createdOn",
-          "created",
-          "timestamp",
-        ]),
+        } ${vehicle.model || ""}` : ""}`.trim(),
+        time: time,
       });
     });
 
-    // ✅ Οχήματα (ΗΜΕΡΟΜΗΝΙΑ ΚΑΤΑΧΩΡΗΣΗΣ ΜΟΝΟ)
+    // --- 3. ΟΧΗΜΑΤΑ ---
     vehicles.forEach((vehicle) => {
+      // Χρησιμοποιούμε το created_at
+      const time = vehicle.created_at || vehicle.createdAt || new Date();
+
       allActivities.push({
         type: "vehicle",
         message: `Προστέθηκε νέο όχημα: ${vehicle.vehicleType} ${
           vehicle.model || ""
         }`.trim(),
-        time: this.resolveTimestamp(vehicle, [
-          "createdAt",
-          "created_at",
-          "createdOn",
-          "created",
-          "timestamp",
-        ]),
+        time: time,
       });
     });
 
-    // Ταξινόμηση: πιο πρόσφατα πρώτα.
-    // Όσα ΔΕΝ έχουν ημερομηνία πάνε στο τέλος.
+    // --- ΤΑΞΙΝΟΜΗΣΗ (Πιο πρόσφατα πάνω) ---
     allActivities.sort((a, b) => {
-      const ta = this.toDate(a.time)?.getTime() ?? -Infinity;
-      const tb = this.toDate(b.time)?.getTime() ?? -Infinity;
-      return tb - ta;
+      const dateA = new Date(a.time).getTime();
+      const dateB = new Date(b.time).getTime();
+      return dateB - dateA; // Φθίνουσα σειρά
     });
 
-    const recentActivities = allActivities.slice(0, 5);
+    // Παίρνουμε τα 5-6 πιο πρόσφατα
+    const recentActivities = allActivities.slice(0, 6);
 
     if (!recentActivities.length) {
       activityList.innerHTML = `
@@ -487,20 +482,26 @@ class DashboardManager {
       return;
     }
 
+    // --- ΕΜΦΑΝΙΣΗ ---
     activityList.innerHTML = recentActivities
-      .map(
-        (activity) => `
+      .map((activity) => {
+         // Μορφοποίηση ημερομηνίας: "5 Φεβ 2024, 14:30"
+         const dateObj = new Date(activity.time);
+         const dateStr = dateObj.toLocaleDateString("el-GR", { day: 'numeric', month: 'short', year: 'numeric' });
+         const timeStr = dateObj.toLocaleTimeString("el-GR", { hour: '2-digit', minute: '2-digit' });
+
+         return `
         <div class="activity-item">
           <div class="activity-content">
             <div class="activity-message">${activity.message}</div>
-            <div class="activity-time">${this.formatTime(activity.time)}</div>
+            <div class="activity-time">${dateStr}, ${timeStr}</div>
           </div>
           <span class="activity-type ${activity.type}">
             ${this.getActivityTypeLabel(activity.type)}
           </span>
         </div>
-      `
-      )
+      `;
+      })
       .join("");
   }
 
