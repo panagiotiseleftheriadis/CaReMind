@@ -35,14 +35,15 @@ class API {
 
   /* ------------ Βασική μέθοδος request (ΔΙΟΡΘΩΜΕΝΗ) ------------ */
 
+ /* ------------ Βασική μέθοδος request (ΔΙΟΡΘΩΜΕΝΗ) ------------ */
+
   async request(endpoint, options = {}, isRetry = false) {
     const url = `${this.baseURL}${endpoint}`;
     
-    // 🔥 ΕΔΩ ΗΤΑΝ ΤΟ ΛΑΘΟΣ ΣΟΥ: Λείπει το credentials: "include"
     const config = {
       method: options.method || "GET",
       headers: this.getHeaders(),
-      credentials: "include", // ✅ ΑΠΑΡΑΙΤΗΤΟ ΓΙΑ ΝΑ ΔΕΧΤΕΙ ΤΟ COOKIE O BROWSER
+      credentials: "include", 
     };
 
     if (options.body) {
@@ -52,8 +53,10 @@ class API {
     try {
       let response = await fetch(url, config);
 
-      // --- ΛΟΓΙΚΗ AUTO-REFRESH (Που έλειπε από το αρχείο σου) ---
-      if (response.status === 401 && !isRetry) {
+      // --- ΛΟΓΙΚΗ AUTO-REFRESH ---
+      // 🔥 Η ΑΛΛΑΓΗ: Προσθέσαμε το && endpoint !== "/login"
+      // Έτσι, αν κάνεις login και βάλεις λάθος κωδικό, δεν θα προσπαθήσει να κάνει refresh.
+      if (response.status === 401 && !isRetry && endpoint !== "/login") {
         try {
           console.log("🔄 Token expired. Attempting refresh...");
           await this.refreshToken();
@@ -66,7 +69,6 @@ class API {
           this.accessToken = null;
           localStorage.removeItem("currentUser");
           
-          // Redirect στο login αν δεν είμαστε ήδη εκεί
           const isAuthPage = window.location.pathname.endsWith("index.html") || 
                              window.location.pathname.endsWith("login.html") ||
                              window.location.pathname.endsWith("register.html");
