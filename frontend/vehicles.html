@@ -7,7 +7,8 @@
     <link rel="icon" type="image/png" href="/favicon.png" />
     <!-- 🔒 Route protection: if not logged in, redirect to login.html -->
     <script src="auth-guard.js"></script>
-
+    
+    <link rel="stylesheet" href="styles.css" />
     <link rel="stylesheet" href="vehicles.css" />
   </head>
   <body>
@@ -371,27 +372,105 @@
     <script src="api.js"></script>
     <script src="vehicles.js"></script>
   </body>
-  <footer class="footer">
-    <div class="footer-divider"></div>
-
-    <div class="footer-content">
-      <div class="footer-left">
-        <h3>Panagiotis Eleftheriadis</h3>
-        <p>Applied Informatics • Web & Software Development</p>
-      </div>
-
-      <div class="footer-center">
-        <a href="#top">Back to top ↑</a>
-      </div>
-
-      <div class="footer-right">
+    <footer class="site-footer">
+  <div class="footer-container">
+    <div class="footer-top">
+      <div class="footer-brand">
+        <img src="logo.svg" alt="CaReMind Logo" class="footer-logo" />
         <p>
-          © <span id="year"></span><br />
-          All rights reserved
+          Ολοκληρωμένο σύστημα διαχείρισης στόλου οχημάτων, εξόδων και συντήρησης.
         </p>
+        <div class="developer-info">
+          <span>Developed by</span>
+          <strong>Panagiotis Eleftheriadis</strong>
+        </div>
+      </div>
+
+      <div class="footer-links">
+        <h4 class="footer-heading accordion-trigger">
+          Πλοήγηση 
+        </h4>
+        <ul class="footer-list">
+          <li><a href="dashboard.html">Πίνακας Ελέγχου</a></li>
+          <li><a href="vehicles.html">Οχήματα</a></li>
+          <li><a href="maintenance.html">Συντήρηση</a></li>
+          <li><a href="costs.html">Κόστη</a></li>
+          <li><a href="account.html">Λογαριασμός</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-contact">
+        <h4 class="footer-heading accordion-trigger">
+          Επικοινωνία 
+        </h4>
+        <ul class="footer-list">
+          <li>
+            <a href="mailto:panagiotis.eleftheriadis17@gmail.com" class="contact-link">
+              <img src="assets/gmail.png" alt="Gmail" class="contact-icon" />
+              <span>panagiotis.eleftheriadis17@gmail.com</span>
+            </a>
+          </li>
+          
+          <li>
+            <a href="https://www.linkedin.com/in/panagiotis-eleftheriadis-543008370/" target="_blank" class="contact-link">
+              <img src="assets/linkedin.png" alt="LinkedIn" class="contact-icon" />
+              <span>LinkedIn Profile</span>
+            </a>
+          </li>
+          
+          <li>
+            <a href="https://github.com/panagiotiseleftheriadis" target="_blank" class="contact-link">
+              <img src="assets/github.png" alt="GitHub" class="contact-icon" />
+              <span>GitHub Profile</span>
+            </a>
+          </li>
+        </ul>
       </div>
     </div>
-  </footer>
+
+    <div class="footer-divider"></div>
+
+    <div class="footer-bottom">
+  <p>&copy; <span id="year"></span> CaReMind Systems. All rights reserved.</p>
+  
+  <a href="#top" class="back-to-top" aria-label="Επιστροφή στην κορυφή">
+    <img src="assets/up-arrow.png" alt="Up" />
+  </a>
+</div>
+  </div>
+</footer>
+<script>
+  // 1. Dynamic Year
+  document.getElementById("year").textContent = new Date().getFullYear();
+
+  // 2. Footer Accordion Logic (Mobile Only)
+  document.addEventListener("DOMContentLoaded", function () {
+    const triggers = document.querySelectorAll(".accordion-trigger");
+
+    triggers.forEach((trigger) => {
+      trigger.addEventListener("click", function () {
+        // Αν είμαστε σε οθόνη > 768px (Desktop), μην κάνεις τίποτα
+        if (window.innerWidth > 768) return;
+
+        // Βρίσκουμε την επόμενη λίστα (ul) μετά τον τίτλο
+        const list = this.nextElementSibling;
+
+        // Toggle classes
+        this.classList.toggle("active");
+        
+        if (list.style.maxHeight) {
+           // Αν είναι ανοιχτό, κλείσ' το
+           list.style.maxHeight = null;
+           list.classList.remove("open");
+        } else {
+           // Αν είναι κλειστό, άνοιξέ το
+           list.classList.add("open");
+           list.style.maxHeight = list.scrollHeight + "px";
+        }
+      });
+    });
+  });
+</script>
 
   <script>
     document.getElementById("year").textContent = new Date().getFullYear();
