@@ -353,7 +353,6 @@ body.nav-open .nav-toggle span:nth-child(3) {
 .stat-card:hover,
 .feature-card:hover,
 .chart-container:hover {
-  transform: translateY(-4px);
   box-shadow: var(--shadow-xl);
 }
 
@@ -537,10 +536,7 @@ body.nav-open .nav-toggle span:nth-child(3) {
   transition: all var(--transition-normal);
 }
 
-.maintenance-item:hover {
-  transform: translateX(4px);
-  box-shadow: var(--shadow-lg);
-}
+
 
 .maintenance-item.overdue {
   border-left-color: var(--danger-color);
@@ -1281,8 +1277,8 @@ tr.row-fade-out {
   
   /* Στο κινητό το κουμπί παραμένει στρογγυλό και κεντραρισμένο */
   .back-to-top {
-    width: 42px;  /* Λίγο μεγαλύτερο για πιο εύκολο πάτημα με δάχτυλο */
-    height: 45px;
+    width: 44px;  /* Λίγο μεγαλύτερο για πιο εύκολο πάτημα με δάχτυλο */
+    height: 44px;
   }
   
   .back-to-top img {
