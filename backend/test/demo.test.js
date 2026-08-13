@@ -11,14 +11,24 @@ function createDemoApi() {
     setItem: (key, value) => values.set(key, String(value)),
     removeItem: (key) => values.delete(key),
   };
-  const window = { location: { reload() {} } };
+  const window = {
+    location: {
+      hostname: "localhost",
+      pathname: "/index.html",
+      reload() {},
+    },
+  };
   const document = { addEventListener() {} };
-  const source = fs.readFileSync(
+  const demoSource = fs.readFileSync(
     path.join(__dirname, "..", "..", "frontend", "demo-store.js"),
     "utf8"
   );
+  const apiSource = fs.readFileSync(
+    path.join(__dirname, "..", "..", "frontend", "api.js"),
+    "utf8"
+  );
 
-  vm.runInNewContext(source, {
+  const context = {
     window,
     document,
     localStorage,
@@ -29,10 +39,24 @@ function createDemoApi() {
     Number,
     String,
     Error,
-  });
+  };
 
-  return { api: window.CaReMindDemo, localStorage };
+  vm.runInNewContext(demoSource, context);
+  vm.runInNewContext(apiSource, context);
+
+  return { api: window.CaReMindDemo, client: window.api, localStorage };
 }
+
+test("demo session refresh sets the API token used by protected pages", async () => {
+  const { api, client } = createDemoApi();
+  api.start();
+
+  const response = await client.refreshToken();
+
+  assert.equal(response.accessToken, "demo-access-token");
+  assert.equal(client.getToken(), "demo-access-token");
+  assert.equal(client.getHeaders().Authorization, "Bearer demo-access-token");
+});
 
 test("portfolio demo starts without backend and persists a complete vehicle flow", async () => {
   const { api, localStorage } = createDemoApi();

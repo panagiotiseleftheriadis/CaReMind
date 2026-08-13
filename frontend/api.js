@@ -14,7 +14,10 @@ class API {
       : "https://api.car-remind.gr/api"; 
 
     this.accessToken = null;
-    
+  }
+
+  setToken(token) {
+    this.accessToken = token;
   }
 
   getToken() {
