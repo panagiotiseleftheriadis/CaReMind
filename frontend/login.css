@@ -13,6 +13,257 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow-x: hidden;
+}
+
+/* Branded opening sequence */
+.intro-screen {
+  display: none;
+}
+
+.js .intro-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  color: #fff;
+  background:
+    radial-gradient(circle at 50% 44%, rgba(52, 103, 116, 0.48), transparent 34%),
+    linear-gradient(145deg, #0a1b21 0%, #122d35 48%, #173b45 100%);
+  cursor: pointer;
+  isolation: isolate;
+  transition:
+    clip-path 0.78s cubic-bezier(0.76, 0, 0.24, 1),
+    visibility 0s linear 0.78s;
+  clip-path: inset(0 0 0 0);
+}
+
+.js .intro-screen::before,
+.js .intro-screen::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  left: -10%;
+  width: 120%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 124, 126, 0.62), transparent);
+  transform: rotate(-8deg) scaleX(0);
+  animation: intro-road-line 1.05s 0.15s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.js .intro-screen::before {
+  top: 24%;
+}
+
+.js .intro-screen::after {
+  bottom: 21%;
+  animation-delay: 0.28s;
+}
+
+.intro-grid {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  opacity: 0.12;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.13) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.13) 1px, transparent 1px);
+  background-size: 72px 72px;
+  mask-image: radial-gradient(circle at center, #000 0%, transparent 72%);
+  animation: intro-grid-drift 3.6s linear infinite;
+}
+
+.intro-glow {
+  position: absolute;
+  z-index: -1;
+  width: min(48vw, 620px);
+  aspect-ratio: 1;
+  border: 1px solid rgba(255, 119, 119, 0.12);
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 48px rgba(255, 119, 119, 0.025),
+    0 0 0 96px rgba(255, 119, 119, 0.018);
+  animation: intro-orbit 5s ease-in-out infinite alternate;
+}
+
+.intro-glow-left {
+  left: -18vw;
+  bottom: -28vw;
+}
+
+.intro-glow-right {
+  top: -29vw;
+  right: -17vw;
+  animation-delay: -2.2s;
+}
+
+.intro-brand {
+  width: min(78vw, 390px);
+  text-align: center;
+  transform: translateY(-2vh);
+}
+
+.intro-car {
+  width: min(53vw, 240px);
+  margin: 0 auto 9px;
+  color: #ff7779;
+}
+
+.intro-car svg {
+  display: block;
+  width: 100%;
+  overflow: visible;
+  filter: drop-shadow(0 0 12px rgba(255, 105, 109, 0.3));
+}
+
+.intro-car-line,
+.intro-wheel {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 360;
+  stroke-dashoffset: 360;
+  animation: intro-draw 1.08s 0.12s cubic-bezier(0.65, 0, 0.35, 1) forwards;
+}
+
+.intro-car-line-delayed {
+  animation-delay: 0.28s;
+}
+
+.intro-wheel {
+  stroke-width: 2.8;
+  animation-delay: 0.48s;
+}
+
+.intro-logo {
+  display: block;
+  width: min(68vw, 270px);
+  height: auto;
+  margin: 0 auto;
+  opacity: 0;
+  filter: drop-shadow(0 12px 28px rgba(0, 0, 0, 0.34));
+  mix-blend-mode: screen;
+  transform: translateY(14px) scale(0.96);
+  animation: intro-reveal 0.62s 0.72s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.intro-tagline {
+  margin-top: 7px;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  opacity: 0;
+  transform: translateY(8px);
+  animation: intro-reveal 0.55s 0.94s ease forwards;
+}
+
+.intro-progress {
+  width: 92px;
+  height: 2px;
+  margin: 27px auto 0;
+  overflow: hidden;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.12);
+  opacity: 0;
+  animation: intro-opacity 0.3s 1.02s ease forwards;
+}
+
+.intro-progress span {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #ff6d70, #ff9a84);
+  box-shadow: 0 0 12px rgba(255, 109, 112, 0.7);
+  transform: scaleX(0);
+  transform-origin: left;
+  animation: intro-progress 0.86s 1.05s cubic-bezier(0.65, 0, 0.35, 1) forwards;
+}
+
+.intro-skip {
+  position: absolute;
+  bottom: max(26px, env(safe-area-inset-bottom));
+  left: 50%;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  opacity: 0;
+  transform: translateX(-50%);
+  animation: intro-opacity 0.4s 1.25s ease forwards;
+}
+
+.js .login-body.is-intro .login-container {
+  opacity: 0;
+  pointer-events: none;
+  filter: blur(8px);
+  transform: translateY(18px) scale(0.985);
+}
+
+.js .login-container {
+  transition:
+    opacity 0.55s 0.15s ease,
+    transform 0.65s 0.12s cubic-bezier(0.22, 1, 0.36, 1),
+    filter 0.55s 0.12s ease;
+}
+
+.js .login-body.intro-complete .intro-screen {
+  visibility: hidden;
+  clip-path: inset(0 0 100% 0);
+}
+
+.js .login-body.intro-complete .login-container {
+  opacity: 1;
+  filter: none;
+  transform: none;
+}
+
+@keyframes intro-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes intro-reveal {
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes intro-opacity {
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes intro-progress {
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes intro-road-line {
+  to {
+    transform: rotate(-8deg) scaleX(1);
+  }
+}
+
+@keyframes intro-grid-drift {
+  to {
+    background-position: 72px 72px;
+  }
+}
+
+@keyframes intro-orbit {
+  to {
+    transform: translate3d(2vw, -2vw, 0) scale(1.06);
+  }
 }
 
 /* Container */
@@ -464,6 +715,15 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .intro-screen *,
+  .intro-screen::before,
+  .intro-screen::after,
+  .js .login-container {
+    animation: none !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0s !important;
+  }
+
   .btn-demo,
   .btn-demo::before,
   .demo-arrow {

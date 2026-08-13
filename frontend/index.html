@@ -5,6 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Σύνδεση - CarReminder</title>
     <link rel="icon" type="image/png" href="/favicon.png" />
+    <script>
+      document.documentElement.classList.add("js");
+      window.__caremindIntroFallback = window.setTimeout(function () {
+        if (!document.body) return;
+        document.body.classList.add("intro-complete");
+        document.body.classList.remove("is-intro");
+        window.setTimeout(function () {
+          document.getElementById("introScreen")?.remove();
+        }, 850);
+      }, 4000);
+    </script>
     <link rel="stylesheet" href="login.css" />
     <style>
       .admin-link {
@@ -23,7 +34,33 @@
       }
     </style>
   </head>
-  <body class="login-body">
+  <body class="login-body is-intro">
+    <div class="intro-screen" id="introScreen" aria-hidden="true">
+      <div class="intro-grid"></div>
+      <div class="intro-glow intro-glow-left"></div>
+      <div class="intro-glow intro-glow-right"></div>
+
+      <div class="intro-brand">
+        <div class="intro-car" aria-hidden="true">
+          <svg viewBox="0 0 220 82" role="presentation">
+            <path
+              class="intro-car-line"
+              d="M18 58h13l9-24c2-6 7-10 14-11l76-7c12-1 23 3 32 11l18 17 20 5c7 2 11 7 11 14v2h-13"
+            />
+            <path class="intro-car-line intro-car-line-delayed" d="M78 23 65 44h92l-23-27" />
+            <path class="intro-car-line" d="M62 65h90" />
+            <circle class="intro-wheel" cx="48" cy="63" r="13" />
+            <circle class="intro-wheel" cx="174" cy="63" r="13" />
+          </svg>
+        </div>
+        <img class="intro-logo" src="logo.svg" alt="" />
+        <p class="intro-tagline">Mind your car.</p>
+        <div class="intro-progress" aria-hidden="true"><span></span></div>
+      </div>
+
+      <p class="intro-skip">Πατήστε για παράλειψη</p>
+    </div>
+
     <div class="login-container">
       <div class="login-form">
         <div class="logo-wrapper">
@@ -97,6 +134,7 @@
       </div>
     </div>
 
+    <script src="intro.js"></script>
     <script src="demo-store.js"></script>
     <script src="api.js"></script>
     <script src="auth-guard.js"></script>
