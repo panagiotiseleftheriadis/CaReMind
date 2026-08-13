@@ -61,15 +61,25 @@ function normalizeEmail(v) {
   return String(v || "").trim().toLowerCase();
 }
 
-async function getOrCreateCompanyId(companyNameRaw) {
+function escapeHtml(value) {
+  return String(value ?? "").replace(/[&<>'"]/g, (character) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    "'": "&#39;",
+    '"': "&quot;",
+  })[character]);
+}
+
+async function getOrCreateCompanyId(companyNameRaw, executor = db) {
   const name = String(companyNameRaw || "").trim();
   if (!name) return null;
-  const [rows] = await db.query(
+  const [rows] = await executor.query(
     "SELECT id, name FROM companies WHERE LOWER(name) = LOWER(?) LIMIT 1",
     [name]
   );
   if (rows.length) return rows[0].id;
-  const [ins] = await db.query("INSERT INTO companies (name) VALUES (?)", [name]);
+  const [ins] = await executor.query("INSERT INTO companies (name) VALUES (?)", [name]);
   return ins.insertId;
 }
 
@@ -87,7 +97,7 @@ async function createAndSendVerificationCode(user) {
   const html = `
     <div style="font-family: Arial, sans-serif; line-height:1.5">
       <h2 style="margin:0 0 12px 0">Επιβεβαίωση email</h2>
-      <p>Γεια σας <b>${user.username || ""}</b>,</p>
+      <p>Γεια σας <b>${escapeHtml(user.username || "")}</b>,</p>
       <p>Ο κωδικός επιβεβαίωσης είναι:</p>
       <div style="font-size:28px; letter-spacing:6px; font-weight:700; padding:12px 16px; background:#f3f6f8; display:inline-block; border-radius:10px;">${code}</div>
       <p>Λήγει σε 5 λεπτά.</p>
@@ -290,7 +300,14 @@ router.post("/register", async (req, res) => {
   if (password.length < 8 || password.length > 128) {
     return res.status(400).json({ error: "Ο κωδικός πρέπει να έχει 8-128 χαρακτήρες" });
   }
+  if (!["individual", "business"].includes(account_type)) {
+    return res.status(400).json({ error: "Invalid account type" });
+  }
+  if (fullName.length > 100 || companyName.length > 100 || phone.length > 50) {
+    return res.status(400).json({ error: "Registration fields are too long" });
+  }
 
+  let connection;
   try {
     // Check duplicates
     const [dups] = await db.query(
@@ -304,13 +321,15 @@ router.post("/register", async (req, res) => {
     }
 
     const passwordHash = await bcrypt.hash(password, 12);
-    
+    connection = await db.getConnection();
+    await connection.beginTransaction();
+
     let companyId = null;
     if (companyName) {
-      companyId = await getOrCreateCompanyId(companyName);
+      companyId = await getOrCreateCompanyId(companyName, connection);
     }
 
-    const [result] = await db.query(
+    const [result] = await connection.query(
       // ✅ ΝΕΟ: Προσθέσαμε το account_type στη λίστα των πεδίων και ένα ? στο VALUES
       `INSERT INTO users (username, password, full_name, email, role, company_id, user_number, account_type, is_active, email_verified)
        VALUES (?, ?, ?, ?, 'user', ?, ?, ?, 1, 0)`,
@@ -318,12 +337,17 @@ router.post("/register", async (req, res) => {
       [username, passwordHash, fullName, email, companyId, phone, account_type]
     );
 
+    await connection.commit();
+
     await createAndSendVerificationCode({ id: result.insertId, username, email });
 
     res.json({ message: "Εγγραφή επιτυχής. Στάλθηκε κωδικός στο email.", email });
   } catch (err) {
+    if (connection) await connection.rollback().catch(() => {});
     console.error("Register error:", err);
     res.status(500).json({ error: "Σφάλμα εγγραφής" });
+  } finally {
+    connection?.release();
   }
 });
 
@@ -477,7 +501,6 @@ router.post("/reset-password", async (req, res) => {
 
     res.json({ message: "Password updated successfully" });
   } catch (err) {
-    console.error("Reset pass error:", err);
     if (
       err?.name === "JsonWebTokenError" ||
       err?.name === "TokenExpiredError" ||
@@ -486,6 +509,7 @@ router.post("/reset-password", async (req, res) => {
       return res.status(401).json({ error: "Invalid or expired token" });
     }
 
+    console.error("Reset pass error:", err);
     res.status(500).json({ error: "Server error" });
   }
 });

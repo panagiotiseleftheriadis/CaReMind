@@ -1,5 +1,7 @@
 // maintenance.js - Συνδεδεμένο με backend μέσω api.js
 
+const safeHtml = window.CaReMindUI.escapeHtml;
+
 class MaintenanceManager {
   constructor() {
     // API instance από το api.js
@@ -19,7 +21,6 @@ class MaintenanceManager {
   }
 
   async init() {
-    console.log("🔧 MaintenanceManager initialized (με backend)");
 
     // Φόρτωση οχημάτων & συντηρήσεων από backend ή fallback σε localStorage
     await this.loadInitialData();
@@ -30,11 +31,15 @@ class MaintenanceManager {
   }
 
   async loadInitialData() {
-    await this.fetchVehicles();
-    await this.fetchMaintenances();
-
-    this.loadVehicleFilter();
-    this.loadMaintenanceData();
+    window.CaReMindUI.setBusy(true, "Φόρτωση συντηρήσεων…");
+    try {
+      await this.fetchVehicles();
+      await this.fetchMaintenances();
+      this.loadVehicleFilter();
+      this.loadMaintenanceData();
+    } finally {
+      window.CaReMindUI.setBusy(false);
+    }
   }
 
   /* ================== BACKEND FETCHES ================== */
@@ -61,7 +66,6 @@ class MaintenanceManager {
       }
 
       this.vehicles = list;
-      console.log("🚗 Vehicles from backend (maintenance):", this.vehicles);
     } catch (error) {
       console.error("❌ Σφάλμα φόρτωσης vehicles από backend:", error);
       this.showNotification(
@@ -94,7 +98,6 @@ class MaintenanceManager {
       }
 
       this.maintenance = list;
-      console.log("🔧 Maintenance from backend:", this.maintenance);
     } catch (error) {
       console.error("❌ Σφάλμα φόρτωσης συντηρήσεων από backend:", error);
       this.showNotification(
@@ -469,12 +472,12 @@ class MaintenanceManager {
       maintenanceItem.innerHTML = `
                 <div class="maintenance-info">
                     <div class="maintenance-header">
-                        <span class="maintenance-type">${this.getMaintenanceTypeLabel(
-                          item.maintenanceType
+                        <span class="maintenance-type">${safeHtml(
+                          this.getMaintenanceTypeLabel(item.maintenanceType)
                         )}</span>
                         <span class="maintenance-vehicle">${
-                          vehicle.vehicleType
-                        } - ${vehicle.model} (${vehicle.chassisNumber})</span>
+                          safeHtml(vehicle.vehicleType)
+                        } - ${safeHtml(vehicle.model)} (${safeHtml(vehicle.chassisNumber)})</span>
                         <span class="status-badge status-${status}">${this.getStatusLabel(
         status
       )}</span>
@@ -494,7 +497,7 @@ class MaintenanceManager {
                     </div>
                     ${
                       item.notes
-                        ? `<div class="maintenance-notes">Σημειώσεις: ${item.notes}</div>`
+                        ? `<div class="maintenance-notes">Σημειώσεις: ${safeHtml(item.notes)}</div>`
                         : ""
                     }
                 </div>
@@ -556,10 +559,10 @@ class MaintenanceManager {
       upcomingItem.setAttribute("data-id", item.id);
       upcomingItem.innerHTML = `
                 <div class="upcoming-info">
-                    <strong>${this.getMaintenanceTypeLabel(
-                      item.maintenanceType
+                    <strong>${safeHtml(
+                      this.getMaintenanceTypeLabel(item.maintenanceType)
                     )}</strong> - 
-                    ${vehicle.vehicleType} ${vehicle.model}
+                    ${safeHtml(vehicle.vehicleType)} ${safeHtml(vehicle.model)}
                     <div class="upcoming-date">
                         Ημερομηνία λήξης: ${daysUntilDue} μέρες (${dueDate.toLocaleDateString(
         "el-GR"
@@ -577,35 +580,11 @@ class MaintenanceManager {
   }
 
   getStatusLabel(status) {
-    const labels = {
-      pending: "Σε εξέλιξη",
-      upcoming: "Επικείμενη",
-      overdue: "Καθυστερημένη",
-      completed: "Ολοκληρωμένη",
-    };
-    return labels[status] || status;
+    return window.CaReMindMaintenanceLabels.status(status);
   }
 
   getMaintenanceTypeLabel(type) {
-    const labels = {
-      oil: "Αλλαγή Λαδιών",
-      service: "Γενικό Service",
-      tires: "Αλλαγή Λάστιχων",
-      brakes: "Φρένα",
-      battery: "Μπαταρία",
-      filters: "Φίλτρα",
-      coolant: "Ψυκτικό Υγρό",
-      transmission: "Κιβώτιο Ταχυτήτων",
-      ac_service: "Service A/C",
-      spark_plugs: "Μπουζί",
-      timing_belt: "Ιμάντας Χρονισμού",
-      alignment: "Ευθυγράμμιση",
-      inspection: "Γενικός Έλεγχος",
-      insurance: "Ασφάλιση",
-      kteo: "ΚΤΕΟ",
-      other: "Άλλο",
-    };
-    return labels[type] || type;
+    return window.CaReMindMaintenanceLabels.type(type);
   }
 
   saveMaintenance() {
@@ -998,20 +977,7 @@ class MaintenanceManager {
   /* ================== MODAL ================== */
 
   showNotification(message, type = "info") {
-    const container = document.createElement("div");
-    container.className = `notification ${type}`;
-    container.innerHTML = `
-            <div class="notification-content">
-                <span class="notification-message">${message}</span>
-                <button class="notification-close" aria-label="Κλείσιμο">×</button>
-            </div>
-        `;
-    document.body.appendChild(container);
-
-    const closeBtn = container.querySelector(".notification-close");
-    closeBtn.addEventListener("click", () => container.remove());
-
-    setTimeout(() => container.remove(), 3000);
+    window.CaReMindUI.toast(message, type);
   }
 
   setupModalEvents() {
@@ -1085,10 +1051,6 @@ class MaintenanceManager {
       this.toggleMaintenanceFields();
       this.toggleOtherField();
 
-      console.log(
-        "🔧 Maintenance modal opened",
-        this.currentEditingId ? "(edit)" : "(new)"
-      );
     }
   }
 
@@ -1107,7 +1069,6 @@ class MaintenanceManager {
     // ✅ Άνοιξε το modal
     const modal = document.getElementById("maintenanceModal");
     if (!modal) {
-      console.log("❌ Modal not found");
       return;
     }
 
@@ -1115,7 +1076,6 @@ class MaintenanceManager {
 
     // ✅ Μετά γεμίστε τα πεδία - χρησιμοποιήστε setTimeout για να είστε σίγουροι
     setTimeout(() => {
-      console.log("📝 Filling edit form for ID:", maintenanceId);
 
       // Όχημα
       document.getElementById("maintenanceVehicle").value =
@@ -1221,15 +1181,12 @@ class MaintenanceManager {
 let maintenanceManager;
 
 function initializeMaintenanceManager() {
-  console.log("🔧 Initializing Maintenance Manager...");
   if (window.maintenanceManager) {
-    console.log("⚠️ Maintenance Manager already initialized");
     return;
   }
   try {
     maintenanceManager = new MaintenanceManager();
     window.maintenanceManager = maintenanceManager;
-    console.log("✅ Maintenance Manager initialized successfully");
   } catch (error) {
     console.error("❌ Error initializing Maintenance Manager:", error);
   }

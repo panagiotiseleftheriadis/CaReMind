@@ -6,11 +6,13 @@ const express = require("express");
 const crypto = require("crypto");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
+const { requirePositiveId } = require("../validation");
 const db = require("../db");
 const sendMail = require("../emailService");
 const { JWT_SECRET } = require("../middleware");
 
 const router = express.Router();
+router.param("id", requirePositiveId);
 const USERNAME_PATTERN = /^[\p{L}\p{N}._-]{3,50}$/u;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 

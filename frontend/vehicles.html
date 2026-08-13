@@ -11,6 +11,8 @@
     
     <link rel="stylesheet" href="styles.css" />
     <link rel="stylesheet" href="vehicles.css" />
+    <link rel="stylesheet" href="ui.css" />
+    <script src="ui.js"></script>
   </head>
   <body>
     <div class="container">
@@ -42,7 +44,7 @@
       <main>
         <div class="page-header">
           <h2>Οχήματα Εταιρείας</h2>
-          <button class="btn-primary" onclick="showAddVehicleForm()">
+          <button type="button" class="btn-primary" onclick="showAddVehicleForm()">
             + Προσθήκη Νέου Οχήματος
           </button>
         </div>
@@ -100,7 +102,7 @@
                 </div>
                 <div class="form-group">
                   <label for="year">Έτος</label>
-                  <input type="number" id="year" min="1990" max="2024" />
+                  <input type="number" id="year" min="1886" />
                 </div>
               </div>
 
@@ -124,60 +126,6 @@
           </div>
         </div>
 
-        <!-- Φόρμα Επεξεργασίας Οχήματος -->
-        <!-- <div id="editVehicleModal" class="modal" style="display: none">
-          <div class="modal-content">
-            <span class="close" onclick="closeEditVehicleModal()">&times;</span>
-            <h3>Επεξεργασία Οχήματος</h3>
-            <form id="editVehicleForm">
-              <input type="hidden" id="editVehicleId" />
-
-              <div class="form-section">
-                <h4>Βασικές Πληροφορίες</h4>
-                <div class="form-row">
-                  <div class="form-group">
-                    <label for="editChassisNumber">Αριθμός Πλαισίου *</label>
-                    <input type="text" id="editChassisNumber" required />
-                  </div>
-                  <div class="form-group">
-                    <label for="editVehicleType">Τύπος Οχήματος *</label>
-
-                    <input type="text" id="editVehicleType" required />
-                  </div>
-                </div>
-
-                <div class="form-row">
-                  <div class="form-group">
-                    <label for="editModel">Μοντέλο</label>
-                    <input type="text" id="editModel" />
-                  </div>
-                  <div class="form-group">
-                    <label for="editYear">Έτος</label>
-                    <input type="number" id="editYear" min="1990" max="2024" />
-                  </div>
-                </div>
-
-                <div class="form-group">
-                  <label for="editCurrentMileage">Τρέχοντα Χιλιόμετρα</label>
-                  <input type="number" id="editCurrentMileage" value="0" />
-                </div>
-              </div>
-
-              <div class="form-actions">
-                <button
-                  type="button"
-                  class="btn-secondary"
-                  onclick="closeEditVehicleModal()"
-                >
-                  Ακύρωση
-                </button>
-                <button type="submit" class="btn-primary">
-                  Αποθήκευση Αλλαγών
-                </button>
-              </div>
-            </form>
-          </div>
-        </div> -->
         <!-- EDIT VEHICLE MODAL -->
         <div id="editVehicleModal" class="modal">
           <div class="modal-content large">
@@ -231,7 +179,7 @@
 
                 <div class="form-group">
                   <label for="editYear">Έτος</label>
-                  <input type="number" id="editYear" min="1900" max="2100" />
+                  <input type="number" id="editYear" min="1886" />
                 </div>
               </div>
 
@@ -314,14 +262,6 @@
         if (editSelect && editOther) {
           editSelect.addEventListener("change", toggleEditOther);
         }
-        const navToggle = document.querySelector(".nav-toggle");
-
-        if (navToggle) {
-          navToggle.addEventListener("click", function () {
-            document.body.classList.toggle("nav-open");
-          });
-        }
-
         /* ================================
            Mobile cards (όπως costs)
            - προσθέτει data-label στα <td>
@@ -372,7 +312,6 @@
 
     <script src="api.js"></script>
     <script src="vehicles.js"></script>
-  </body>
     <footer class="site-footer">
   <div class="footer-container">
     <div class="footer-top">
@@ -432,7 +371,7 @@
     <div class="footer-divider"></div>
 
     <div class="footer-bottom">
-  <p>&copy; <span id="year"></span> CaReMind Systems. All rights reserved.</p>
+  <p>&copy; <span id="footerYear"></span> CaReMind Systems. All rights reserved.</p>
   
   <a href="#top" class="back-to-top" aria-label="Επιστροφή στην κορυφή">
     <img src="assets/up-arrow.png" alt="Up" />
@@ -442,7 +381,7 @@
 </footer>
 <script>
   // 1. Dynamic Year
-  document.getElementById("year").textContent = new Date().getFullYear();
+  document.getElementById("footerYear").textContent = new Date().getFullYear();
 
   // 2. Footer Accordion Logic (Mobile Only)
   document.addEventListener("DOMContentLoaded", function () {
@@ -473,7 +412,5 @@
   });
 </script>
 
-  <script>
-    document.getElementById("year").textContent = new Date().getFullYear();
-  </script>
+</body>
 </html>

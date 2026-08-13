@@ -15,13 +15,6 @@ class API {
 
     this.accessToken = null;
     
-    console.log("🔗 API Base URL set to:", this.baseURL); // Για να βλέπεις πού συνδέεται
-  }
-
-  /* ------------ Token helpers ------------ */
-
-  setToken(token) {
-    this.accessToken = token;
   }
 
   getToken() {
@@ -72,7 +65,6 @@ class API {
       // Έτσι, αν κάνεις login και βάλεις λάθος κωδικό, δεν θα προσπαθήσει να κάνει refresh.
       if (response.status === 401 && !isRetry && endpoint !== "/login") {
         try {
-          console.log("🔄 Token expired. Attempting refresh...");
           await this.refreshToken();
           
           // Ξαναδοκιμάζουμε με το νέο token

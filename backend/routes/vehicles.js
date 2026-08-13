@@ -2,6 +2,9 @@
 const express = require("express");
 const router = express.Router();
 const db = require("../db");
+const { requirePositiveId } = require("../validation");
+
+router.param("id", requirePositiveId);
 
 function validateVehicleInput({ vehicleType, chassisNumber, model, year, currentMileage }) {
   if (!vehicleType || !chassisNumber) {
@@ -27,7 +30,6 @@ function validateVehicleInput({ vehicleType, chassisNumber, model, year, current
   return null;
 }
 
-// GET /api/vehicles
 // GET /api/vehicles
 router.get("/", async (req, res) => {
   try {

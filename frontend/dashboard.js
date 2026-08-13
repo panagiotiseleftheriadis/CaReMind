@@ -1,5 +1,7 @@
 // dashboard.js - Συνδεδεμένο με backend μέσω api.js
 
+const safeDashboardHtml = window.CaReMindUI.escapeHtml;
+
 class DashboardManager {
   constructor() {
     // API instance από το api.js (αν έχει φορτωθεί)
@@ -31,7 +33,6 @@ class DashboardManager {
  /* ================== INIT ================== */
 
   async init() {
-    console.log("📊 DashboardManager initialized");
 
     // 1. 🔥 ΑΛΛΑΓΗ: Φτιάχνουμε τα γραφήματα ΑΜΕΣΩΣ (έστω και κενά)
     this.setupCharts();
@@ -64,9 +65,11 @@ class DashboardManager {
   /* ================== DATA LOADING ================== */
 
   async loadDashboardData() {
+    window.CaReMindUI.setBusy(true, "Ενημέρωση πίνακα ελέγχου…");
     const user = JSON.parse(localStorage.getItem("currentUser"));
     if (!user) {
       console.warn("❌ Δεν βρέθηκε currentUser στο localStorage");
+      window.CaReMindUI.setBusy(false);
       return;
     }
 
@@ -76,7 +79,6 @@ class DashboardManager {
 
     try {
       if (this.api) {
-        console.log("🔗 Φόρτωση δεδομένων dashboard από backend...");
 
         const [vehiclesRes, maintenanceRes, costsRes] = await Promise.all([
           this.api.getVehicles(),
@@ -125,6 +127,7 @@ class DashboardManager {
     this.updateStats(vehicles, maintenance, costs);
     this.updateActivityFeed();
     this.updateCharts(vehicles, maintenance, costs);
+    window.CaReMindUI.setBusy(false);
   }
 
   normalizeList(data, key) {
@@ -192,12 +195,6 @@ class DashboardManager {
     const overdueEl = document.getElementById("overdueMaintenance");
     if (overdueEl) overdueEl.textContent = overdueMaintenance;
 
-    console.log("📊 Stats updated", {
-      vehicles: vehicles.length,
-      pendingMaintenance,
-      monthlyCosts,
-      overdueMaintenance,
-    });
   }
 
   /* ================== CHARTS ================== */
@@ -301,7 +298,6 @@ class DashboardManager {
       this.charts.maintenanceChart.update("none");
     }
 
-    console.log("📈 Charts updated");
   }
 
   getCostsByCategory(costs) {
@@ -501,7 +497,7 @@ class DashboardManager {
          return `
         <div class="activity-item">
           <div class="activity-content">
-            <div class="activity-message">${activity.message}</div>
+            <div class="activity-message">${safeDashboardHtml(activity.message)}</div>
             <div class="activity-time">${dateStr}, ${timeStr}</div>
           </div>
           <span class="activity-type ${activity.type}">
@@ -607,12 +603,12 @@ class DashboardManager {
         <div class="notification-modal-item ${
           notification.read ? "read" : "unread"
         }">
-          <div class="notification-priority ${notification.priority}"></div>
+          <div class="notification-priority ${safeDashboardHtml(notification.priority)}"></div>
           <div class="notification-content">
-            <div class="notification-message">${notification.message}</div>
+            <div class="notification-message">${safeDashboardHtml(notification.message)}</div>
             <div class="notification-details">
               <span class="notification-type">${
-                notification.maintenanceType || ""
+                safeDashboardHtml(notification.maintenanceType || "")
               }</span>
               <span class="notification-time">${this.formatTime(
                 notification.timestamp
@@ -621,7 +617,7 @@ class DashboardManager {
           </div>
           ${
             !notification.read
-              ? `<button class="mark-read-btn" onclick="markNotificationAsRead(${notification.id})">
+              ? `<button class="mark-read-btn" onclick="markNotificationAsRead(${Number(notification.id)})">
                     Σημείωση ως αναγνωσμένη
                  </button>`
               : ""
@@ -710,29 +706,7 @@ class DashboardManager {
   /* ================== TOAST NOTIFICATIONS ================== */
 
   showNotification(message, type = "info") {
-    // Απλό toast, ίδιο στυλ με άλλα modules
-    const containerId = "toastContainer";
-    let container = document.getElementById(containerId);
-
-    if (!container) {
-      container = document.createElement("div");
-      container.id = containerId;
-      container.className = "toast-container";
-      document.body.appendChild(container);
-    }
-
-    const toast = document.createElement("div");
-    toast.className = `toast toast-${type}`;
-    toast.innerHTML = `
-      <span class="toast-message">${message}</span>
-    `;
-
-    container.appendChild(toast);
-
-    setTimeout(() => {
-      toast.classList.add("toast-hide");
-      setTimeout(() => toast.remove(), 300);
-    }, 3000);
+    window.CaReMindUI.toast(message, type);
   }
 }
 

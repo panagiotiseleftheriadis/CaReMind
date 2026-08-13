@@ -4,6 +4,9 @@ const router = express.Router();
 const db = require("../db");
 const bcrypt = require("bcrypt");
 const { authenticateToken } = require("../middleware");
+const { requirePositiveId } = require("../validation");
+
+router.param("id", requirePositiveId);
 
 const USERNAME_PATTERN = /^[\p{L}\p{N}._-]{3,50}$/u;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -50,6 +53,7 @@ router.get("/", authenticateToken, requireAdmin, async (req, res) => {
    Δημιουργία εταιρείας + χρήστη (role = 'user')
 ---------------------------------------------- */
 router.post("/", authenticateToken, requireAdmin, async (req, res) => {
+  let connection;
   const { username, password, companyName, email, userNumber } = req.body;
 
   if (!username || !password || !companyName || !email || !userNumber) {
@@ -64,19 +68,23 @@ router.post("/", authenticateToken, requireAdmin, async (req, res) => {
 
   try {
     // 1. Έλεγχος αν υπάρχει ήδη ο χρήστης
-    const [existing] = await db.query(
+    connection = await db.getConnection();
+    await connection.beginTransaction();
+
+    const [existing] = await connection.query(
       "SELECT id FROM users WHERE email = ? OR username = ? LIMIT 1",
       [email, username]
     );
 
     if (existing.length > 0) {
+      await connection.rollback();
       return res
         .status(400)
         .json({ error: "Το email ή το username χρησιμοποιείται ήδη." });
     }
 
     // 2. Δημιουργία εταιρείας
-    const [companyResult] = await db.query(
+    const [companyResult] = await connection.query(
       `INSERT INTO companies (name) VALUES (?)`,
       [companyName]
     );
@@ -86,12 +94,14 @@ router.post("/", authenticateToken, requireAdmin, async (req, res) => {
     const passwordHash = await bcrypt.hash(password, 12);
 
     // 3. Δημιουργία χρήστη
-    await db.query(
+    await connection.query(
       `INSERT INTO users
        (username, password, role, company_id, is_active, email, user_number, email_verified)
        VALUES (?, ?, 'user', ?, 1, ?, ?, 1)`,
       [username, passwordHash, companyId, email.trim().toLowerCase(), userNumber]
     );
+
+    await connection.commit();
 
     res.json({
       success: true,
@@ -100,8 +110,11 @@ router.post("/", authenticateToken, requireAdmin, async (req, res) => {
       companyId,
     });
   } catch (err) {
+    if (connection) await connection.rollback().catch(() => {});
     console.error("POST /users error:", err);
     res.status(500).json({ error: "Σφάλμα κατά τη δημιουργία χρήστη" });
+  } finally {
+    connection?.release();
   }
 });
 

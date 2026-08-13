@@ -1,0 +1,530 @@
+openapi: 3.1.0
+info:
+  title: CaReMind API
+  version: 1.0.0
+  description: REST API for private vehicle, maintenance and operating-cost management.
+  license:
+    name: MIT
+    identifier: MIT
+servers:
+  - url: https://api.car-remind.gr/api
+    description: Production
+tags:
+  - name: Authentication
+    description: Registration, verification and session lifecycle.
+  - name: Vehicles
+    description: User-owned vehicle records.
+  - name: Maintenance
+    description: Vehicle maintenance schedules and history.
+  - name: Costs
+    description: Vehicle operating-cost entries.
+  - name: Account
+    description: Profile and notification-recipient management.
+  - name: Notifications
+    description: Upcoming and overdue maintenance reminders.
+  - name: Administration
+    description: Administrator-only account operations.
+  - name: Automation
+    description: Authenticated scheduled maintenance tasks.
+paths:
+  /login:
+    post:
+      operationId: login
+      tags: [Authentication]
+      summary: Sign in and create a refresh session
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password]
+              properties:
+                username: { type: string, description: Username or email }
+                password: { type: string, format: password }
+      responses:
+        '200':
+          description: Authenticated
+          headers:
+            Set-Cookie: { schema: { type: string } }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /refresh:
+    post:
+      operationId: refreshSession
+      tags: [Authentication]
+      summary: Create a new access token from the HttpOnly refresh cookie
+      security: []
+      responses:
+        '200':
+          description: Refreshed
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /logout:
+    post:
+      operationId: logout
+      tags: [Authentication]
+      summary: Revoke the current refresh session
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { description: Logged out }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /register:
+    post:
+      operationId: register
+      tags: [Authentication]
+      summary: Register an account and send an email verification code
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Registration' }
+      responses:
+        '200': { description: Registration accepted }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '409': { description: Username or email already exists }
+  /verify-email:
+    post:
+      operationId: verifyEmail
+      tags: [Authentication]
+      summary: Verify a registration email code
+      security: []
+      requestBody: { $ref: '#/components/requestBodies/EmailCode' }
+      responses:
+        '200': { description: Email verified }
+        '400': { $ref: '#/components/responses/BadRequest' }
+  /resend-verification:
+    post:
+      operationId: resendVerification
+      tags: [Authentication]
+      summary: Request a replacement verification code
+      security: []
+      requestBody: { $ref: '#/components/requestBodies/EmailOnly' }
+      responses:
+        '200': { description: Generic delivery response }
+        '400': { $ref: '#/components/responses/BadRequest' }
+  /forgot-password:
+    post:
+      operationId: requestPasswordReset
+      tags: [Authentication]
+      summary: Request a password-reset code
+      security: []
+      requestBody: { $ref: '#/components/requestBodies/EmailOnly' }
+      responses:
+        '200': { description: Generic delivery response }
+        '400': { $ref: '#/components/responses/BadRequest' }
+  /verify-reset-code:
+    post:
+      operationId: verifyPasswordResetCode
+      tags: [Authentication]
+      summary: Exchange a reset code for a short-lived reset token
+      security: []
+      requestBody: { $ref: '#/components/requestBodies/EmailCode' }
+      responses:
+        '200': { description: Reset token created }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /reset-password:
+    post:
+      operationId: resetPassword
+      tags: [Authentication]
+      summary: Set a new password and revoke refresh sessions
+      security: []
+      responses:
+        '200': { description: Password updated }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /vehicles:
+    get:
+      operationId: listVehicles
+      tags: [Vehicles]
+      summary: List the signed-in user's vehicles
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Vehicle list
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/Vehicle' } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    post:
+      operationId: createVehicle
+      tags: [Vehicles]
+      summary: Add a vehicle
+      security: [{ bearerAuth: [] }]
+      requestBody: { $ref: '#/components/requestBodies/Vehicle' }
+      responses:
+        '201': { description: Vehicle created }
+        '400': { $ref: '#/components/responses/BadRequest' }
+  /vehicles/{id}:
+    parameters: [{ $ref: '#/components/parameters/Id' }]
+    put:
+      operationId: updateVehicle
+      tags: [Vehicles]
+      summary: Update an owned vehicle
+      security: [{ bearerAuth: [] }]
+      requestBody: { $ref: '#/components/requestBodies/Vehicle' }
+      responses:
+        '200': { description: Vehicle updated }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      operationId: deleteVehicle
+      tags: [Vehicles]
+      summary: Delete an owned vehicle and its dependent records
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { description: Vehicle deleted }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /maintenances:
+    get:
+      operationId: listMaintenances
+      tags: [Maintenance]
+      summary: List maintenance records
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { description: Maintenance list }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    post:
+      operationId: createMaintenance
+      tags: [Maintenance]
+      summary: Add maintenance for an owned vehicle
+      security: [{ bearerAuth: [] }]
+      requestBody: { $ref: '#/components/requestBodies/Maintenance' }
+      responses:
+        '201': { description: Maintenance created }
+        '404': { description: Vehicle is not owned by this user }
+  /maintenances/{id}:
+    parameters: [{ $ref: '#/components/parameters/Id' }]
+    put:
+      operationId: updateMaintenance
+      tags: [Maintenance]
+      summary: Update an owned maintenance record
+      security: [{ bearerAuth: [] }]
+      requestBody: { $ref: '#/components/requestBodies/Maintenance' }
+      responses:
+        '200': { description: Maintenance updated }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      operationId: deleteMaintenance
+      tags: [Maintenance]
+      summary: Delete an owned maintenance record
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { description: Maintenance deleted }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /costs:
+    get:
+      operationId: listCosts
+      tags: [Costs]
+      summary: List cost entries
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { description: Cost list }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    post:
+      operationId: createCost
+      tags: [Costs]
+      summary: Add a cost to an owned vehicle
+      security: [{ bearerAuth: [] }]
+      requestBody: { $ref: '#/components/requestBodies/Cost' }
+      responses:
+        '201': { description: Cost created }
+        '404': { description: Vehicle is not owned by this user }
+  /costs/{id}:
+    parameters: [{ $ref: '#/components/parameters/Id' }]
+    put:
+      operationId: updateCost
+      tags: [Costs]
+      summary: Update an owned cost
+      security: [{ bearerAuth: [] }]
+      requestBody: { $ref: '#/components/requestBodies/Cost' }
+      responses:
+        '200': { description: Cost updated }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      operationId: deleteCost
+      tags: [Costs]
+      summary: Delete an owned cost
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { description: Cost deleted }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /notifications:
+    get:
+      operationId: listNotifications
+      tags: [Notifications]
+      summary: List upcoming and overdue maintenance reminders
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { description: Notification list }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /account/me:
+    get:
+      operationId: getCurrentAccount
+      tags: [Account]
+      summary: Read the current profile
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { description: Profile }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /account/send-code:
+    post:
+      operationId: sendAccountCode
+      tags: [Account]
+      summary: Send an account-change verification code
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { description: Code sent }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /account/verify-code:
+    post:
+      operationId: verifyAccountCode
+      tags: [Account]
+      summary: Exchange an account-change code for a short-lived token
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { description: Account token created }
+        '400': { $ref: '#/components/responses/BadRequest' }
+  /account/update:
+    post:
+      operationId: updateAccount
+      tags: [Account]
+      summary: Update email, username or password with an account token
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { description: Account updated }
+        '400': { $ref: '#/components/responses/BadRequest' }
+  /account/recipients:
+    get:
+      operationId: listNotificationRecipients
+      tags: [Account]
+      summary: List reminder recipients
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { description: Recipient list }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    post:
+      operationId: createNotificationRecipient
+      tags: [Account]
+      summary: Add a reminder recipient
+      security: [{ bearerAuth: [] }]
+      responses:
+        '201': { description: Recipient added }
+        '400': { $ref: '#/components/responses/BadRequest' }
+  /account/recipients/{id}:
+    parameters: [{ $ref: '#/components/parameters/Id' }]
+    delete:
+      operationId: deleteNotificationRecipient
+      tags: [Account]
+      summary: Remove an owned reminder recipient
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { description: Recipient removed }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /users:
+    get:
+      operationId: listUsers
+      tags: [Administration]
+      summary: List users
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { description: User list }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      operationId: createUser
+      tags: [Administration]
+      summary: Create a user and company transactionally
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { description: User created }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /users/{id}:
+    parameters: [{ $ref: '#/components/parameters/Id' }]
+    put:
+      operationId: updateUser
+      tags: [Administration]
+      summary: Update a user
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { description: User updated }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    delete:
+      operationId: deleteUser
+      tags: [Administration]
+      summary: Delete a non-admin user
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { description: User deleted }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /users/{id}/toggle-active:
+    parameters: [{ $ref: '#/components/parameters/Id' }]
+    patch:
+      operationId: toggleUserStatus
+      tags: [Administration]
+      summary: Toggle a non-admin account status
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { description: Status changed }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /interest:
+    post:
+      operationId: submitInterest
+      summary: Submit the public interest form
+      security: []
+      responses:
+        '201': { description: Request stored }
+        '400': { $ref: '#/components/responses/BadRequest' }
+  /cron/maintenance:
+    get:
+      operationId: runMaintenanceReminders
+      tags: [Automation]
+      summary: Send due maintenance reminders
+      security: [{ cronSecret: [] }]
+      parameters:
+        - in: header
+          name: X-Cron-Secret
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: Reminder run completed }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '503': { description: Cron service is not configured }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    cronSecret:
+      type: apiKey
+      in: header
+      name: X-Cron-Secret
+  parameters:
+    Id:
+      in: path
+      name: id
+      required: true
+      schema: { type: integer, minimum: 1 }
+  responses:
+    BadRequest:
+      description: Invalid request data
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Unauthorized:
+      description: Missing, invalid or expired authentication
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Forbidden:
+      description: Insufficient permissions
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    NotFound:
+      description: Resource not found or not owned by this user
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+  requestBodies:
+    EmailOnly:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [email]
+            properties: { email: { type: string, format: email } }
+    EmailCode:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [email, code]
+            properties:
+              email: { type: string, format: email }
+              code: { type: string, pattern: '^[0-9]{6}$' }
+    Vehicle:
+      required: true
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Vehicle' }
+    Maintenance:
+      required: true
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Maintenance' }
+    Cost:
+      required: true
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Cost' }
+  schemas:
+    Error:
+      type: object
+      properties: { error: { type: string }, code: { type: string } }
+    User:
+      type: object
+      properties:
+        id: { type: integer }
+        username: { type: string }
+        role: { type: string, enum: [user, admin, guest] }
+        companyId: { type: [integer, 'null'] }
+        companyName: { type: [string, 'null'] }
+    AuthResponse:
+      type: object
+      required: [accessToken, user]
+      properties:
+        accessToken: { type: string }
+        user: { $ref: '#/components/schemas/User' }
+    Registration:
+      type: object
+      required: [username, email, password]
+      properties:
+        username: { type: string, minLength: 3, maxLength: 50 }
+        email: { type: string, format: email }
+        password: { type: string, minLength: 8, maxLength: 128 }
+        fullName: { type: string, maxLength: 100 }
+        phone: { type: string, maxLength: 50 }
+        companyName: { type: string, maxLength: 100 }
+        account_type: { type: string, enum: [individual, business] }
+    Vehicle:
+      type: object
+      required: [vehicleType, chassisNumber]
+      properties:
+        id: { type: integer, readOnly: true }
+        vehicleType: { type: string, maxLength: 100 }
+        chassisNumber: { type: string, maxLength: 50 }
+        model: { type: [string, 'null'], maxLength: 100 }
+        year: { type: [integer, 'null'], minimum: 1886 }
+        currentMileage: { type: [integer, 'null'], minimum: 0 }
+    Maintenance:
+      type: object
+      required: [vehicleId, maintenanceType]
+      properties:
+        id: { type: integer, readOnly: true }
+        vehicleId: { type: integer, minimum: 1 }
+        maintenanceType: { type: string, maxLength: 100 }
+        lastDate: { type: [string, 'null'], format: date }
+        nextDate: { type: [string, 'null'], format: date }
+        lastMileage: { type: [integer, 'null'], minimum: 0 }
+        nextMileage: { type: [integer, 'null'], minimum: 0 }
+        notificationDays: { type: integer, minimum: 0, maximum: 365, default: 7 }
+        status: { type: string, enum: [active, pending, completed, overdue] }
+        notes: { type: [string, 'null'] }
+    Cost:
+      type: object
+      required: [vehicleId, category, amount, date]
+      properties:
+        id: { type: integer, readOnly: true }
+        vehicleId: { type: integer, minimum: 1 }
+        category: { type: string, maxLength: 100 }
+        amount: { type: number, exclusiveMinimum: 0 }
+        date: { type: string, format: date }
+        description: { type: [string, 'null'] }
+        receiptNumber: { type: [string, 'null'], maxLength: 100 }

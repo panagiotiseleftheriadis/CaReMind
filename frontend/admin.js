@@ -108,19 +108,20 @@ class AdminPanel {
     const userNumber = document.getElementById("userNumber").value.trim(); // ΝΕΟ
 
     if (!username || !password || !companyName || !email || !userNumber) {
-      alert(
-        "Συμπληρώστε όλα τα πεδία (username, κωδικό, email, αριθμό χρήστη, εταιρεία)"
+      window.CaReMindUI.toast(
+        "Συμπληρώστε όλα τα πεδία (username, κωδικό, email, αριθμό χρήστη, εταιρεία)",
+        "warning"
       );
       return;
     }
 
     if (password.length < 8) {
-      alert("Ο κωδικός πρέπει να έχει τουλάχιστον 8 χαρακτήρες");
+      window.CaReMindUI.toast("Ο κωδικός πρέπει να έχει τουλάχιστον 8 χαρακτήρες", "warning");
       return;
     }
     // πολύ απλός έλεγχος email
     if (!email.includes("@") || !email.includes(".")) {
-      alert("Δώστε ένα έγκυρο email");
+      window.CaReMindUI.toast("Δώστε ένα έγκυρο email", "warning");
       return;
     }
     try {
@@ -132,14 +133,16 @@ class AdminPanel {
         userNumber,
       });
 
-      alert(
+      window.CaReMindUI.toast(
         `✅ Ο χρήστης "${username}" δημιουργήθηκε επιτυχώς!` +
           `\n\nΣτοιχεία χρήστη:` +
           `\n• Username: ${username}` +
           `\n• Password: ${password}` +
           `\n• Company: ${companyName}` +
           `\n• Email: ${email}` +
-          `\n• Αριθμός χρήστη: ${userNumber}`
+          `\n• Αριθμός χρήστη: ${userNumber}`,
+        "success",
+        12000
       );
 
       const form = document.getElementById("createUserForm");
@@ -149,9 +152,10 @@ class AdminPanel {
       this.loadUsers();
     } catch (error) {
       console.error("Create user error:", error);
-      alert(
+      window.CaReMindUI.toast(
         "❌ Σφάλμα: " +
-          (error.message || "Δεν μπορεί να δημιουργηθεί ο χρήστης")
+          (error.message || "Δεν μπορεί να δημιουργηθεί ο χρήστης"),
+        "error"
       );
     }
   }
@@ -161,6 +165,7 @@ class AdminPanel {
     const usersList = document.getElementById("usersList");
     if (!usersList) return;
 
+    window.CaReMindUI.setBusy(true, "Φόρτωση χρηστών…");
     usersList.innerHTML = "<p>Φόρτωση χρηστών...</p>";
 
     try {
@@ -235,6 +240,8 @@ class AdminPanel {
       console.error("Error loading users:", error);
       usersList.innerHTML =
         "<p>Σφάλμα φόρτωσης χρηστών. Βεβαιωθείτε ότι ο server τρέχει.</p>";
+    } finally {
+      window.CaReMindUI.setBusy(false);
     }
   }
 
@@ -245,7 +252,7 @@ class AdminPanel {
       const users = await api.getUsers();
       const user = users.find((u) => u.id === userId);
       if (!user) {
-        alert("❌ Ο χρήστης δεν βρέθηκε");
+        window.CaReMindUI.toast("Ο χρήστης δεν βρέθηκε", "error");
         return;
       }
       const safeUsername = escapeHtml(user.username);
@@ -320,7 +327,7 @@ class AdminPanel {
       container.style.display = "block";
     } catch (error) {
       console.error("Edit user error:", error);
-      alert("❌ Σφάλμα κατά τη φόρτωση στοιχείων χρήστη");
+      window.CaReMindUI.toast("Σφάλμα κατά τη φόρτωση στοιχείων χρήστη", "error");
     }
   }
   async saveUserEdits(userId) {
@@ -340,7 +347,7 @@ class AdminPanel {
     const isActive = document.getElementById(`edit-active-${userId}`).checked;
 
     if (!username || !email || !userNumber || !companyName) {
-      alert("Συμπλήρωσε όλα τα πεδία (username, email, τηλέφωνο, εταιρεία)");
+      window.CaReMindUI.toast("Συμπλήρωσε όλα τα πεδία (username, email, τηλέφωνο, εταιρεία)", "warning");
       return;
     }
 
@@ -354,7 +361,7 @@ class AdminPanel {
 
     if (password.length > 0) {
       if (password.length < 8) {
-        alert("Ο νέος κωδικός πρέπει να έχει τουλάχιστον 8 χαρακτήρες");
+        window.CaReMindUI.toast("Ο νέος κωδικός πρέπει να έχει τουλάχιστον 8 χαρακτήρες", "warning");
         return;
       }
       updatePayload.password = password;
@@ -363,13 +370,14 @@ class AdminPanel {
     try {
       await api.updateUser(userId, updatePayload);
 
-      alert("✅ Ο χρήστης ενημερώθηκε επιτυχώς");
+      window.CaReMindUI.toast("Ο χρήστης ενημερώθηκε επιτυχώς", "success");
       this.loadUsers();
     } catch (error) {
       console.error("Save user edits error:", error);
-      alert(
+      window.CaReMindUI.toast(
         "❌ Σφάλμα κατά την ενημέρωση χρήστη: " +
-          (error.message || "Δοκίμασε ξανά")
+          (error.message || "Δοκίμασε ξανά"),
+        "error"
       );
     }
   }
@@ -390,14 +398,17 @@ class AdminPanel {
       this.loadUsers();
     } catch (error) {
       console.error("Toggle active error:", error);
-      alert("❌ Σφάλμα κατά την αλλαγή κατάστασης χρήστη");
+      window.CaReMindUI.toast("Σφάλμα κατά την αλλαγή κατάστασης χρήστη", "error");
     }
   }
 
   // ------------------ Διαγραφή χρήστη ------------------
   async deleteUser(userId) {
     if (
-      !confirm("⚠️ Είστε σίγουροι ότι θέλετε να διαγράψετε αυτόν τον χρήστη;")
+      !(await window.CaReMindUI.confirm(
+        "Είστε σίγουροι ότι θέλετε να διαγράψετε αυτόν τον χρήστη;",
+        { title: "Διαγραφή χρήστη", confirmLabel: "Διαγραφή" }
+      ))
     ) {
       return;
     }
@@ -405,11 +416,11 @@ class AdminPanel {
     try {
       await api.deleteUser(userId);
 
-      alert("✅ Ο χρήστης διαγράφηκε επιτυχώς");
+      window.CaReMindUI.toast("Ο χρήστης διαγράφηκε επιτυχώς", "success");
       this.loadUsers();
     } catch (error) {
       console.error("Delete user error:", error);
-      alert("❌ Σφάλμα κατά τη διαγραφή χρήστη");
+      window.CaReMindUI.toast("Σφάλμα κατά τη διαγραφή χρήστη", "error");
     }
   }
 

@@ -1,10 +1,16 @@
+const safeHtml = window.CaReMindUI.escapeHtml;
+
 class VehiclesManager {
   constructor() {
     this.init();
   }
 
   init() {
-    console.log("🚗 VehiclesManager initialized");
+    const maxVehicleYear = String(new Date().getFullYear() + 1);
+    ["year", "editYear"].forEach((id) => {
+      const input = document.getElementById(id);
+      if (input) input.max = maxVehicleYear;
+    });
     this.loadVehicles();
     this.setupEventListeners();
     this.setupModalEvents();
@@ -73,20 +79,18 @@ class VehiclesManager {
   }
 
   async loadVehicles() {
-    console.log("📥 Loading vehicles from API...");
+    window.CaReMindUI.setBusy(true, "Φόρτωση οχημάτων…");
     const user = JSON.parse(localStorage.getItem("currentUser"));
-    console.log("User:", user);
 
     if (!user) {
-      console.log("❌ No user found");
       this.showNoVehiclesMessage();
+      window.CaReMindUI.setBusy(false);
       return;
     }
 
     try {
       const userVehicles = await api.getVehicles();
       this.currentVehicles = userVehicles;
-      console.log("User vehicles from API:", userVehicles);
 
       if (!userVehicles || userVehicles.length === 0) {
         this.showNoVehiclesMessage();
@@ -98,17 +102,17 @@ class VehiclesManager {
       console.error("❌ Error loading vehicles:", error);
       this.showNoVehiclesMessage();
       this.showNotification("❌ Σφάλμα κατά τη φόρτωση των οχημάτων", "error");
+    } finally {
+      window.CaReMindUI.setBusy(false);
     }
   }
 
   renderVehiclesTable(vehicles) {
     const tbody = document.getElementById("vehiclesTableBody");
     if (!tbody) {
-      console.log("❌ Table body not found");
       return;
     }
 
-    console.log("🔄 Rendering", vehicles.length, "vehicles");
     tbody.innerHTML = "";
 
     if (vehicles.length === 0) {
@@ -128,23 +132,23 @@ class VehiclesManager {
           : "-";
 
       const row = document.createElement("tr");
-      row.dataset.vehicleId = vehicle.id;
+      row.dataset.vehicleId = Number(vehicle.id);
       // Στο αρχείο vehicles.js, μέσα στη μέθοδο renderVehiclesTable(vehicles):
 
       row.innerHTML = `
-  <td>${vehicle.chassisNumber}</td>
-  <td>${vehicle.vehicleType}</td>
-  <td>${vehicle.model || "-"}</td>
-  <td>${yearText}</td>
-  <td>${mileageText} χλμ</td>
+  <td>${safeHtml(vehicle.chassisNumber)}</td>
+  <td>${safeHtml(vehicle.vehicleType)}</td>
+  <td>${safeHtml(vehicle.model || "-")}</td>
+  <td>${safeHtml(yearText)}</td>
+  <td>${safeHtml(mileageText)} χλμ</td>
   <td>
     <div class="vehicle-actions-row">
       <button class="btn-secondary" onclick="editVehicle(${
-        vehicle.id
+        Number(vehicle.id)
       })">Επεξεργασία</button>
       
       <button class="btn-secondary delete-btn" onclick="deleteVehicle(${
-        vehicle.id
+        Number(vehicle.id)
       })">Διαγραφή</button>
     </div>
   </td>
@@ -178,7 +182,6 @@ class VehiclesManager {
     // Add vehicle form
     const vehicleForm = document.getElementById("vehicleForm");
     if (vehicleForm) {
-      console.log("✅ Add form event listener added");
       vehicleForm.addEventListener("submit", (e) =>
         this.handleVehicleSubmit(e)
       );
@@ -187,7 +190,6 @@ class VehiclesManager {
     // Edit vehicle form
     const editVehicleForm = document.getElementById("editVehicleForm");
     if (editVehicleForm) {
-      console.log("✅ Edit form event listener added");
       editVehicleForm.addEventListener("submit", (e) =>
         this.handleEditVehicleSubmit(e)
       );
@@ -196,7 +198,6 @@ class VehiclesManager {
 
   async handleVehicleSubmit(e) {
     e.preventDefault();
-    console.log("✅ Form submission started");
 
     const user = JSON.parse(localStorage.getItem("currentUser"));
     if (!user) {
@@ -267,7 +268,6 @@ class VehiclesManager {
 
   async handleEditVehicleSubmit(e) {
     e.preventDefault();
-    console.log("✅ Edit form submission started");
     const user = JSON.parse(localStorage.getItem("currentUser"));
     if (!user) {
       this.showNotification("❌ Δεν βρέθηκε χρήστης", "error");
@@ -288,14 +288,6 @@ class VehiclesManager {
     const year = document.getElementById("editYear").value;
     const currentMileage = document.getElementById("editCurrentMileage").value;
 
-    console.log("📝 Edit form values:", {
-      vehicleId,
-      chassisNumber,
-      vehicleType,
-      model,
-      year,
-      currentMileage,
-    });
 
     if (!chassisNumber || !vehicleType) {
       this.showNotification(
@@ -347,7 +339,6 @@ class VehiclesManager {
   }
 
   closeAddVehicleForm() {
-    console.log("🔒 Closing add modal");
     const modal = document.getElementById("addVehicleModal");
     if (modal) {
       modal.style.display = "none";
@@ -365,7 +356,6 @@ class VehiclesManager {
   }
 
   closeEditVehicleModal() {
-    console.log("🔒 Closing edit modal");
     const modal = document.getElementById("editVehicleModal");
     if (modal) {
       modal.style.display = "none";
@@ -384,31 +374,12 @@ class VehiclesManager {
 
   // ΜΕΘΟΔΟΣ ΓΙΑ NOTIFICATIONS
   showNotification(message, type = "success") {
-    // Δημιουργία notification element
-    const notification = document.createElement("div");
-    notification.className = `notification ${type}`;
-    notification.innerHTML = `
-            <div class="notification-content">
-                <span class="notification-message">${message}</span>
-                <button class="notification-close" onclick="this.parentElement.parentElement.remove()">×</button>
-            </div>
-        `;
-
-    // Προσθήκη στο body
-    document.body.appendChild(notification);
-
-    // Αυτόματη αφαίρεση μετά από 4 δευτερόλεπτα
-    setTimeout(() => {
-      if (notification.parentNode) {
-        notification.remove();
-      }
-    }, 4000);
+    window.CaReMindUI.toast(message, type);
   }
 }
 
 // Global functions
 function showAddVehicleForm() {
-  console.log("🔄 Opening add vehicle form");
   const modal = document.getElementById("addVehicleModal");
   if (modal) {
     modal.style.display = "flex";
@@ -422,7 +393,6 @@ function closeAddVehicleForm() {
 }
 
 async function editVehicle(vehicleId) {
-  console.log("✏️ Editing vehicle:", vehicleId);
 
   try {
     // Πάντα παίρνουμε τα οχήματα από το API
@@ -504,7 +474,6 @@ function manageMaintenance(vehicleId) {
 }
 
 async function deleteVehicle(vehicleId) {
-  console.log("🗑️ Delete vehicle:", vehicleId);
 
   try {
     // Παίρνουμε τα οχήματα για να βρούμε όνομα για το μήνυμα
@@ -557,7 +526,6 @@ let vehiclesManager = null;
 
 // Initialize
 document.addEventListener("DOMContentLoaded", function () {
-  console.log("🚗 DOM loaded - Initializing Vehicles Manager...");
   vehiclesManager = new VehiclesManager();
   window.vehiclesManager = vehiclesManager; // 👈 το κάνουμε global
 });

@@ -1,5 +1,7 @@
 // costs.js - Enhanced version with API integration
 
+const safeHtml = window.CaReMindUI.escapeHtml;
+
 class CostsManager {
   constructor() {
     this.api = window.api || null;
@@ -24,7 +26,6 @@ class CostsManager {
   }
 
   async init() {
-    console.log("💰 CostsManager initialized (με backend)");
 
     await this.loadInitialData();
     this.setupEventListeners();
@@ -39,14 +40,18 @@ class CostsManager {
 
     this.filterCosts();
 
-    console.log("✅ Init complete");
   }
 
   async loadInitialData() {
-    await this.fetchVehicles();
-    await this.fetchCosts();
-    this.loadVehicleFilter();
-    this.loadCostsData();
+    window.CaReMindUI.setBusy(true, "Φόρτωση εξόδων…");
+    try {
+      await this.fetchVehicles();
+      await this.fetchCosts();
+      this.loadVehicleFilter();
+      this.loadCostsData();
+    } finally {
+      window.CaReMindUI.setBusy(false);
+    }
   }
 
   /* ================== BACKEND FETCHES ================== */
@@ -73,7 +78,6 @@ class CostsManager {
       }
 
       this.vehicles = list;
-      console.log("🚗 Vehicles from backend:", this.vehicles);
     } catch (error) {
       console.error("❌ Σφάλμα φόρτωσης vehicles από backend:", error);
       this.showNotification(
@@ -107,7 +111,6 @@ class CostsManager {
       }
 
       this.costs = list;
-      console.log("💰 Costs from backend:", this.costs);
     } catch (error) {
       console.error("❌ Σφάλμα φόρτωσης costs από backend:", error);
       this.showNotification(
@@ -223,12 +226,6 @@ class CostsManager {
     // Trend calculation
     const trend = this.calculateCostTrend();
 
-    console.log("📊 Cost Summary Stats:", {
-      total,
-      monthlyCost,
-      averageCost,
-      trend,
-    });
 
     document.getElementById("totalCost").textContent = `€${total.toFixed(2)}`;
     document.getElementById(
@@ -341,15 +338,15 @@ class CostsManager {
       </td>
 
       <td data-label="Όχημα">
-        <div class="cost-vehicle">${vehicle.vehicleType} - ${
+        <div class="cost-vehicle">${safeHtml(vehicle.vehicleType)} - ${safeHtml(
         vehicle.model
-      }</div>
-        <div class="cost-chassis">${vehicle.chassisNumber}</div>
+      )}</div>
+        <div class="cost-chassis">${safeHtml(vehicle.chassisNumber)}</div>
       </td>
 
       <td data-label="Κατηγορία">
-        <span class="category-badge category-${cost.category}">
-          ${this.getCategoryLabel(cost.category)}
+        <span class="category-badge">
+          ${safeHtml(this.getCategoryLabel(cost.category))}
         </span>
       </td>
 
@@ -358,10 +355,10 @@ class CostsManager {
       </td>
 
       <td data-label="Περιγραφή">
-        <div class="cost-description">${cost.description || "-"}</div>
+        <div class="cost-description">${safeHtml(cost.description || "-")}</div>
         ${
           cost.receipt
-            ? `<div class="cost-receipt">Απόδειξη: ${cost.receipt}</div>`
+            ? `<div class="cost-receipt">Απόδειξη: ${safeHtml(cost.receipt)}</div>`
             : ""
         }
       </td>
@@ -428,7 +425,6 @@ class CostsManager {
   /* ================== FILTERS ================== */
 
   filterCosts() {
-    console.log("🎯 Starting filterCosts...");
 
     // Get current filter values
     const period =
@@ -438,29 +434,17 @@ class CostsManager {
     const vehicleId = document.getElementById("costVehicle")?.value || "all";
     const category = document.getElementById("costCategory")?.value || "all";
 
-    console.log(
-      "📊 Filters - period:",
-      period,
-      "vehicle:",
-      vehicleId,
-      "category:",
-      category
-    );
 
     // Get user and vehicles
     const user = JSON.parse(localStorage.getItem("currentUser"));
     const allVehicles = this.vehicles || [];
 
-    console.log("👤 Current user:", user?.companyId);
-    console.log("🚗 All vehicles:", allVehicles.length);
 
     // Get allowed vehicle IDs for this user
     const allowedIds = allVehicles
       .filter((v) => !user || v.companyId == user.companyId)
       .map((v) => Number(v.id));
 
-    console.log("✅ Allowed vehicle IDs:", allowedIds);
-    console.log("💾 All costs in manager:", this.costs?.length);
 
     // Start filtering from ALL costs
     let filtered = this.costs.filter((c) => {
@@ -469,47 +453,24 @@ class CostsManager {
       return hasVehicle && isAllowed;
     });
 
-    console.log("📈 After vehicle permission filter:", filtered.length);
 
     // Apply period filter
     if (period !== "all") {
       const beforePeriod = filtered.length;
       filtered = this.filterByPeriod(filtered, period);
-      console.log(
-        "📅 After period filter:",
-        filtered.length,
-        "(removed:",
-        beforePeriod - filtered.length,
-        ")"
-      );
     } else {
-      console.log('📅 Period filter: "all" - keeping all costs');
     }
 
     // Apply vehicle filter
     if (vehicleId !== "all") {
       const beforeVehicle = filtered.length;
       filtered = filtered.filter((cost) => cost.vehicleId == vehicleId);
-      console.log(
-        "🚙 After vehicle filter:",
-        filtered.length,
-        "(removed:",
-        beforeVehicle - filtered.length,
-        ")"
-      );
     }
 
     // Apply category filter
     if (category !== "all") {
       const beforeCategory = filtered.length;
       filtered = filtered.filter((cost) => cost.category === category);
-      console.log(
-        "📂 After category filter:",
-        filtered.length,
-        "(removed:",
-        beforeCategory - filtered.length,
-        ")"
-      );
     }
 
     // Apply custom date range filter
@@ -526,13 +487,6 @@ class CostsManager {
             costDate >= new Date(startDate) && costDate <= new Date(endDate)
           );
         });
-        console.log(
-          "📆 After custom date filter:",
-          filtered.length,
-          "(removed:",
-          beforeCustom - filtered.length,
-          ")"
-        );
       }
     }
 
@@ -545,7 +499,6 @@ class CostsManager {
     this.currentFilters.vehicle = vehicleId;
     this.currentFilters.category = category;
 
-    console.log("🎉 Final filtered costs:", this.filteredCosts.length);
 
     // Get vehicles for rendering
     const userVehicles = allVehicles.filter(
@@ -559,14 +512,12 @@ class CostsManager {
     this.updateBreakdowns();
     this.updatePagination();
 
-    console.log("✅ filterCosts completed successfully");
   }
 
   filterByPeriod(costs, period) {
     const now = new Date();
     let startDate;
 
-    console.log("⏰ Filtering by period:", period);
 
     switch (period) {
       case "today":
@@ -587,11 +538,9 @@ class CostsManager {
         startDate = new Date(now.getFullYear(), 0, 1);
         break;
       default:
-        console.log("ℹ️ No period filter applied");
         return costs;
     }
 
-    console.log("📅 Period start date:", startDate);
 
     const filtered = costs.filter((cost) => {
       const costDate = new Date(cost.date);
@@ -599,12 +548,6 @@ class CostsManager {
       return isIncluded;
     });
 
-    console.log(
-      "📊 After period filtering:",
-      filtered.length,
-      "of",
-      costs.length
-    );
     return filtered;
   }
 
@@ -666,7 +609,6 @@ class CostsManager {
 
     if (category === "other" && otherInput?.value.trim()) {
       category = otherInput.value.trim();
-      console.log("📝 Using custom category:", category);
     }
     if (!vehicleId) {
       this.showNotification("Επιλέξτε όχημα", "error");
@@ -763,7 +705,6 @@ class CostsManager {
   }
 
   saveCostsLocal() {
-    // console.log("💾 Saving costs to localStorage:", this.costs.length, "items");
     // localStorage.setItem("costs", JSON.stringify(this.costs));
   }
 
@@ -804,7 +745,6 @@ class CostsManager {
     if (modal) {
       modal.style.display = "flex";
     }
-    console.log("📝 Editing cost:", id);
   }
 
   showCostModal() {
@@ -846,7 +786,6 @@ class CostsManager {
       // Προσθήκη: Αρχική κλήση για το other field
       this.toggleCostOtherField();
 
-      console.log("💰 Cost modal opened");
     }
   }
 
@@ -1204,8 +1143,8 @@ class CostsManager {
           totalCost > 0 ? ((amount / totalCost) * 100).toFixed(1) : 0;
         return `
                     <div class="breakdown-item">
-                        <span class="breakdown-label">${this.getCategoryLabel(
-                          category
+                        <span class="breakdown-label">${safeHtml(
+                          this.getCategoryLabel(category)
                         )}</span>
                         <div>
                             <span class="breakdown-value">€${amount.toFixed(
@@ -1240,7 +1179,7 @@ class CostsManager {
         return `
                     <div class="breakdown-item">
                         <span class="breakdown-label">${
-                          vehicle ? vehicle.model : "Unknown"
+                          safeHtml(vehicle ? vehicle.model : "Unknown")
                         }</span>
                         <div>
                             <span class="breakdown-value">€${amount.toFixed(
@@ -1332,64 +1271,11 @@ class CostsManager {
     }
 
     const user = JSON.parse(localStorage.getItem("currentUser")) || null;
-    const vehicles = this.getVehicles(user?.companyId);
-    const SEP = ";";
-
-    const rows = [];
-    rows.push([
-      "Ημερομηνία",
-      "Όχημα",
-      "Κατηγορία",
-      "Ποσό",
-      "Περιγραφή",
-      "Απόδειξη",
-    ]);
-
-    const esc = (v) => String(v).replace(/"/g, '""').replace(/\r?\n/g, " ");
-
-    list.forEach((cost) => {
-      const v = vehicles.find((x) => x.id == cost.vehicleId);
-      const vehicleName = v ? `${v.vehicleType} - ${v.model}` : "—";
-      const d = new Date(cost.date);
-      const dateStr = [
-        d.getFullYear(),
-        String(d.getMonth() + 1).padStart(2, "0"),
-        String(d.getDate()).padStart(2, "0"),
-      ].join("-");
-      const categoryKey = this.normalizeCategory(cost.category);
-      const category = this.getCategoryLabel(categoryKey);
-
-      const amountStr = (Number(cost.amount) || 0).toFixed(2);
-
-      rows.push(
-        [
-          dateStr,
-          vehicleName,
-          category,
-          amountStr,
-          cost.description || "",
-          cost.receipt || "",
-        ].map(esc)
-      );
+    window.CaReMindCostsExport.exportCsv({
+      costs: list,
+      vehicles: this.getVehicles(user?.companyId),
+      categoryLabel: (category) => this.getCategoryLabel(category),
     });
-
-    const csvContent = rows
-      .map((r) => r.map((f) => `"${f}"`).join(SEP))
-      .join("\n");
-    const blob = new Blob(["\ufeff" + csvContent], {
-      type: "text/csv;charset=utf-8;",
-    });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.style.visibility = "hidden";
-    link.href = url;
-    link.download = `costs_export_${
-      new Date().toISOString().split("T")[0]
-    }.csv`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
   }
 
   normalizeCategory(cat) {
@@ -1435,25 +1321,7 @@ class CostsManager {
   }
 
   showNotification(message, type = "info") {
-    // Δημιουργία notification element
-    const notification = document.createElement("div");
-    notification.className = `notification ${type}`;
-    notification.innerHTML = `
-            <div class="notification-content">
-                <span class="notification-message">${message}</span>
-                <button class="notification-close" onclick="this.parentElement.parentElement.remove()">×</button>
-            </div>
-        `;
-
-    // Προσθήκη στο body
-    document.body.appendChild(notification);
-
-    // Αυτόματη αφαίρεση μετά από 4 δευτερόλεπτα
-    setTimeout(() => {
-      if (notification.parentNode) {
-        notification.remove();
-      }
-    }, 4000);
+    window.CaReMindUI.toast(message, type);
   }
 
   /* ================== EVENT HANDLERS ================== */
@@ -1474,7 +1342,6 @@ class CostsManager {
       const idAttr = el.getAttribute("data-id");
       const id = idAttr ? parseInt(idAttr, 10) : null;
 
-      console.log("[click]", action);
 
       switch (action) {
         case "export":
@@ -1503,28 +1370,22 @@ class CostsManager {
 
   // Πρόσθεσε αυτή τη μέθοδο στην κλάση CostsManager
   toggleCostOtherField() {
-    console.log("💰 toggleCostOtherField() called");
 
     const categorySelect = document.getElementById("costCategorySelect");
     const otherInput = document.getElementById("costCategoryOther");
 
     if (categorySelect && otherInput) {
       const isOther = categorySelect.value === "other";
-      console.log(
-        `Cost category: "${categorySelect.value}", isOther: ${isOther}`
-      );
 
       if (isOther) {
         otherInput.style.display = "block";
         otherInput.style.visibility = "visible";
         otherInput.required = true;
-        console.log("✅ Cost other field should be VISIBLE");
       } else {
         otherInput.style.display = "none";
         otherInput.style.visibility = "hidden";
         otherInput.required = false;
         otherInput.value = "";
-        console.log("✅ Cost other field should be HIDDEN");
       }
     } else {
       console.error("❌ Cost elements not found!");
@@ -1535,7 +1396,6 @@ class CostsManager {
     if (this._eventsBound) return;
     this._eventsBound = true;
 
-    console.log("💰 Setting up cost event listeners...");
 
     // Cost form
     const form = document.getElementById("costForm");
@@ -1546,12 +1406,7 @@ class CostsManager {
     // ΠΡΟΣΘΗΚΗ: Event listener για το costCategorySelect dropdown
     const costCategorySelect = document.getElementById("costCategorySelect");
     if (costCategorySelect) {
-      console.log("✅ Found costCategorySelect element");
       costCategorySelect.addEventListener("change", () => {
-        console.log(
-          "🔄 costCategorySelect changed to:",
-          costCategorySelect.value
-        );
         this.toggleCostOtherField(); // ΠΡΟΣΘΗΚΗ ΑΥΤΗΣ ΤΗΣ ΓΡΑΜΜΗΣ
       });
       // Αρχική κλήση για να εμφανιστεί/αποκρυφθεί σωστά
@@ -1702,15 +1557,12 @@ window.exportCosts = () => {
 let costsManager;
 
 function initializeCostsManager() {
-  console.log("💰 Initializing Costs Manager...");
   if (window.costsManager) {
-    console.log("⚠️ Costs Manager already initialized");
     return;
   }
   try {
     costsManager = new CostsManager();
     window.costsManager = costsManager;
-    console.log("✅ Costs Manager initialized successfully");
   } catch (error) {
     console.error("❌ Error initializing Costs Manager:", error);
   }

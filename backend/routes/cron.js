@@ -6,6 +6,16 @@ const db = require("../db");
 
 const router = express.Router();
 
+function escapeHtml(value) {
+  return String(value ?? "").replace(/[&<>'"]/g, (character) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    "'": "&#39;",
+    '"': "&quot;",
+  })[character]);
+}
+
 router.get("/maintenance", async (req, res) => {
   const expectedSecret = String(process.env.CRON_SECRET || "");
   const providedSecret = String(req.headers["x-cron-secret"] || "");
@@ -21,8 +31,6 @@ router.get("/maintenance", async (req, res) => {
   if (!validSecret) {
     return res.status(401).json({ error: "Unauthorized" });
   }
-
-  console.log("🔍 Daily maintenance check running...");
 
   try {
     const [rows] = await db.query(`
@@ -45,8 +53,6 @@ router.get("/maintenance", async (req, res) => {
         AND m.notification_days IS NOT NULL
         AND DATE(m.next_date) - INTERVAL m.notification_days DAY = CURDATE();
     `);
-
-    console.table(rows);
 
     let sent = 0;
     let skipped = 0;
@@ -106,7 +112,9 @@ router.get("/maintenance", async (req, res) => {
           ? `${item.model} (${item.chassis_number || ""})`
           : item.chassis_number || "Όχημα";
 
-        const subject = `Υπενθύμιση: ${maintenanceName} — ${vehicleLabel}`;
+        const safeMaintenanceName = escapeHtml(maintenanceName);
+        const safeVehicleLabel = escapeHtml(vehicleLabel);
+        const subject = `Υπενθύμιση: ${maintenanceName} — ${vehicleLabel}`.replace(/[\r\n]/g, " ");
 
         const messageHtml = `
 <div style="font-family: Arial, sans-serif; background:#F4F5F7; padding:25px 0;">
@@ -114,8 +122,7 @@ router.get("/maintenance", async (req, res) => {
     
     <!-- LOGO -->
     <div style="text-align:center; margin-bottom:18px;">
-      <img src="https://i.imgur.com/1KsMfep.png
-"style="height:60px;" alt="CaReMind" />
+      <img src="https://i.imgur.com/1KsMfep.png" style="height:60px;" alt="CaReMind" />
 
     </div>
 
@@ -140,10 +147,10 @@ router.get("/maintenance", async (req, res) => {
     <div style="background:linear-gradient(135deg,#FF7777 0%,#F7B0B0 55%,#999999 100%); border-radius:10px; padding:1px; margin:18px 0 16px;">
       <div style="background:#FFFFFF; border-radius:9px; padding:14px 16px;">
         <p style="font-size:14px; margin:0 0 6px; color:#111827;">
-          <strong style="color:#FF0000;">Όχημα:</strong> ${vehicleLabel}
+          <strong style="color:#FF0000;">Όχημα:</strong> ${safeVehicleLabel}
         </p>
         <p style="font-size:14px; margin:0 0 6px; color:#111827;">
-          <strong style="color:#FF0000;">Τύπος συντήρησης:</strong> ${maintenanceName}
+          <strong style="color:#FF0000;">Τύπος συντήρησης:</strong> ${safeMaintenanceName}
         </p>
         <p style="font-size:14px; margin:0; color:#111827;">
           <strong style="color:#FF0000;">Ημερομηνία συντήρησης:</strong> ${dateStr}
@@ -172,7 +179,7 @@ router.get("/maintenance", async (req, res) => {
     </p>
   </div>
 <div style="display:none; color:transparent; opacity:0; height:0; width:0;">
-  ref:${maintenanceName}
+  ref:${safeMaintenanceName}
 </div>
 
   <p style="text-align:center; font-size:11px; color:#9CA3AF; margin-top:14px;">
@@ -184,12 +191,10 @@ router.get("/maintenance", async (req, res) => {
         for (const to of recipients) {
           await sendMail(to, subject, messageHtml, []);
           await new Promise((r) => setTimeout(r, 500));
-          console.log(`📩 Email στάλθηκε σε: ${to}`);
           sent++;
         }
       }
     } else {
-      console.log("✔ Καμία ειδοποίηση σήμερα");
     }
 
     return res.json({ ok: true, total: rows.length, sent, skipped });

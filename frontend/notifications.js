@@ -1,6 +1,8 @@
 // frontend/notifications.js
 // Σύστημα ειδοποιήσεων για dashboard – βασισμένο στα δεδομένα του backend
 
+const safeNotificationHtml = window.CaReMindUI.escapeHtml;
+
 class NotificationCenter {
   constructor() {
     this.notifications = [];
@@ -74,7 +76,7 @@ class NotificationCenter {
 
       item.innerHTML = `
         <div class="notification-title">
-          ${n.maintenanceType} - ${n.vehicleLabel}
+          ${safeNotificationHtml(n.maintenanceType)} - ${safeNotificationHtml(n.vehicleLabel)}
         </div>
         <div class="notification-meta">
           <span>Ημ/νία: ${dateText}</span>

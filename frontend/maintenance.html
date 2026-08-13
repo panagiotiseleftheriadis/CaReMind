@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Διαχείριση Συντήρησης - Σύστημα Οχημάτων</title>
+    <title>Διαχείριση συντήρησης - CaReMind</title>
     <link rel="icon" type="image/png" href="/favicon.png" />
     <!-- 🔒 Route protection: if not logged in, redirect to login.html -->
     <script src="demo-store.js"></script>
@@ -11,6 +11,8 @@
 
     <link rel="stylesheet" href="styles.css" />
     <link rel="stylesheet" href="maintenance.css" />
+    <link rel="stylesheet" href="ui.css" />
+    <script src="ui.js"></script>
   </head>
   <body>
     <div class="container">
@@ -44,7 +46,7 @@
         <!-- Page Header -->
         <div class="page-header">
           <h2>Προγραμματισμός & Ιστορικό Συντήρησης</h2>
-          <button class="btn-primary" id="addMaintenanceBtn">
+          <button type="button" class="btn-primary" id="addMaintenanceBtn">
             + Νέα Συντήρηση
           </button>
         </div>
@@ -229,32 +231,8 @@
     <script src="api.js"></script>
     <script src="database.js"></script>
     <script src="auth.js"></script>
+    <script src="maintenance-labels.js"></script>
     <script src="maintenance.js"></script>
-    <script>
-      // Debugging script
-      document.addEventListener("DOMContentLoaded", function () {
-        console.log("🛠️ Maintenance page loaded");
-
-        const user = JSON.parse(localStorage.getItem("currentUser"));
-        const token = localStorage.getItem("authToken");
-
-        console.log("User from localStorage:", user);
-        console.log("Token exists:", !!token);
-
-        // Test API connection
-        if (window.api) {
-          console.log("API instance available");
-        }
-        const navToggle = document.querySelector(".nav-toggle");
-
-        if (navToggle) {
-          navToggle.addEventListener("click", function () {
-            document.body.classList.toggle("nav-open");
-          });
-        }
-      });
-    </script>
-  </body>
     <footer class="site-footer">
   <div class="footer-container">
     <div class="footer-top">
@@ -314,7 +292,7 @@
     <div class="footer-divider"></div>
 
     <div class="footer-bottom">
-  <p>&copy; <span id="year"></span> CaReMind Systems. All rights reserved.</p>
+  <p>&copy; <span id="footerYear"></span> CaReMind Systems. All rights reserved.</p>
   
   <a href="#top" class="back-to-top" aria-label="Επιστροφή στην κορυφή">
     <img src="assets/up-arrow.png" alt="Up" />
@@ -324,7 +302,7 @@
 </footer>
 <script>
   // 1. Dynamic Year
-  document.getElementById("year").textContent = new Date().getFullYear();
+  document.getElementById("footerYear").textContent = new Date().getFullYear();
 
   // 2. Footer Accordion Logic (Mobile Only)
   document.addEventListener("DOMContentLoaded", function () {
@@ -355,7 +333,5 @@
   });
 </script>
 
-  <script>
-    document.getElementById("year").textContent = new Date().getFullYear();
-  </script>
+</body>
 </html>

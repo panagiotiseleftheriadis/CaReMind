@@ -2,6 +2,9 @@
 const express = require("express");
 const router = express.Router();
 const db = require("../db");
+const { isPositiveId, requirePositiveId } = require("../validation");
+
+router.param("id", requirePositiveId);
 
 function isValidDate(value) {
   const raw = String(value || "");
@@ -52,7 +55,7 @@ router.post("/", async (req, res) => {
       req.body || {};
 
     const normalizedAmount = Number(amount);
-    if (!vehicleId || !category || !Number.isFinite(normalizedAmount) || normalizedAmount <= 0 || !isValidDate(date)) {
+    if (!isPositiveId(vehicleId) || !category || !Number.isFinite(normalizedAmount) || normalizedAmount <= 0 || !isValidDate(date)) {
       return res
         .status(400)
         .json({ error: "Απαιτούνται όχημα, κατηγορία, ποσό και ημερομηνία" });
@@ -115,7 +118,7 @@ router.put("/:id", async (req, res) => {
 
     const normalizedAmount = Number(amount);
     if (
-      !vehicleId ||
+      !isPositiveId(vehicleId) ||
       !category ||
       !Number.isFinite(normalizedAmount) ||
       normalizedAmount <= 0 ||

@@ -1,312 +1,188 @@
-# 🚗 CaReMind – Vehicle Maintenance & Cost Management System
+# CaReMind
 
-![Node.js](https://img.shields.io/badge/Node.js-18.x-green)
-![MySQL](https://img.shields.io/badge/MySQL-8.x-blue)
-![REST API](https://img.shields.io/badge/API-REST-orange)
-![JWT](https://img.shields.io/badge/Auth-JWT-purple)
-![Email](https://img.shields.io/badge/Email-Resend-red)
-![Cron](https://img.shields.io/badge/Automation-CronJobs-lightgrey)
-![License](https://img.shields.io/badge/License-Educational-yellow)
+Vehicle maintenance and operating-cost management for individuals and small fleets.
 
----
+[**Open the live demo**](https://car-remind.gr) · No registration or backend connection required
 
-## 📌 Project Overview
+![CaReMind dashboard](screenshots/dashboard.png)
 
-**CaReMind** is a full-stack web application designed to help users manage their vehicles, track expenses, schedule maintenance, and receive automated notifications and email reminders.
+## What the project does
 
-The system follows a **Client–Server architecture** with a dedicated frontend and backend, connected via a secure **RESTful API** and powered by a **MySQL database**.
+CaReMind gives each account a private workspace for its own vehicles. Users can register vehicles, schedule and complete maintenance, track costs, review upcoming reminders and manage notification recipients.
 
----
+Version 1 deliberately uses one owner per fleet: all vehicle, maintenance and cost records are scoped by `user_id`. `companyName` is profile information, not a shared organisation or team boundary. Invitations and multi-user companies are intentionally deferred to a future version.
 
-## 🎯 Key Features
+The portfolio demo runs entirely in the browser. It loads realistic seed data into `localStorage`, implements the same API-shaped operations used by the real interface and can be reset at any time. Demo data never reaches the production backend.
 
-* User Authentication (Register / Login)
-* Vehicle Management (CRUD operations)
-* Maintenance Scheduling
-* Cost & Expense Tracking
-* Notification System
-* Automated Email Reminders (Resend API)
-* Admin Panel (User Management)
-* REST API
-* Secure JWT Authorization
-* Cron Jobs for automation
+## Highlights
 
----
+- Browser-only portfolio demo with complete CRUD flows
+- Access and refresh-token authentication with email verification
+- Ownership checks for every vehicle, maintenance and cost mutation
+- Expense summaries, charts, filters and CSV export
+- Maintenance reminders and configurable email recipients
+- Responsive vanilla JavaScript interface with accessible dialogs and feedback
+- Non-destructive, checksum-protected MySQL migrations
+- Automated API, authorization and demo-flow tests in GitHub Actions
 
-## 🧰 Tech Stack
+## Architecture
 
-### Frontend
+```mermaid
+flowchart LR
+  Visitor["Portfolio visitor"] --> Demo["Browser demo store"]
+  Demo --> LocalStorage["Browser localStorage"]
 
-* **HTML5**
-* **CSS3**
-* **Vanilla JavaScript**
-* Responsive UI
-* Fetch API for server communication
-* Modular JS structure
-
-### Backend
-
-* **Node.js**
-* **Express.js**
-* RESTful API Architecture
-* JWT Authentication
-* Middleware for route protection
-* Cron Jobs for scheduled tasks
-
-### Database
-
-* **MySQL**
-* Relational schema
-* Structured tables for:
-
-  * Users
-  * Vehicles
-  * Costs
-  * Maintenances
-  * Notifications
-
-### Email Service
-
-* **Resend API**
-* Automated email notifications
-* Secure API key handling via environment variables
-
----
-
-## 🗂️ Project Structure
-
-```
-CaReMind/
-│
-├── backend/
-│   ├── server.js
-│   ├── db.js
-│   ├── middleware.js
-│   ├── emailService.js
-│   ├── routes/
-│   │   ├── auth.js
-│   │   ├── account.js
-│   │   ├── vehicles.js
-│   │   ├── costs.js
-│   │   ├── maintenances.js
-│   │   ├── notifications.js
-│   │   ├── adminUsers.js
-│   │   ├── cron.js
-│   │   ├── interest.js
-│   └── sql/
-│
-├── frontend/
-│   ├── pages/
-│   ├── css/
-│   ├── js/
-│   ├── api.js
-│   ├── auth.js
-│   ├── auth-guard.js
-│
-├── screenshots/
-│   ├── login.png
-│   ├── register.png
-│   ├── dashboard.png
-│   ├── vehicles.png
-│   ├── costs.png
-│   ├── maintenances.png
-│   ├── notifications.png
-│   ├── account.png
-│   ├── admin.png
-│
-├── package.json
-└── README.md
+  User["Registered user"] --> Frontend["HTML / CSS / Vanilla JS"]
+  Frontend -->|"HTTPS + JSON"| API["Express REST API"]
+  API --> Auth["JWT access + refresh sessions"]
+  API --> MySQL["MySQL 8"]
+  API --> Resend["Resend email service"]
+  Scheduler["Protected cron request"] --> API
 ```
 
----
+The frontend calls one API adapter. When demo mode is enabled, that adapter delegates to `demo-store.js`; otherwise it calls the Express API. This keeps the visible user flows consistent without requiring paid infrastructure for recruiter access.
 
-## 📸 Application Screenshots
+## Technology
 
-### 🔐 Login Page
+| Layer | Technology |
+| --- | --- |
+| Frontend | HTML5, CSS3, Vanilla JavaScript, Chart.js |
+| Backend | Node.js 22, Express 5 |
+| Database | MySQL 8, custom ordered migrations |
+| Security | bcrypt, JWT, HttpOnly cookies, Helmet, rate limiting |
+| Email | Resend |
+| Quality | Node test runner, GitHub Actions, npm audit |
 
-![Login](screenshots/login.png)
+## Screens
 
-### 📝 Register Page
+| Login and demo entry | Vehicles |
+| --- | --- |
+| ![Login](screenshots/login.png) | ![Vehicles](screenshots/vehicles.png) |
 
-![Register](screenshots/register.png)
+| Maintenance | Costs |
+| --- | --- |
+| ![Maintenance](screenshots/maintenances.png) | ![Costs](screenshots/costs.png) |
 
-### 📊 Dashboard
+Additional screens: [registration](screenshots/register.png), [account](screenshots/account.png) and [admin](screenshots/admin.png).
 
-![Dashboard](screenshots/dashboard.png)
+## Run locally
 
-### 🚗 Vehicles Management
+Requirements: Node.js 22+, npm and MySQL 8+.
 
-![Vehicles](screenshots/vehicles.png)
-
-### 💰 Costs Management
-
-![Costs](screenshots/costs.png)
-
-### 🛠 Maintenance Scheduling
-
-![Maintenances](screenshots/maintenances.png)
-
-
-### 👤 Account Settings
-
-![Account](screenshots/account.png)
-
-### 🧑‍💼 Admin Panel
-
-![Admin](screenshots/admin.png)
-
----
-
-## 🌐 REST API Documentation
-
-| Method | Endpoint          | Description           | Auth Required |
-| ------ | ----------------- | --------------------- | ------------- |
-| POST   | /auth/register    | Register new user     | ❌             |
-| POST   | /auth/login       | Login user            | ❌             |
-| GET    | /vehicles         | Get all vehicles      | ✅             |
-| POST   | /vehicles         | Create new vehicle    | ✅             |
-| PUT    | /vehicles/:id     | Update vehicle        | ✅             |
-| DELETE | /vehicles/:id     | Delete vehicle        | ✅             |
-| GET    | /costs            | Get all costs         | ✅             |
-| POST   | /costs            | Create cost entry     | ✅             |
-| DELETE | /costs/:id        | Delete cost entry     | ✅             |
-| GET    | /maintenances     | Get all maintenances  | ✅             |
-| POST   | /maintenances     | Create maintenance    | ✅             |
-| DELETE | /maintenances/:id | Delete maintenance    | ✅             |
-| GET    | /notifications    | Get notifications     | ✅             |
-| POST   | /notifications    | Create notification   | ✅             |
-| GET    | /account          | Get account info      | ✅             |
-| PUT    | /account          | Update account info   | ✅             |
-| GET    | /adminUsers       | Admin user management | ✅ (Admin)     |
-
----
-
-## ⏰ Automation & Cron Jobs
-
-The system uses scheduled background jobs to:
-
-* Check upcoming maintenance dates
-* Generate notifications
-* Send reminder emails
-
-File:
-
-```
-routes/cron.js
+```bash
+git clone https://github.com/panagiotiseleftheriadis/CaReMind.git
+cd CaReMind/backend
+npm ci
+copy .env.example .env
+npm run db:setup
+npm start
 ```
 
----
+On macOS/Linux, use `cp .env.example .env`. Edit `.env` before running the migration. `npm run db:setup` creates the configured database if necessary and applies every pending migration without dropping existing tables or data.
 
-## 📧 Email Notifications (Resend API)
+Serve `frontend/` with any static server, for example VS Code Live Server. The deployed frontend automatically uses `https://api.car-remind.gr/api`; localhost uses `http://localhost:3000/api`.
 
-Email functionality is implemented using the **Resend API** for:
+### Optional development administrator
 
-* Maintenance reminders
-* System notifications
-* Automated alerts
+There is no default password or plaintext seed account. To create or update a local administrator, configure these development-only variables and run the separate seed command:
 
-Configured via environment variables and handled in:
-
-```
-emailService.js
+```dotenv
+DEV_ADMIN_USERNAME=local-admin
+DEV_ADMIN_EMAIL=admin@example.test
+DEV_ADMIN_PASSWORD=use-a-strong-local-password
 ```
 
----
-
-## 🔐 Security
-
-* JWT Authentication
-* Protected API routes
-* Environment variables (.env)
-* Role-based authorization (User / Admin)
-
----
-
-## ⚙️ Environment Variables (.env)
-
-Example configuration:
-
-```
-DB_HOST=localhost
-DB_USER=root
-DB_PASS=your_password
-DB_NAME=caremind
-JWT_SECRET=your_secret_key
-RESEND_API_KEY=your_resend_api_key
-CRON_SECRET=your_cron_secret
-COOKIE_DOMAIN=.car-remind.gr
-CORS_ORIGINS=
-PORT=3000
+```bash
+npm run db:seed
 ```
 
----
+The seed refuses to run in production and hashes the password with bcrypt.
 
-## ▶️ Installation & Running the Project
+## Environment variables
 
-### 1️⃣ Backend Setup
+| Variable | Required | Purpose |
+| --- | --- | --- |
+| `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASS`, `DB_NAME` | Yes | MySQL connection and migration target |
+| `JWT_SECRET` | Yes | Access-token signing; the API refuses to start without it |
+| `RESEND_API_KEY` | For email | Verification, reset and reminder delivery |
+| `CRON_SECRET` | For reminders | Protects the maintenance cron endpoint |
+| `COOKIE_DOMAIN` | Production | Refresh-cookie domain |
+| `CORS_ORIGINS` | Optional | Additional comma-separated frontend origins |
+| `PORT`, `NODE_ENV` | Optional | Runtime configuration |
+
+See [`backend/.env.example`](backend/.env.example) for a complete template. Never commit `.env`.
+
+## Database migrations
+
+Migration files live in `backend/migrations/` and execute in filename order. The runner:
+
+- creates the configured database and `schema_migrations` table when needed;
+- records a SHA-256 checksum for every applied migration;
+- skips migrations already applied;
+- stops if an applied migration was later modified;
+- never drops tables or seeds default credentials.
+
+Legacy installations are aligned by `002_align_legacy_schema.js`, which adds the missing authentication fields, indexes and database constraints. If legacy data violates a new constraint—for example duplicate chassis numbers for one user—the migration stops so the data can be reviewed instead of silently deleting or rewriting it.
+
+## API
+
+All routes use the `/api` prefix. The complete machine-readable contract is available in [`docs/openapi.yaml`](docs/openapi.yaml) and can be opened in Swagger Editor.
+
+| Area | Endpoints |
+| --- | --- |
+| Authentication | `POST /login`, `/refresh`, `/logout`, `/register`, `/verify-email`, `/resend-verification`, `/forgot-password`, `/verify-reset-code`, `/reset-password` |
+| Vehicles | `GET/POST /vehicles`, `PUT/DELETE /vehicles/{id}` |
+| Maintenance | `GET/POST /maintenances`, `PUT/DELETE /maintenances/{id}` |
+| Costs | `GET/POST /costs`, `PUT/DELETE /costs/{id}` |
+| Account | `GET /account/me`, account change-code flow, notification recipients |
+| Notifications | `GET /notifications` |
+| Administration | User CRUD under `/users` (admin role required) |
+| Automation | `GET /cron/maintenance` with `X-Cron-Secret` |
+
+## Test and quality checks
 
 ```bash
 cd backend
-npm install
-node server.js
+npm run check
+npm test
+npm audit --omit=dev
 ```
 
-### 2️⃣ Database Setup
+The test suite covers login, refresh, logout, expired tokens, inactive users, route protection, ownership isolation, vehicle/cost/maintenance CRUD, registration/reset validation and the browser-only portfolio flow. GitHub Actions runs backend tests, syntax checks, frontend syntax checks and the production dependency audit on every push and pull request.
 
-* Import SQL files from `/backend/sql`
-* Create database `caremind`
-* Configure `.env` file
+## Security decisions
 
-### 3️⃣ Frontend
+- Passwords are hashed with bcrypt; legacy plaintext rows are upgraded after one successful login.
+- Refresh tokens are random, stored only as SHA-256 hashes and sent through HttpOnly cookies.
+- Password changes revoke active refresh sessions.
+- Authenticated resources are always filtered by the verified token user, never by a body-provided user ID.
+- Login and verification endpoints are rate limited; Helmet adds browser security headers.
+- User-controlled frontend values are escaped before insertion into generated markup.
+- The cron route fails closed when `CRON_SECRET` is missing.
 
-Open HTML files using a browser or Live Server extension.
+## Technical decisions and challenges
 
----
+**Zero-cost demo architecture.** The hosted demo must remain available even when the database is paused. A small browser store mirrors the API contract, which avoids maintaining a second demo UI and prevents demo visitors from modifying real records.
 
-## 🏗️ Architecture
+**Safe schema evolution.** The original SQL snapshot dropped tables and contained plaintext accounts. It was replaced with ordered, auditable migrations plus a separate opt-in development seed.
 
-```
-Frontend (HTML / CSS / JS)
-        ↓ Fetch API
-Backend (Node.js + Express REST API)
-        ↓
-MySQL Database
-        ↓
-Resend Email API
-```
+**Session compatibility.** Short-lived access tokens keep API authorization stateless, while revocable refresh-token records support logout, inactive-account enforcement and password-change invalidation.
 
----
+**Vanilla frontend hardening.** The application remains framework-free. Shared `ui.js` and `ui.css` provide escaping, feedback, confirmation and modal accessibility without a rewrite.
 
-## 📊 System Capabilities
+## Roadmap
 
-* Full CRUD functionality
-* Real-time user data management
-* Automated scheduled tasks
-* Secure authentication
-* Modular scalable architecture
+- Mileage history and recurring maintenance templates
+- Receipt uploads and PDF export
+- Personal-data export and account deletion
+- Notification preferences
+- Installable PWA experience
+- Team invitations and shared company fleets in version 2
 
----
+## Project metadata
 
-## 🚀 Future Improvements
+- [Changelog](CHANGELOG.md)
+- [MIT License](LICENSE)
+- [OpenAPI specification](docs/openapi.yaml)
 
-* Mobile application
-* Cloud deployment
-* Push notifications
-* Analytics dashboard
-* Multi-language support
-
----
-
-## 👨‍💻 Author
-
-Developed as a full-stack web application project using modern web technologies.
-
----
-
-## 📄 License
-
-This project is for educational and demonstration purposes.
-
----
-
-⭐ If you like this project, feel free to star the repository!
+Developed by [Panagiotis Eleftheriadis](https://github.com/panagiotiseleftheriadis) as a full-stack portfolio project.

@@ -2,6 +2,9 @@
 const express = require("express");
 const router = express.Router();
 const db = require("../db");
+const { isPositiveId, requirePositiveId } = require("../validation");
+
+router.param("id", requirePositiveId);
 
 const ALLOWED_STATUSES = new Set(["active", "pending", "completed", "overdue"]);
 
@@ -72,7 +75,7 @@ router.post("/", async (req, res) => {
       notes,
     } = req.body || {};
 
-    if (!vehicleId || !maintenanceType) {
+    if (!isPositiveId(vehicleId) || !maintenanceType) {
       return res
         .status(400)
         .json({ error: "Απαιτείται όχημα και τύπος συντήρησης" });
@@ -171,6 +174,9 @@ router.put("/:id", async (req, res) => {
       return res.status(404).json({ error: "Η συντήρηση δεν βρέθηκε" });
     }
 
+    if (!isPositiveId(vehicleId)) {
+      return res.status(400).json({ error: "Μη έγκυρο αναγνωριστικό οχήματος" });
+    }
     if (!(await userOwnsVehicle(userId, vehicleId))) {
       return res.status(404).json({ error: "Το όχημα δεν βρέθηκε" });
     }

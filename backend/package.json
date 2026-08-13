@@ -1,15 +1,30 @@
 {
   "name": "backend",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "CaReMind REST API",
+  "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "node --watch server.js",
+    "db:migrate": "node scripts/migrate.js",
+    "db:seed": "node scripts/seed-development.js",
+    "db:setup": "npm run db:migrate",
+    "frontend:serve": "node scripts/serve-frontend.js",
+    "test": "node --test --test-concurrency=1",
+    "check": "node scripts/check-syntax.js"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "keywords": [
+    "vehicle-management",
+    "maintenance",
+    "express",
+    "mysql"
+  ],
+  "author": "Panagiotis Eleftheriadis",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/panagiotiseleftheriadis/CaReMind.git"
+  },
+  "license": "MIT",
   "dependencies": {
     "bcrypt": "^6.0.0",
     "cookie-parser": "^1.4.7",

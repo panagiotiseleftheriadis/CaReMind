@@ -14,19 +14,15 @@ async function checkAuth() {
      // 🔥 ΕΔΩ ΗΤΑΝ ΤΟ ΠΡΟΒΛΗΜΑ: Το είχες σε σχόλια.
      // Τώρα το ενεργοποιούμε για να σε βάζει αυτόματα αν έχεις cookie.
      try {
-       console.log("🔍 Checking for existing session on login page...");
        await api.refreshToken();
-       console.log("✅ Session found! Redirecting to dashboard...");
        window.location.replace("dashboard.html");
      } catch (e) { 
-       console.log("ℹ️ No active session, user must log in manually.");
      } 
      return;
   }
 
   // ΠΕΡΙΠΤΩΣΗ 2: Είμαστε σε Protected Page (π.χ. Dashboard)
   try {
-    console.log("🔒 Auth Guard: Validating session...");
     
     // Αυτό στέλνει το cookie στο /refresh για να δει αν είναι έγκυρο
     const data = await api.refreshToken();
@@ -35,7 +31,6 @@ async function checkAuth() {
       throw new Error("No access token received");
     }
 
-    console.log("✅ Session verified. Access Token set.");
     // Ο χρήστης μένει εδώ, όλα καλά.
 
   } catch (error) {

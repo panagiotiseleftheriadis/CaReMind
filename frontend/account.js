@@ -1,5 +1,7 @@
 // account.js
 
+const safeHtml = window.CaReMindUI.escapeHtml;
+
 function $(id) {
   return document.getElementById(id);
 }
@@ -85,14 +87,14 @@ function renderRecipients(list) {
         : "";
 
       return `
-        <div class="recipient-row" data-id="${r.id}">
+        <div class="recipient-row" data-id="${Number(r.id)}">
           <div>
-            <div class="recipient-email">${email}</div>
+            <div class="recipient-email">${safeHtml(email)}</div>
             <div class="recipient-meta">Προστέθηκε: ${created || "—"}</div>
           </div>
           <div class="recipient-actions">
             <button type="button" class="recipient-remove" data-id="${
-              r.id
+              Number(r.id)
             }">Αφαίρεση</button>
           </div>
         </div>
@@ -425,6 +427,8 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // initial load
-  loadMe();
-  loadRecipients();
+  window.CaReMindUI.setBusy(true, "Φόρτωση λογαριασμού…");
+  Promise.allSettled([loadMe(), loadRecipients()]).finally(() =>
+    window.CaReMindUI.setBusy(false)
+  );
 });

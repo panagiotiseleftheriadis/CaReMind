@@ -3,8 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Σύνδεση - CarReminder</title>
+    <title>Σύνδεση - CaReMind</title>
     <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="stylesheet" href="ui.css" />
+    <script src="ui.js"></script>
     <script>
       document.documentElement.classList.add("js");
       window.__caremindIntroFallback = window.setTimeout(function () {
@@ -67,7 +69,7 @@
     <div class="login-container">
       <div class="login-form">
         <div class="logo-wrapper">
-          <img src="logo.svg" alt="CarReminder Logo" />
+          <img src="logo.svg" alt="CaReMind" />
         </div>
 
         <form id="loginForm">
@@ -114,7 +116,7 @@
           </div>
           <button type="submit" class="btn-primary">Σύνδεση</button>
 
-          <div class="demo-entry" aria-label="Δοκιμαστική πρόσβαση">
+          <div class="demo-entry">
             <span>ή</span>
             <button type="button" class="btn-demo" id="demoLoginBtn">
               <span class="demo-status" aria-hidden="true"></span>
@@ -150,9 +152,9 @@
     <script src="auth.js"></script>
 
     <!-- Forgot password modal -->
-    <div class="modal" id="forgotModal" aria-hidden="true">
+    <div class="modal" id="forgotModal" aria-hidden="true" inert>
       <div class="modal-content" role="dialog" aria-modal="true">
-        <button class="modal-close" id="forgotClose" aria-label="Κλείσιμο">
+        <button type="button" class="modal-close" id="forgotClose" aria-label="Κλείσιμο">
           ×
         </button>
 
@@ -165,7 +167,7 @@
             <input type="email" id="fpEmail" placeholder="Διεύθυνση email" />
             <p id="fpEmailError" class="form-error"></p>
           </div>
-          <button class="btn-primary" id="fpSendCode">Αποστολή κωδικού</button>
+          <button type="button" class="btn-primary" id="fpSendCode">Αποστολή κωδικού</button>
         </div>
 
         <!-- Step 2: code -->
@@ -181,23 +183,25 @@
               
             />
           </div>
-          <button class="btn-primary" id="fpVerifyCode">Επιβεβαίωση</button>
+          <button type="button" class="btn-primary" id="fpVerifyCode">Επιβεβαίωση</button>
         </div>
 
         <!-- Step 3: new password -->
         <div class="fp-step" id="fpStepReset" style="display: none">
           <p>Συμπληρώστε τον νεό σας κωδικό:</p>
           <div class="form-group">
-            <input type="password" id="fpNewPass" placeholder="Νέος κωδικός" />
+            <input type="password" id="fpNewPass" placeholder="Νέος κωδικός" aria-label="Νέος κωδικός" autocomplete="new-password" />
           </div>
           <div class="form-group">
             <input
               type="password"
               id="fpNewPass2"
               placeholder="Επιβεβαίωση κωδικού"
+              aria-label="Επιβεβαίωση νέου κωδικού"
+              autocomplete="new-password"
             />
           </div>
-          <button class="btn-primary" id="fpDoReset">Αλλαγή κωδικού</button>
+          <button type="button" class="btn-primary" id="fpDoReset">Αλλαγή κωδικού</button>
         </div>
 
         <div class="fp-message" id="fpMsg" style="display: none"></div>
