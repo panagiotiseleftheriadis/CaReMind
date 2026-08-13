@@ -76,8 +76,11 @@
           <div class="form-group">
             <label for="newPassword">Κωδικός Πρόσβασης:</label>
             <input
-              type="text"
+              type="password"
               id="newPassword"
+              minlength="8"
+              maxlength="128"
+              autocomplete="new-password"
               required
               placeholder="Εισάγετε τον κωδικό που θέλετε"
             />

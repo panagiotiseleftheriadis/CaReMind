@@ -3,6 +3,30 @@ const express = require("express");
 const router = express.Router();
 const db = require("../db");
 
+const ALLOWED_STATUSES = new Set(["active", "pending", "completed", "overdue"]);
+
+function toSqlDate(value) {
+  if (!value) return null;
+  const raw = String(value).slice(0, 10);
+  const parsed = new Date(`${raw}T00:00:00.000Z`);
+  if (Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== raw) {
+    return null;
+  }
+  return raw;
+}
+
+function validOptionalMileage(value) {
+  return value == null || value === "" || (Number.isInteger(Number(value)) && Number(value) >= 0);
+}
+
+async function userOwnsVehicle(userId, vehicleId) {
+  const [rows] = await db.query(
+    "SELECT id FROM vehicles WHERE id = ? AND user_id = ? LIMIT 1",
+    [vehicleId, userId]
+  );
+  return rows.length > 0;
+}
+
 // GET /api/maintenances
 router.get("/", async (req, res) => {
   try {
@@ -53,6 +77,30 @@ router.post("/", async (req, res) => {
         .status(400)
         .json({ error: "Απαιτείται όχημα και τύπος συντήρησης" });
     }
+    if (!(await userOwnsVehicle(userId, vehicleId))) {
+      return res.status(404).json({ error: "Το όχημα δεν βρέθηκε" });
+    }
+    if (String(maintenanceType).length > 100 || String(notes || "").length > 10000) {
+      return res.status(400).json({ error: "Τα στοιχεία συντήρησης είναι πολύ μεγάλα" });
+    }
+
+    const normalizedLastDate = lastDate ? toSqlDate(lastDate) : null;
+    const normalizedNextDate = nextDate ? toSqlDate(nextDate) : null;
+    const normalizedNotificationDays = notificationDays == null ? 7 : Number(notificationDays);
+    const normalizedStatus = status || "pending";
+
+    if ((lastDate && !normalizedLastDate) || (nextDate && !normalizedNextDate)) {
+      return res.status(400).json({ error: "Μη έγκυρη ημερομηνία" });
+    }
+    if (!validOptionalMileage(lastMileage) || !validOptionalMileage(nextMileage)) {
+      return res.status(400).json({ error: "Τα χιλιόμετρα πρέπει να είναι θετικός αριθμός" });
+    }
+    if (!Number.isInteger(normalizedNotificationDays) || normalizedNotificationDays < 0 || normalizedNotificationDays > 365) {
+      return res.status(400).json({ error: "Οι ημέρες ειδοποίησης πρέπει να είναι από 0 έως 365" });
+    }
+    if (!ALLOWED_STATUSES.has(normalizedStatus)) {
+      return res.status(400).json({ error: "Μη έγκυρη κατάσταση συντήρησης" });
+    }
 
     const [result] = await db.query(
       `INSERT INTO maintenances
@@ -62,12 +110,12 @@ router.post("/", async (req, res) => {
         userId,
         vehicleId,
         maintenanceType,
-        lastDate || null,
-        nextDate || null,
-        lastMileage || null,
-        nextMileage || null,
-        notificationDays || 7,
-        status || "active",
+        normalizedLastDate,
+        normalizedNextDate,
+        lastMileage === "" ? null : lastMileage,
+        nextMileage === "" ? null : nextMileage,
+        normalizedNotificationDays,
+        normalizedStatus,
         notes || null,
       ]
     );
@@ -122,24 +170,49 @@ router.put("/:id", async (req, res) => {
     if (!existingRows.length) {
       return res.status(404).json({ error: "Η συντήρηση δεν βρέθηκε" });
     }
-    const toSqlDate = (d) =>
-      d ? new Date(d).toISOString().slice(0, 10) : null;
+
+    if (!(await userOwnsVehicle(userId, vehicleId))) {
+      return res.status(404).json({ error: "Το όχημα δεν βρέθηκε" });
+    }
+    if (!maintenanceType || String(maintenanceType).length > 100 || String(notes || "").length > 10000) {
+      return res.status(400).json({ error: "Μη έγκυρα στοιχεία συντήρησης" });
+    }
+
+    const normalizedLastDate = lastDate ? toSqlDate(lastDate) : null;
+    const normalizedNextDate = nextDate ? toSqlDate(nextDate) : null;
+    const normalizedNotificationDays = notificationDays == null ? 7 : Number(notificationDays);
+    const normalizedStatus = status || "pending";
+
+    if ((lastDate && !normalizedLastDate) || (nextDate && !normalizedNextDate)) {
+      return res.status(400).json({ error: "Μη έγκυρη ημερομηνία" });
+    }
+    if (!validOptionalMileage(lastMileage) || !validOptionalMileage(nextMileage)) {
+      return res.status(400).json({ error: "Τα χιλιόμετρα πρέπει να είναι θετικός αριθμός" });
+    }
+    if (!Number.isInteger(normalizedNotificationDays) || normalizedNotificationDays < 0 || normalizedNotificationDays > 365) {
+      return res.status(400).json({ error: "Οι ημέρες ειδοποίησης πρέπει να είναι από 0 έως 365" });
+    }
+    if (!ALLOWED_STATUSES.has(normalizedStatus)) {
+      return res.status(400).json({ error: "Μη έγκυρη κατάσταση συντήρησης" });
+    }
+
     await db.query(
       `UPDATE maintenances
        SET vehicle_id = ?, maintenance_type = ?, last_date = ?, next_date = ?,
            last_mileage = ?, next_mileage = ?, notification_days = ?, status = ?, notes = ?
-       WHERE id = ?`,
+       WHERE id = ? AND user_id = ?`,
       [
         vehicleId,
         maintenanceType,
-        toSqlDate(lastDate),
-        toSqlDate(nextDate),
-        lastMileage || null,
-        nextMileage || null,
-        notificationDays || 7,
-        status || "active",
+        normalizedLastDate,
+        normalizedNextDate,
+        lastMileage === "" ? null : lastMileage,
+        nextMileage === "" ? null : nextMileage,
+        normalizedNotificationDays,
+        normalizedStatus,
         notes || null,
         maintenanceId,
+        userId,
       ]
     );
 
@@ -186,7 +259,10 @@ router.delete("/:id", async (req, res) => {
       return res.status(404).json({ error: "Η συντήρηση δεν βρέθηκε" });
     }
 
-    await db.query("DELETE FROM maintenances WHERE id = ?", [maintenanceId]);
+    await db.query("DELETE FROM maintenances WHERE id = ? AND user_id = ?", [
+      maintenanceId,
+      userId,
+    ]);
 
     res.json({ success: true });
   } catch (err) {

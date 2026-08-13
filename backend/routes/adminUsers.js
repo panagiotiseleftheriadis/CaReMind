@@ -2,7 +2,11 @@
 const express = require("express");
 const router = express.Router();
 const db = require("../db");
+const bcrypt = require("bcrypt");
 const { authenticateToken } = require("../middleware");
+
+const USERNAME_PATTERN = /^[\p{L}\p{N}._-]{3,50}$/u;
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // Μόνο admin επιτρέπεται
 function requireAdmin(req, res, next) {
@@ -51,6 +55,12 @@ router.post("/", authenticateToken, requireAdmin, async (req, res) => {
   if (!username || !password || !companyName || !email || !userNumber) {
     return res.status(400).json({ error: "Λείπουν απαιτούμενα πεδία" });
   }
+  if (password.length < 8 || password.length > 128) {
+    return res.status(400).json({ error: "Ο κωδικός πρέπει να έχει 8-128 χαρακτήρες" });
+  }
+  if (!USERNAME_PATTERN.test(username) || !EMAIL_PATTERN.test(email)) {
+    return res.status(400).json({ error: "Μη έγκυρο username ή email" });
+  }
 
   try {
     // 1. Έλεγχος αν υπάρχει ήδη ο χρήστης
@@ -73,11 +83,14 @@ router.post("/", authenticateToken, requireAdmin, async (req, res) => {
 
     const companyId = companyResult.insertId;
 
+    const passwordHash = await bcrypt.hash(password, 12);
+
     // 3. Δημιουργία χρήστη
     await db.query(
-      `INSERT INTO users (username, password, role, company_id, is_active, email, user_number) 
-   VALUES (?, ?, 'user', ?, 1, ?, ?)`,
-      [username, password, companyId, email, userNumber]
+      `INSERT INTO users
+       (username, password, role, company_id, is_active, email, user_number, email_verified)
+       VALUES (?, ?, 'user', ?, 1, ?, ?, 1)`,
+      [username, passwordHash, companyId, email.trim().toLowerCase(), userNumber]
     );
 
     res.json({
@@ -103,6 +116,9 @@ router.put("/:id", authenticateToken, requireAdmin, async (req, res) => {
 
   if (!username || !companyName || !email || !userNumber) {
     return res.status(400).json({ error: "Λείπουν απαιτούμενα πεδία" });
+  }
+  if (!USERNAME_PATTERN.test(username) || !EMAIL_PATTERN.test(email)) {
+    return res.status(400).json({ error: "Μη έγκυρο username ή email" });
   }
 
   try {
@@ -149,8 +165,11 @@ router.put("/:id", authenticateToken, requireAdmin, async (req, res) => {
     params.push(username);
 
     if (password) {
+      if (password.length < 8 || password.length > 128) {
+        return res.status(400).json({ error: "Ο κωδικός πρέπει να έχει 8-128 χαρακτήρες" });
+      }
       fields.push("password = ?");
-      params.push(password);
+      params.push(await bcrypt.hash(password, 12));
     }
 
     fields.push("company_id = ?");
@@ -158,7 +177,7 @@ router.put("/:id", authenticateToken, requireAdmin, async (req, res) => {
 
     // ΝΕΟ: email & user_number
     fields.push("email = ?");
-    params.push(email);
+    params.push(email.trim().toLowerCase());
 
     fields.push("user_number = ?");
     params.push(userNumber);
@@ -172,6 +191,13 @@ router.put("/:id", authenticateToken, requireAdmin, async (req, res) => {
 
     const sql = `UPDATE users SET ${fields.join(", ")} WHERE id = ?`;
     await db.query(sql, params);
+
+    if (password) {
+      await db.query(
+        "UPDATE refresh_tokens SET revoked_at = NOW() WHERE user_id = ? AND revoked_at IS NULL",
+        [userId]
+      );
+    }
 
     res.json({ success: true, message: "Ο χρήστης ενημερώθηκε" });
   } catch (err) {

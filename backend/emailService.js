@@ -1,7 +1,17 @@
 // emailService.js
 const { Resend } = require("resend");
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+let resendClient = null;
+
+function getResendClient() {
+  if (!process.env.RESEND_API_KEY) {
+    throw new Error("Missing required environment variable: RESEND_API_KEY");
+  }
+  if (!resendClient) {
+    resendClient = new Resend(process.env.RESEND_API_KEY);
+  }
+  return resendClient;
+}
 
 async function sendMail(to, subject, html, attachments = []) {
   // Μετατροπή attachments σε format που θέλει το Resend
@@ -22,7 +32,7 @@ async function sendMail(to, subject, html, attachments = []) {
 
   const finalAttachments = mappedAttachments.filter(Boolean);
 
-  await resend.emails.send({
+  await getResendClient().emails.send({
     // Προσωρινά μπορείς να βάλεις το default domain που επιτρέπει το Resend (ή το verified domain σου)
     from: "CaReMind <noreply@car-remind.gr>",
     replyTo: "support@car-remind.gr",

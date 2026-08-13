@@ -1,10 +1,21 @@
 // admin.js - connected to backend admin-only user management
 
+function escapeHtml(value) {
+  return String(value ?? "").replace(/[&<>'"]/g, (character) => {
+    const entities = {
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      "'": "&#39;",
+      '"': "&quot;",
+    };
+    return entities[character];
+  });
+}
+
 class AdminPanel {
   constructor() {
-    // Αποθήκευση κωδικών μόνο τοπικά (για να μπορείς να τους βλέπεις όταν χρειάζεται)
-    this.userPasswords =
-      JSON.parse(localStorage.getItem("userPasswords")) || {};
+    localStorage.removeItem("userPasswords");
     this.init();
   }
 
@@ -17,7 +28,7 @@ class AdminPanel {
   ensureAdminAccess() {
   const raw = localStorage.getItem("currentUser");
   if (!raw) {
-    window.location.href = "login.html";
+    window.location.href = "index.html";
     return;
   }
 
@@ -26,7 +37,7 @@ class AdminPanel {
     currentUser = JSON.parse(raw);
   } catch (e) {
     console.error("Failed to parse currentUser:", e);
-    window.location.href = "login.html";
+    window.location.href = "index.html";
     return;
   }
 
@@ -80,10 +91,8 @@ class AdminPanel {
   generateRandomPassword() {
     const chars =
       "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%";
-    let password = "";
-    for (let i = 0; i < 10; i++) {
-      password += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
+    const randomValues = crypto.getRandomValues(new Uint32Array(12));
+    const password = Array.from(randomValues, (value) => chars[value % chars.length]).join("");
     const passInput = document.getElementById("newPassword");
     if (passInput) {
       passInput.value = password;
@@ -105,8 +114,8 @@ class AdminPanel {
       return;
     }
 
-    if (password.length < 4) {
-      alert("Ο κωδικός πρέπει να έχει τουλάχιστον 4 χαρακτήρες");
+    if (password.length < 8) {
+      alert("Ο κωδικός πρέπει να έχει τουλάχιστον 8 χαρακτήρες");
       return;
     }
     // πολύ απλός έλεγχος email
@@ -122,10 +131,6 @@ class AdminPanel {
         email,
         userNumber,
       });
-
-      // Αποθήκευση κωδικού μόνο τοπικά για να τον βλέπεις
-      this.userPasswords[username] = password;
-      localStorage.setItem("userPasswords", JSON.stringify(this.userPasswords));
 
       alert(
         `✅ Ο χρήστης "${username}" δημιουργήθηκε επιτυχώς!` +
@@ -168,7 +173,11 @@ class AdminPanel {
 
       const html = users
         .map((user) => {
-          const savedPassword = this.userPasswords[user.username] || "";
+          const userId = Number(user.id);
+          const safeUsername = escapeHtml(user.username);
+          const safeEmail = escapeHtml(user.email || "—");
+          const safeUserNumber = escapeHtml(user.user_number || "—");
+          const safeCompanyName = escapeHtml(user.company_name || "—");
           const createdAt = user.created_at
             ? new Date(user.created_at).toLocaleDateString("el-GR")
             : "-";
@@ -179,18 +188,13 @@ class AdminPanel {
             : "status-inactive";
 
           return `
-      <div class="user-item" id="user-${user.id}">
+      <div class="user-item" id="user-${userId}">
         <div class="user-main">
-          <p><strong>👤 Username:</strong> ${user.username}</p>
-          <p><strong>🔐 Password:</strong> ${
-            savedPassword
-              ? `<span class="password-display">${savedPassword}</span>`
-              : "Δεν βρέθηκε (τοπικά)"
-          }</p>
-          <p><strong>📧 Email:</strong> ${user.email || "—"}</p>
-          <p><strong>📱 Τηλέφωνο:</strong> ${user.user_number || "—"}</p>
-          <p><strong>🏢 Εταιρεία:</strong> ${user.company_name || "—"}</p>
-          <p><strong>🆔 ID:</strong> ${user.id}</p>
+          <p><strong>👤 Username:</strong> ${safeUsername}</p>
+          <p><strong>📧 Email:</strong> ${safeEmail}</p>
+          <p><strong>📱 Τηλέφωνο:</strong> ${safeUserNumber}</p>
+          <p><strong>🏢 Εταιρεία:</strong> ${safeCompanyName}</p>
+          <p><strong>🆔 ID:</strong> ${userId}</p>
           <p><strong>📅 Ημερομηνία:</strong> ${createdAt}</p>
           <p><strong># Company ID:</strong> ${
             user.company_id != null ? user.company_id : "—"
@@ -201,17 +205,17 @@ class AdminPanel {
         </div>
         <div class="user-actions">
           <button class="btn-secondary" onclick="adminPanel.editUser(${
-            user.id
+            userId
           })">
             Επεξεργασία
           </button>
           <button class="btn-secondary" onclick="adminPanel.toggleUserActive(${
-            user.id
+            userId
           }, ${user.is_active ? 1 : 0})">
             ${user.is_active ? "Απενεργοποίηση" : "Ενεργοποίηση"}
           </button>
           <button class="btn-secondary btn-danger" onclick="adminPanel.deleteUser(${
-            user.id
+            userId
           })">
             Διαγραφή
           </button>
@@ -219,7 +223,7 @@ class AdminPanel {
 
         <!-- Εδώ θα μπαίνει η φόρμα επεξεργασίας -->
         <div class="user-edit" id="user-edit-${
-          user.id
+          userId
         }" style="display:none; margin-top:10px;"></div>
       </div>
     `;
@@ -244,6 +248,10 @@ class AdminPanel {
         alert("❌ Ο χρήστης δεν βρέθηκε");
         return;
       }
+      const safeUsername = escapeHtml(user.username);
+      const safeEmail = escapeHtml(user.email || "");
+      const safeUserNumber = escapeHtml(user.user_number || "");
+      const safeCompanyName = escapeHtml(user.company_name || "");
 
       const container = document.getElementById(`user-edit-${userId}`);
       if (!container) return;
@@ -260,37 +268,29 @@ class AdminPanel {
           <h4>Επεξεργασία χρήστη #${user.id}</h4>
           <div class="form-group">
             <label>Username:</label>
-            <input type="text" id="edit-username-${user.id}" value="${
-        user.username
-      }" />
+            <input type="text" id="edit-username-${user.id}" value="${safeUsername}" />
           </div>
 
           <div class="form-group">
             <label>Νέος κωδικός (άφησε κενό για να μην αλλάξει):</label>
-            <input type="text" id="edit-password-${
+            <input type="password" id="edit-password-${
               user.id
             }" placeholder="Νέος κωδικός" />
           </div>
 
           <div class="form-group">
             <label>Email:</label>
-            <input type="email" id="edit-email-${user.id}" value="${
-        user.email || ""
-      }" />
+            <input type="email" id="edit-email-${user.id}" value="${safeEmail}" />
           </div>
 
           <div class="form-group">
             <label>Τηλέφωνο / Αριθμός χρήστη:</label>
-            <input type="text" id="edit-user-number-${user.id}" value="${
-        user.user_number || ""
-      }" />
+            <input type="text" id="edit-user-number-${user.id}" value="${safeUserNumber}" />
           </div>
 
           <div class="form-group">
             <label>Εταιρεία:</label>
-            <input type="text" id="edit-company-${user.id}" value="${
-        user.company_name || ""
-      }" />
+            <input type="text" id="edit-company-${user.id}" value="${safeCompanyName}" />
           </div>
 
           <div class="form-group">
@@ -353,20 +353,15 @@ class AdminPanel {
     };
 
     if (password.length > 0) {
+      if (password.length < 8) {
+        alert("Ο νέος κωδικός πρέπει να έχει τουλάχιστον 8 χαρακτήρες");
+        return;
+      }
       updatePayload.password = password;
     }
 
     try {
       await api.updateUser(userId, updatePayload);
-
-      // Αν αλλάξαμε password, ενημερώνουμε το localStorage
-      if (password.length > 0) {
-        this.userPasswords[username] = password;
-        localStorage.setItem(
-          "userPasswords",
-          JSON.stringify(this.userPasswords)
-        );
-      }
 
       alert("✅ Ο χρήστης ενημερώθηκε επιτυχώς");
       this.loadUsers();
@@ -408,20 +403,7 @@ class AdminPanel {
     }
 
     try {
-      const users = await api.getUsers();
-      const user = users.find((u) => u.id === userId);
-      const username = user ? user.username : "";
-
       await api.deleteUser(userId);
-
-      // Καθαρίζουμε αποθηκευμένο password για αυτόν τον χρήστη
-      if (username && this.userPasswords[username]) {
-        delete this.userPasswords[username];
-        localStorage.setItem(
-          "userPasswords",
-          JSON.stringify(this.userPasswords)
-        );
-      }
 
       alert("✅ Ο χρήστης διαγράφηκε επιτυχώς");
       this.loadUsers();
@@ -431,10 +413,6 @@ class AdminPanel {
     }
   }
 
-  // ------------------ Debug helper ------------------
-  showAllPasswords() {
-    console.log("Αποθηκευμένοι κωδικοί:", this.userPasswords);
-  }
 }
 
 document.addEventListener("DOMContentLoaded", () => {

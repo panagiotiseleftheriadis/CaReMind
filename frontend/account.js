@@ -32,11 +32,11 @@ function buildChangeFields(type) {
     container.innerHTML = `
       <div class="form-row">
         <label for="newPassword">Νέος κωδικός</label>
-        <input id="newPassword" type="password" placeholder="Τουλάχιστον 6 χαρακτήρες" autocomplete="new-password" />
+        <input id="newPassword" type="password" minlength="8" maxlength="128" placeholder="Τουλάχιστον 8 χαρακτήρες" autocomplete="new-password" />
       </div>
       <div class="form-row">
         <label for="newPassword2">Επιβεβαίωση νέου κωδικού</label>
-        <input id="newPassword2" type="password" placeholder="Επαναλάβετε τον κωδικό" autocomplete="new-password" />
+        <input id="newPassword2" type="password" minlength="8" maxlength="128" placeholder="Επαναλάβετε τον κωδικό" autocomplete="new-password" />
       </div>
     `;
     return;
@@ -317,10 +317,10 @@ document.addEventListener("DOMContentLoaded", () => {
     if (type === "password") {
       const p1 = String($("newPassword")?.value || "");
       const p2 = String($("newPassword2")?.value || "");
-      if (!p1 || p1.length < 6) {
+      if (!p1 || p1.length < 8) {
         showMsg(
           $("changeMsg"),
-          "Ο κωδικός πρέπει να είναι τουλάχιστον 6 χαρακτήρες.",
+          "Ο κωδικός πρέπει να είναι τουλάχιστον 8 χαρακτήρες.",
           "error"
         );
         $("newPassword")?.focus();
@@ -358,9 +358,19 @@ document.addEventListener("DOMContentLoaded", () => {
     confirmBtn.disabled = true;
     try {
       const tokenResp = await api.verifyAccountChangeCode(code);
-      await api.updateAccount(tokenResp.accountToken, updates);
+      const updateResp = await api.updateAccount(tokenResp.accountToken, updates);
 
       showMsg($("changeMsg"), "Η αλλαγή ολοκληρώθηκε επιτυχώς.", "success");
+
+      if (updateResp?.requiresLogin) {
+        showMsg(
+          $("changeMsg"),
+          "Ο κωδικός άλλαξε. Θα συνδεθείτε ξανά για λόγους ασφαλείας.",
+          "success"
+        );
+        window.setTimeout(() => api.logout(), 900);
+        return;
+      }
 
       // reset UI
       $("verifyCode").value = "";

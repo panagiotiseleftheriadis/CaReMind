@@ -3,6 +3,30 @@ const express = require("express");
 const router = express.Router();
 const db = require("../db");
 
+function validateVehicleInput({ vehicleType, chassisNumber, model, year, currentMileage }) {
+  if (!vehicleType || !chassisNumber) {
+    return "Τύπος οχήματος και αριθμός πλαισίου είναι υποχρεωτικά";
+  }
+  if (String(vehicleType).length > 100 || String(chassisNumber).length > 50) {
+    return "Τα στοιχεία του οχήματος είναι πολύ μεγάλα";
+  }
+  if (model != null && String(model).length > 100) {
+    return "Το μοντέλο είναι πολύ μεγάλο";
+  }
+  const maxYear = new Date().getFullYear() + 1;
+  if (year != null && year !== "" && (!Number.isInteger(Number(year)) || Number(year) < 1886 || Number(year) > maxYear)) {
+    return "Μη έγκυρο έτος οχήματος";
+  }
+  if (
+    currentMileage != null &&
+    currentMileage !== "" &&
+    (!Number.isInteger(Number(currentMileage)) || Number(currentMileage) < 0)
+  ) {
+    return "Τα χιλιόμετρα πρέπει να είναι μη αρνητικός ακέραιος";
+  }
+  return null;
+}
+
 // GET /api/vehicles
 // GET /api/vehicles
 router.get("/", async (req, res) => {
@@ -40,10 +64,23 @@ router.post("/", async (req, res) => {
     const { vehicleType, chassisNumber, model, year, currentMileage } =
       req.body || {};
 
-    if (!vehicleType || !chassisNumber) {
-      return res.status(400).json({
-        error: "Τύπος οχήματος και αριθμός πλαισίου είναι υποχρεωτικά",
-      });
+    const validationError = validateVehicleInput({
+      vehicleType,
+      chassisNumber,
+      model,
+      year,
+      currentMileage,
+    });
+    if (validationError) {
+      return res.status(400).json({ error: validationError });
+    }
+
+    const [duplicates] = await db.query(
+      "SELECT id FROM vehicles WHERE user_id = ? AND chassis_number = ? LIMIT 1",
+      [userId, String(chassisNumber).trim()]
+    );
+    if (duplicates.length) {
+      return res.status(409).json({ error: "Υπάρχει ήδη όχημα με αυτόν τον αριθμό πλαισίου" });
     }
 
     const [result] = await db.query(
@@ -52,10 +89,10 @@ router.post("/", async (req, res) => {
       [
         userId,
         vehicleType,
-        chassisNumber,
+        String(chassisNumber).trim(),
         model || null,
-        year || null,
-        currentMileage || null,
+        year === "" || year == null ? null : Number(year),
+        currentMileage === "" || currentMileage == null ? null : Number(currentMileage),
       ]
     );
 
@@ -91,6 +128,17 @@ router.put("/:id", async (req, res) => {
     const { vehicleType, chassisNumber, model, year, currentMileage } =
       req.body || {};
 
+    const validationError = validateVehicleInput({
+      vehicleType,
+      chassisNumber,
+      model,
+      year,
+      currentMileage,
+    });
+    if (validationError) {
+      return res.status(400).json({ error: validationError });
+    }
+
     const [existingRows] = await db.query(
       "SELECT id FROM vehicles WHERE id = ? AND user_id = ?",
       [vehicleId, userId]
@@ -99,17 +147,28 @@ router.put("/:id", async (req, res) => {
       return res.status(404).json({ error: "Το όχημα δεν βρέθηκε" });
     }
 
+    const [duplicates] = await db.query(
+      `SELECT id FROM vehicles
+       WHERE user_id = ? AND chassis_number = ? AND id <> ?
+       LIMIT 1`,
+      [userId, String(chassisNumber).trim(), vehicleId]
+    );
+    if (duplicates.length) {
+      return res.status(409).json({ error: "Υπάρχει ήδη όχημα με αυτόν τον αριθμό πλαισίου" });
+    }
+
     await db.query(
       `UPDATE vehicles
        SET vehicle_type = ?, chassis_number = ?, model = ?, year = ?, current_mileage = ?
-       WHERE id = ?`,
+       WHERE id = ? AND user_id = ?`,
       [
         vehicleType,
-        chassisNumber,
+        String(chassisNumber).trim(),
         model || null,
-        year || null,
-        currentMileage || null,
+        year === "" || year == null ? null : Number(year),
+        currentMileage === "" || currentMileage == null ? null : Number(currentMileage),
         vehicleId,
+        userId,
       ]
     );
 
@@ -149,7 +208,7 @@ router.delete("/:id", async (req, res) => {
       return res.status(404).json({ error: "Το όχημα δεν βρέθηκε" });
     }
 
-    await db.query("DELETE FROM vehicles WHERE id = ?", [vehicleId]);
+    await db.query("DELETE FROM vehicles WHERE id = ? AND user_id = ?", [vehicleId, userId]);
 
     res.json({ success: true });
   } catch (err) {

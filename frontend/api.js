@@ -175,6 +175,7 @@ class API {
   async createUser(data) { return this.request("/users", { method: "POST", body: data }); }
   async getUsers() { return this.request("/users", { method: "GET" }); }
   async updateUser(id, updates) { return this.request(`/users/${id}`, { method: "PUT", body: updates }); }
+  async toggleUserActive(id) { return this.request(`/users/${id}/toggle-active`, { method: "PATCH" }); }
   async deleteUser(id) { return this.request(`/users/${id}`, { method: "DELETE" }); }
 
   async register(data) { return this.request("/register", { method: "POST", body: data }); }

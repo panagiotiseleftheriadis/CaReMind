@@ -5,11 +5,14 @@
 const express = require("express");
 const crypto = require("crypto");
 const jwt = require("jsonwebtoken");
+const bcrypt = require("bcrypt");
 const db = require("../db");
 const sendMail = require("../emailService");
 const { JWT_SECRET } = require("../middleware");
 
 const router = express.Router();
+const USERNAME_PATTERN = /^[\p{L}\p{N}._-]{3,50}$/u;
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function hashCode(code) {
   return crypto.createHash("sha256").update(String(code)).digest("hex");
@@ -154,6 +157,9 @@ router.post("/update", async (req, res) => {
     if (payload?.purpose !== "account_change") {
       return res.status(401).json({ error: "Μη έγκυρο token" });
     }
+    if (Number(payload.userId) !== Number(req.user.id)) {
+      return res.status(403).json({ error: "Το token δεν ανήκει στον χρήστη" });
+    }
 
     const userId = payload.userId;
     const verificationId = payload.verificationId;
@@ -179,7 +185,10 @@ router.post("/update", async (req, res) => {
       allowed.username = updates.username.trim();
     }
     if (typeof updates.password === "string") {
-      allowed.password = updates.password;
+      if (updates.password.length < 8 || updates.password.length > 128) {
+        return res.status(400).json({ error: "Ο κωδικός πρέπει να έχει 8-128 χαρακτήρες" });
+      }
+      allowed.password = await bcrypt.hash(updates.password, 12);
     }
 
     const keys = Object.keys(allowed);
@@ -189,6 +198,9 @@ router.post("/update", async (req, res) => {
 
     // Unique checks (email/username)
     if (allowed.email) {
+      if (!EMAIL_PATTERN.test(allowed.email)) {
+        return res.status(400).json({ error: "Μη έγκυρο email" });
+      }
       const [e] = await db.query(
         "SELECT id FROM users WHERE email = ? AND id <> ? LIMIT 1",
         [allowed.email, userId]
@@ -200,6 +212,9 @@ router.post("/update", async (req, res) => {
       }
     }
     if (allowed.username) {
+      if (!USERNAME_PATTERN.test(allowed.username)) {
+        return res.status(400).json({ error: "Το username περιέχει μη έγκυρους χαρακτήρες" });
+      }
       const [u] = await db.query(
         "SELECT id FROM users WHERE username = ? AND id <> ? LIMIT 1",
         [allowed.username, userId]
@@ -221,10 +236,21 @@ router.post("/update", async (req, res) => {
       verificationId,
     ]);
 
-    return res.json({ ok: true });
+    const passwordChanged = Object.prototype.hasOwnProperty.call(allowed, "password");
+    if (passwordChanged) {
+      await db.query(
+        "UPDATE refresh_tokens SET revoked_at = NOW() WHERE user_id = ? AND revoked_at IS NULL",
+        [userId]
+      );
+    }
+
+    return res.json({ ok: true, requiresLogin: passwordChanged });
   } catch (err) {
     console.error("account/update error:", err);
-    return res.status(401).json({ error: "Μη έγκυρο ή ληγμένο token" });
+    if (err?.name === "JsonWebTokenError" || err?.name === "TokenExpiredError") {
+      return res.status(401).json({ error: "Μη έγκυρο ή ληγμένο token" });
+    }
+    return res.status(500).json({ error: "Σφάλμα διακομιστή" });
   }
 });
 

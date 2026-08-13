@@ -229,10 +229,13 @@ Example configuration:
 ```
 DB_HOST=localhost
 DB_USER=root
-DB_PASSWORD=your_password
+DB_PASS=your_password
 DB_NAME=caremind
 JWT_SECRET=your_secret_key
 RESEND_API_KEY=your_resend_api_key
+CRON_SECRET=your_cron_secret
+COOKIE_DOMAIN=.car-remind.gr
+CORS_ORIGINS=
 PORT=3000
 ```
 

@@ -1,83 +1,131 @@
 require("dotenv").config();
-// server.js
-const path = require("path");
+
 const express = require("express");
 const cors = require("cors");
-const cookieParser = require("cookie-parser"); // ✅ NEW: Import cookie-parser
+const cookieParser = require("cookie-parser");
+const helmet = require("helmet");
+const { rateLimit } = require("express-rate-limit");
+
 const adminUsersRoutes = require("./routes/adminUsers");
 const notificationsRoutes = require("./routes/notifications");
 const authRoutes = require("./routes/auth");
+const accountRoutes = require("./routes/account");
 const vehicleRoutes = require("./routes/vehicles");
 const maintenanceRoutes = require("./routes/maintenances");
 const costRoutes = require("./routes/costs");
 const interestRoutes = require("./routes/interest");
 const cronRoutes = require("./routes/cron");
-
 const { authenticateToken } = require("./middleware");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-app.set("trust proxy", true);
-/* ======================
-   BODY PARSERS
-====================== */
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+
+app.set("trust proxy", 1);
+app.use(helmet());
+app.use(express.json({ limit: "100kb" }));
+app.use(express.urlencoded({ extended: true, limit: "100kb" }));
 app.use(cookieParser());
-/* ======================
-   CORS
-====================== */
+
 const allowedOrigins = new Set([
   "http://localhost:5173",
+  "http://localhost:5500",
+  "http://127.0.0.1:5500",
+  "http://localhost:3000",
   "https://car-remind.gr",
   "https://www.car-remind.gr",
-  // 👇 ΠΡΟΣΘΗΚΕΣ ΓΙΑ ΤΟΠΙΚΗ ΔΟΥΛΕΙΑ:
-  "http://localhost:5500",      // Live Server (συνήθως)
-  "http://127.0.0.1:5500",      // Live Server IP
-  "http://localhost:3000"       // Backend Local
+  ...String(process.env.CORS_ORIGINS || "")
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean),
 ]);
 
 const corsOptions = {
-  origin: (origin, cb) => {
-    // allow server-to-server / curl / healthchecks with no Origin
-    if (!origin) return cb(null, true);
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.has(origin)) {
+      return callback(null, true);
+    }
 
-    const isVercelPreview = origin.endsWith(".vercel.app");
-    const isAllowed = allowedOrigins.has(origin) || isVercelPreview;
-
-    return isAllowed ? cb(null, true) : cb(new Error("Not allowed by CORS"));
+    return callback(new Error("Not allowed by CORS"));
   },
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-Cron-Secret"],
   credentials: true,
 };
 
 app.use(cors(corsOptions));
 app.options(/.*/, cors(corsOptions));
 
-/* ======================
-   ROUTES
-====================== */
-app.use("/api", authRoutes); // /api/login, /api/logout
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  message: { error: "Πάρα πολλές προσπάθειες. Δοκιμάστε ξανά αργότερα." },
+});
 
+const verificationLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: 10,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  message: { error: "Έγιναν πάρα πολλά αιτήματα επιβεβαίωσης." },
+});
+
+const publicFormLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: 5,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  message: { error: "Έγιναν πάρα πολλά αιτήματα. Δοκιμάστε ξανά αργότερα." },
+});
+
+app.use("/api/login", loginLimiter);
+app.use(
+  [
+    "/api/register",
+    "/api/verify-email",
+    "/api/resend-verification",
+    "/api/forgot-password",
+    "/api/verify-reset-code",
+    "/api/reset-password",
+    "/api/account/send-code",
+    "/api/account/verify-code",
+  ],
+  verificationLimiter
+);
+app.use("/api/interest", publicFormLimiter);
+
+app.use("/api", authRoutes);
 app.use("/api/vehicles", authenticateToken, vehicleRoutes);
 app.use("/api/maintenances", authenticateToken, maintenanceRoutes);
-app.use("/api/notifications", notificationsRoutes);
+app.use("/api/notifications", authenticateToken, notificationsRoutes);
 app.use("/api/costs", authenticateToken, costRoutes);
+app.use("/api/account", authenticateToken, accountRoutes);
 app.use("/api/interest", interestRoutes);
 app.use("/api/users", adminUsersRoutes);
 app.use("/api/cron", cronRoutes);
 
-/* ======================
-   HEALTH CHECK
-====================== */
 app.get("/", (req, res) => {
-  res.json({ message: "CarCare backend is running" });
+  res.json({ status: "ok", service: "CaReMind API" });
 });
 
-/* ======================
-   START SERVER
-====================== */
-app.listen(PORT, () => {
-  console.log(`CarCare backend listening on port ${PORT}`);
+app.use((req, res) => {
+  res.status(404).json({ error: "Route not found" });
 });
+
+app.use((err, req, res, next) => {
+  if (err?.message === "Not allowed by CORS") {
+    return res.status(403).json({ error: "Origin not allowed" });
+  }
+
+  console.error("Unhandled server error:", err);
+  return res.status(500).json({ error: "Internal server error" });
+});
+
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`CaReMind API listening on port ${PORT}`);
+  });
+}
+
+module.exports = app;

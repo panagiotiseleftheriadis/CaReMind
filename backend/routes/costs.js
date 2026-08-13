@@ -3,6 +3,21 @@ const express = require("express");
 const router = express.Router();
 const db = require("../db");
 
+function isValidDate(value) {
+  const raw = String(value || "");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return false;
+  const parsed = new Date(`${raw}T00:00:00.000Z`);
+  return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === raw;
+}
+
+async function userOwnsVehicle(userId, vehicleId) {
+  const [rows] = await db.query(
+    "SELECT id FROM vehicles WHERE id = ? AND user_id = ? LIMIT 1",
+    [vehicleId, userId]
+  );
+  return rows.length > 0;
+}
+
 // GET /api/costs
 router.get("/", async (req, res) => {
   try {
@@ -36,10 +51,20 @@ router.post("/", async (req, res) => {
     const { vehicleId, category, amount, date, description, receiptNumber } =
       req.body || {};
 
-    if (!vehicleId || !category || !amount || !date) {
+    const normalizedAmount = Number(amount);
+    if (!vehicleId || !category || !Number.isFinite(normalizedAmount) || normalizedAmount <= 0 || !isValidDate(date)) {
       return res
         .status(400)
         .json({ error: "Απαιτούνται όχημα, κατηγορία, ποσό και ημερομηνία" });
+    }
+    if (!(await userOwnsVehicle(userId, vehicleId))) {
+      return res.status(404).json({ error: "Το όχημα δεν βρέθηκε" });
+    }
+    if (String(category).length > 100) {
+      return res.status(400).json({ error: "Η κατηγορία είναι πολύ μεγάλη" });
+    }
+    if (String(receiptNumber || "").length > 100 || String(description || "").length > 10000) {
+      return res.status(400).json({ error: "Η περιγραφή ή ο αριθμός απόδειξης είναι πολύ μεγάλος" });
     }
 
     const [result] = await db.query(
@@ -50,7 +75,7 @@ router.post("/", async (req, res) => {
         userId,
         vehicleId,
         category,
-        amount,
+        normalizedAmount,
         date,
         description || null,
         receiptNumber || null,
@@ -88,6 +113,27 @@ router.put("/:id", async (req, res) => {
     const { vehicleId, category, amount, date, description, receiptNumber } =
       req.body || {};
 
+    const normalizedAmount = Number(amount);
+    if (
+      !vehicleId ||
+      !category ||
+      !Number.isFinite(normalizedAmount) ||
+      normalizedAmount <= 0 ||
+      !isValidDate(date)
+    ) {
+      return res.status(400).json({ error: "Μη έγκυρα στοιχεία κόστους" });
+    }
+    if (!(await userOwnsVehicle(userId, vehicleId))) {
+      return res.status(404).json({ error: "Το όχημα δεν βρέθηκε" });
+    }
+    if (
+      String(category).length > 100 ||
+      String(receiptNumber || "").length > 100 ||
+      String(description || "").length > 10000
+    ) {
+      return res.status(400).json({ error: "Τα στοιχεία κόστους είναι πολύ μεγάλα" });
+    }
+
     // Έλεγχος αν υπάρχει το κόστος
     const [existingRows] = await db.query(
       "SELECT id FROM costs WHERE id = ? AND user_id = ?",
@@ -111,7 +157,7 @@ router.put("/:id", async (req, res) => {
       [
         vehicleId,
         category,
-        amount,
+        normalizedAmount,
         date,
         description || null,
         receiptNumber || null,
@@ -156,7 +202,7 @@ router.delete("/:id", async (req, res) => {
       return res.status(404).json({ error: "Το κόστος δεν βρέθηκε" });
     }
 
-    await db.query("DELETE FROM costs WHERE id = ?", [costId]);
+    await db.query("DELETE FROM costs WHERE id = ? AND user_id = ?", [costId, userId]);
 
     res.json({ success: true });
   } catch (err) {

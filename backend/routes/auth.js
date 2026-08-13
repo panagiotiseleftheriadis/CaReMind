@@ -8,17 +8,39 @@ const bcrypt = require("bcrypt");
 const { JWT_SECRET, authenticateToken } = require("../middleware");
 const sendMail = require("../emailService");
 
-// --- CONFIGURATION ---
-const COOKIE_OPTIONS = {
-  httpOnly: true,
-  secure: true,
-  sameSite: "Lax",          // ✅ ΑΛΛΑΓΗ: Το "Lax" είναι φιλικό για τα iPhones όταν έχουμε ίδιο domain
-  domain: ".car-remind.gr", // ✅ ΑΛΛΑΓΗ: Λέμε ότι το cookie είναι για όλη την οικογένεια του car-remind.gr
-  path: "/api",
-  maxAge: 30 * 24 * 60 * 60 * 1000,
-};
+const USERNAME_PATTERN = /^[\p{L}\p{N}._-]{3,50}$/u;
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // --- HELPER FUNCTIONS ---
+
+function getRefreshCookieOptions(req, includeMaxAge = true) {
+  const origin = String(req.headers.origin || "");
+  const hostname = String(req.hostname || "");
+  const isLocal =
+    origin.includes("localhost") ||
+    origin.includes("127.0.0.1") ||
+    hostname === "localhost" ||
+    hostname === "127.0.0.1";
+  const options = {
+    httpOnly: true,
+    secure: !isLocal,
+    sameSite: "lax",
+    path: "/api",
+  };
+
+  if (!isLocal) {
+    options.domain = process.env.COOKIE_DOMAIN || ".car-remind.gr";
+  }
+  if (includeMaxAge) {
+    options.maxAge = 30 * 24 * 60 * 60 * 1000;
+  }
+
+  return options;
+}
+
+function clearRefreshCookie(req, res) {
+  res.clearCookie("refreshToken", getRefreshCookieOptions(req, false));
+}
 
 function generateRefreshToken() {
   const token = crypto.randomBytes(32).toString("hex");
@@ -98,22 +120,27 @@ router.post("/login", async (req, res) => {
     );
 
     if (!found.length) {
-      return res.status(401).json({ error: "Λάθος στοιχεία", code: "INVALID_USER" });
+      return res.status(401).json({ error: "Λάθος στοιχεία σύνδεσης", code: "INVALID_CREDENTIALS" });
     }
 
     const user = found[0];
 
-    // 2. Έλεγχος Password (υποστήριξη bcrypt & fallback plaintext)
+    // Transitional support for legacy plaintext rows: after a successful login,
+    // migrate the stored password to bcrypt immediately.
     const stored = String(user.password || "");
     let ok = false;
     if (stored.startsWith("$2a$") || stored.startsWith("$2b$") || stored.startsWith("$2y$")) {
       ok = await bcrypt.compare(password, stored);
     } else {
       ok = stored === password;
+      if (ok) {
+        const migratedHash = await bcrypt.hash(password, 12);
+        await db.query("UPDATE users SET password = ? WHERE id = ?", [migratedHash, user.id]);
+      }
     }
 
     if (!ok) {
-      return res.status(401).json({ error: "Λάθος κωδικός", code: "INVALID_PASSWORD" });
+      return res.status(401).json({ error: "Λάθος στοιχεία σύνδεσης", code: "INVALID_CREDENTIALS" });
     }
 
     if (!user.is_active) {
@@ -150,34 +177,7 @@ router.post("/login", async (req, res) => {
       [user.id, hash, expiresAt]
     );
 
-    // -------------------------------------------------------------------------
-    // ΑΛΛΑΓΗ: Χειροκίνητη αποστολή Header (Manual Set-Cookie)
-    // Αυτό παρακάμπτει τυχόν ελέγχους του Express για το αν είναι secure η σύνδεση
-    // και αναγκάζει τον browser να λάβει το cookie.
-    // -------------------------------------------------------------------------
-    
-    // Max-Age=2592000 είναι 30 ημέρες σε δευτερόλεπτα
-   // -------------------------------------------------------------------------
-    // ΔΥΝΑΜΙΚΗ ΡΥΘΜΙΣΗ COOKIE (ΓΙΑ ΝΑ ΔΟΥΛΕΥΕΙ ΚΑΙ ΤΟΠΙΚΑ)
-    // -------------------------------------------------------------------------
-    
-    // Ελέγχουμε αν το αίτημα έρχεται από Localhost
-    const origin = req.headers.origin || "";
-    const isLocal = origin.includes("localhost") || origin.includes("127.0.0.1");
-
-    // Βασικό cookie (χωρίς Secure/Domain αρχικά)
-    let cookieString = `refreshToken=${refreshToken}; Path=/api; Max-Age=2592000; HttpOnly; SameSite=Lax`;
-
-    if (!isLocal) {
-      // ΑΝ ΕΙΜΑΣΤΕ ΣΤΟ RENDER (Production):
-      // Προσθέτουμε Secure (για HTTPS) και το Domain
-      cookieString += `; Secure; Domain=.car-remind.gr`;
-    } 
-    // ΑΝ ΕΙΜΑΣΤΕ LOCAL: Το αφήνουμε απλό για να το δεχτεί ο browser
-
-    res.setHeader('Set-Cookie', cookieString);
-    
-    console.log("✅ Manual Cookie Header Set:", cookieString);
+    res.cookie("refreshToken", refreshToken, getRefreshCookieOptions(req));
 
     // 6. Επιστροφή απάντησης
     res.json({ accessToken, user: payload });
@@ -209,7 +209,7 @@ router.post("/refresh", async (req, res) => {
     );
 
     if (!rows.length) {
-      res.clearCookie("refreshToken", { path: "/api" });
+      clearRefreshCookie(req, res);
       return res.status(403).json({ error: "Invalid refresh token" });
     }
 
@@ -217,11 +217,12 @@ router.post("/refresh", async (req, res) => {
 
     // Checks: Expired? Revoked? User inactive?
     if (new Date() > new Date(record.expires_at) || record.revoked_at) {
-      res.clearCookie("refreshToken", { path: "/api" });
+      clearRefreshCookie(req, res);
       return res.status(403).json({ error: "Token expired or revoked" });
     }
 
     if (!record.is_active) {
+      clearRefreshCookie(req, res);
       return res.status(403).json({ error: "User inactive" });
     }
 
@@ -245,44 +246,29 @@ router.post("/refresh", async (req, res) => {
 });
 
 // 3. LOGOUT
-router.post("/logout", async (req, res) => {
-  const refreshToken = req.cookies.refreshToken;
-  
-  // Revoke token στη βάση
-  if (refreshToken) {
-    const hash = hashToken(refreshToken);
-    await db.query(
-      "UPDATE refresh_tokens SET revoked_at = NOW() WHERE token_hash = ?",
-      [hash]
-    );
-  }
-
-  // Cleanup για Guest χρήστες
-  const userId = req.user?.id || (req.body?.user?.id); // Προσπάθεια ανάκτησης ID
-  const username = req.user?.username || req.body?.username;
-  
-  if (username === "guest" && userId) {
-      await db.query("DELETE FROM costs WHERE user_id = ?", [userId]);
-      await db.query("DELETE FROM maintenances WHERE user_id = ?", [userId]);
-      await db.query("DELETE FROM vehicles WHERE user_id = ?", [userId]);
-  }
-
-  // Καθαρισμός Cookie
-  res.clearCookie("refreshToken", { path: "/api" });
-  res.json({ message: "Logged out successfully" });
-});
-
-// 4. GET CURRENT USER
-router.get("/account/me", authenticateToken, async (req, res) => {
+router.post("/logout", authenticateToken, async (req, res) => {
   try {
-    // Το req.user έχει ήδη γεμίσει από το authenticateToken
-    return res.json(req.user);
+    const refreshToken = req.cookies.refreshToken;
+
+    if (refreshToken) {
+      await db.query(
+        `UPDATE refresh_tokens
+         SET revoked_at = NOW()
+         WHERE token_hash = ? AND user_id = ? AND revoked_at IS NULL`,
+        [hashToken(refreshToken), req.user.id]
+      );
+    }
+
+    clearRefreshCookie(req, res);
+    return res.json({ message: "Logged out successfully" });
   } catch (err) {
-    res.status(500).json({ error: "Server error" });
+    console.error("Logout error:", err);
+    clearRefreshCookie(req, res);
+    return res.status(500).json({ error: "Logout failed" });
   }
 });
 
-// 5. REGISTER
+// 4. REGISTER
 router.post("/register", async (req, res) => {
   const username = String(req.body?.username || "").trim();
   const email = normalizeEmail(req.body?.email);
@@ -294,6 +280,15 @@ router.post("/register", async (req, res) => {
 
   if (!username || !email || !password) {
     return res.status(400).json({ error: "Username, email, password υποχρεωτικά" });
+  }
+  if (!USERNAME_PATTERN.test(username)) {
+    return res.status(400).json({ error: "Το username περιέχει μη έγκυρους χαρακτήρες" });
+  }
+  if (!EMAIL_PATTERN.test(email)) {
+    return res.status(400).json({ error: "Μη έγκυρο email" });
+  }
+  if (password.length < 8 || password.length > 128) {
+    return res.status(400).json({ error: "Ο κωδικός πρέπει να έχει 8-128 χαρακτήρες" });
   }
 
   try {
@@ -308,7 +303,7 @@ router.post("/register", async (req, res) => {
       if (d.email.toLowerCase() === email) return res.status(409).json({ error: "Email taken", code: "EMAIL_TAKEN" });
     }
 
-    const passwordHash = await bcrypt.hash(password, 10);
+    const passwordHash = await bcrypt.hash(password, 12);
     
     let companyId = null;
     if (companyName) {
@@ -388,7 +383,9 @@ router.post("/forgot-password", async (req, res) => {
 
   try {
     const [rows] = await db.query("SELECT id, username FROM users WHERE email = ?", [email]);
-    if (!rows.length) return res.status(404).json({ message: "Email not found", code: "EMAIL_NOT_FOUND" });
+    if (!rows.length) {
+      return res.json({ message: "If the email exists, a reset code was sent." });
+    }
 
     const user = rows[0];
     const code = generate6DigitCode();
@@ -453,6 +450,9 @@ router.post("/reset-password", async (req, res) => {
   const { resetToken, newPassword } = req.body || {};
 
   if (!resetToken || !newPassword) return res.status(400).json({ error: "Missing data" });
+  if (String(newPassword).length < 8 || String(newPassword).length > 128) {
+    return res.status(400).json({ error: "Ο κωδικός πρέπει να έχει 8-128 χαρακτήρες" });
+  }
 
   try {
     const payload = jwt.verify(resetToken, JWT_SECRET);
@@ -466,15 +466,27 @@ router.post("/reset-password", async (req, res) => {
     if (!rows.length) return res.status(401).json({ error: "Code already used or expired" });
 
     // Hash the new password
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    const hashedPassword = await bcrypt.hash(newPassword, 12);
 
     await db.query("UPDATE users SET password = ? WHERE id = ?", [hashedPassword, payload.userId]);
     await db.query("UPDATE password_reset_codes SET used_at = NOW() WHERE id = ?", [payload.resetCodeId]);
+    await db.query(
+      "UPDATE refresh_tokens SET revoked_at = NOW() WHERE user_id = ? AND revoked_at IS NULL",
+      [payload.userId]
+    );
 
     res.json({ message: "Password updated successfully" });
   } catch (err) {
     console.error("Reset pass error:", err);
-    res.status(401).json({ error: "Invalid or expired token" });
+    if (
+      err?.name === "JsonWebTokenError" ||
+      err?.name === "TokenExpiredError" ||
+      err?.name === "NotBeforeError"
+    ) {
+      return res.status(401).json({ error: "Invalid or expired token" });
+    }
+
+    res.status(500).json({ error: "Server error" });
   }
 });
 

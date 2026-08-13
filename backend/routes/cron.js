@@ -1,14 +1,24 @@
 // routes/cron.js
 const express = require("express");
-const path = require("path");
+const crypto = require("crypto");
 const sendMail = require("../emailService");
 const db = require("../db");
 
 const router = express.Router();
 
 router.get("/maintenance", async (req, res) => {
-  // Ασφάλεια: μόνο Render Cron Job (ή εσύ) να μπορεί να το χτυπάει
-  if (req.headers["x-cron-secret"] !== process.env.CRON_SECRET) {
+  const expectedSecret = String(process.env.CRON_SECRET || "");
+  const providedSecret = String(req.headers["x-cron-secret"] || "");
+
+  if (!expectedSecret) {
+    return res.status(503).json({ error: "Cron service is not configured" });
+  }
+
+  const validSecret =
+    providedSecret.length === expectedSecret.length &&
+    crypto.timingSafeEqual(Buffer.from(providedSecret), Buffer.from(expectedSecret));
+
+  if (!validSecret) {
     return res.status(401).json({ error: "Unauthorized" });
   }
 

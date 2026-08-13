@@ -14,17 +14,26 @@ router.post("/", async (req, res) => {
         .status(400)
         .json({ error: "Ονοματεπώνυμο και email είναι υποχρεωτικά" });
     }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email).trim())) {
+      return res.status(400).json({ error: "Μη έγκυρο email" });
+    }
+    if (String(fullName).length > 100 || String(message || "").length > 2000) {
+      return res.status(400).json({ error: "Το αίτημα υπερβαίνει το επιτρεπτό μέγεθος" });
+    }
+    if (fleetSize != null && fleetSize !== "" && (!Number.isInteger(Number(fleetSize)) || Number(fleetSize) < 0)) {
+      return res.status(400).json({ error: "Μη έγκυρο μέγεθος στόλου" });
+    }
 
     await db.query(
       `INSERT INTO interest_requests
        (full_name, email, phone, company_name, fleet_size, message)
        VALUES (?, ?, ?, ?, ?, ?)`,
       [
-        fullName,
-        email,
+        String(fullName).trim(),
+        String(email).trim().toLowerCase(),
         phone || null,
         companyName || null,
-        fleetSize || null,
+        fleetSize === "" || fleetSize == null ? null : Number(fleetSize),
         message || null,
       ]
     );

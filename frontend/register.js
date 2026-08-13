@@ -60,6 +60,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // Extra safety: μην επιτρέπεις submit αν οι κωδικοί δεν ταιριάζουν
       const confirm = qs('regPassword') ? qs('regPassword').value : '';
+      if (payload.password.length < 8 || payload.password.length > 128) {
+        showMsg(registerMsg, 'Ο κωδικός πρέπει να έχει 8-128 χαρακτήρες.', true);
+        return;
+      }
       if (payload.password !== confirm) {
         showMsg(registerMsg, 'Οι κωδικοί δεν ταιριάζουν.', true);
         return;
