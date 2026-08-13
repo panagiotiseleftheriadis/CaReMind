@@ -3,6 +3,7 @@
 
   const body = document.body;
   const intro = document.getElementById("introScreen");
+  const credentialFields = Array.from(document.querySelectorAll("[data-intro-credential]"));
 
   if (!intro) return;
 
@@ -11,12 +12,28 @@
   let finishTimer;
   let removeTimer;
 
+  function activateCredentials() {
+    credentialFields.forEach(function (field) {
+      field.readOnly = false;
+    });
+  }
+
+  function armCredentials() {
+    credentialFields.forEach(function (field) {
+      field.disabled = false;
+      field.readOnly = true;
+      field.addEventListener("pointerdown", activateCredentials, { once: true });
+      field.addEventListener("focus", activateCredentials, { once: true });
+    });
+  }
+
   function finishIntro() {
     if (finished) return;
     finished = true;
 
     window.clearTimeout(finishTimer);
     window.clearTimeout(window.__caremindIntroFallback);
+    armCredentials();
     body.classList.add("intro-complete");
     body.classList.remove("is-intro");
 

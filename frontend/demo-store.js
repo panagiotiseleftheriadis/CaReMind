@@ -67,7 +67,7 @@
         user_number: "69******00",
         role: "guest",
         companyId,
-        companyName: "DEMO FLEET",
+        companyName: "DEMO",
         isDemo: true,
       },
       vehicles,
