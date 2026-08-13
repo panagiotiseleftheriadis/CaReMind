@@ -34,7 +34,7 @@ test("homepage exposes a valid 1200x630 social sharing preview", () => {
   assert.match(html, /property="og:image:width" content="1200"/);
   assert.match(html, /property="og:image:height" content="630"/);
   assert.match(html, /name="twitter:card" content="summary_large_image"/);
-  assert.match(html, /https:\/\/www\.car-remind\.gr\/assets\/caremind-social-preview\.jpg\?v=1/);
+  assert.match(html, /https:\/\/www\.car-remind\.gr\/assets\/caremind-social-preview\.jpg\?v=2/);
   assert.deepEqual(jpegDimensions(image), { width: 1200, height: 630 });
   assert.ok(image.length > 50_000, "social preview should not be an empty placeholder");
 });
