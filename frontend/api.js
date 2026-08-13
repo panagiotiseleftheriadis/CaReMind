@@ -47,6 +47,11 @@ class API {
  /* ------------ Βασική μέθοδος request (ΔΙΟΡΘΩΜΕΝΗ) ------------ */
 
   async request(endpoint, options = {}, isRetry = false) {
+    // Portfolio demo: use the browser-only data store and skip the network.
+    if (window.CaReMindDemo?.isActive()) {
+      return window.CaReMindDemo.request(endpoint, options);
+    }
+
     const url = `${this.baseURL}${endpoint}`;
     
     const config = {
@@ -140,6 +145,14 @@ class API {
 
   // ✅ Η μέθοδος που καλείται αυτόματα
   async refreshToken() {
+    if (window.CaReMindDemo?.isActive()) {
+      const response = await window.CaReMindDemo.request("/refresh", {
+        method: "POST",
+      });
+      this.setToken(response.accessToken);
+      return response;
+    }
+
     const response = await fetch(`${this.baseURL}/refresh`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -172,6 +185,12 @@ class API {
   async resetPassword(token, pass) { return this.request("/reset-password", { method: "POST", body: { resetToken: token, newPassword: pass } }); }
   
   async getAccountMe() { return this.request("/account/me", { method: "GET" }); }
+  async sendAccountChangeCode() { return this.request("/account/send-code", { method: "POST" }); }
+  async verifyAccountChangeCode(code) { return this.request("/account/verify-code", { method: "POST", body: { code } }); }
+  async updateAccount(accountToken, updates) { return this.request("/account/update", { method: "POST", body: { accountToken, updates } }); }
+  async getRecipients() { return this.request("/account/recipients", { method: "GET" }); }
+  async addRecipient(value) { return this.request("/account/recipients", { method: "POST", body: { type: "email", value } }); }
+  async deleteRecipient(id) { return this.request(`/account/recipients/${id}`, { method: "DELETE" }); }
   
   // Οχήματα, Κόστη, Συντηρήσεις κλπ...
   async getVehicles() { return this.request("/vehicles", { method: "GET" }); }

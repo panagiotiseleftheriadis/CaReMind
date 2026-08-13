@@ -188,6 +188,19 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
+  // One-click portfolio demo. No backend, database or credentials required.
+  const demoLoginButton = document.getElementById("demoLoginBtn");
+  demoLoginButton?.addEventListener("click", () => {
+    if (!window.CaReMindDemo) {
+      showLoginError("Το demo δεν μπόρεσε να φορτώσει. Δοκιμάστε ξανά.");
+      return;
+    }
+
+    demoLoginButton.disabled = true;
+    window.CaReMindDemo.start({ reset: true });
+    window.location.href = "dashboard.html";
+  });
+
   // Logout buttons/links
   const logoutButtons = document.querySelectorAll(
     "#logoutButton, .logout-link"

@@ -691,6 +691,17 @@ class DashboardManager {
   }
 
   handleLogout() {
+    if (window.CaReMindDemo?.isActive()) {
+      window.CaReMindDemo.end();
+      window.location.href = "index.html";
+      return;
+    }
+
+    if (window.api?.logout) {
+      window.api.logout();
+      return;
+    }
+
     localStorage.removeItem("currentUser");
     localStorage.removeItem("authToken");
     window.location.href = "index.html";
