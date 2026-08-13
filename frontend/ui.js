@@ -141,15 +141,36 @@
         if (!navigation.id) navigation.id = `navigation-${Math.random().toString(36).slice(2, 8)}`;
         button.setAttribute("aria-controls", navigation.id);
         button.addEventListener("click", () => {
-          window.setTimeout(() => {
-            const expanded =
-              navigation.classList.contains("open") ||
-              navigation.classList.contains("active") ||
-              window.getComputedStyle(navigation).display !== "none";
-            button.setAttribute("aria-expanded", String(expanded));
-          }, 0);
+          const expanded = document.body.classList.toggle("nav-open");
+          button.setAttribute("aria-expanded", String(expanded));
+          button.setAttribute("aria-label", expanded ? "Κλείσιμο μενού" : "Άνοιγμα μενού");
+        });
+
+        navigation.addEventListener("click", (event) => {
+          if (!event.target.closest("a")) return;
+          document.body.classList.remove("nav-open");
+          button.setAttribute("aria-expanded", "false");
+          button.setAttribute("aria-label", "Άνοιγμα μενού");
         });
       }
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key !== "Escape" || !document.body.classList.contains("nav-open")) return;
+      document.body.classList.remove("nav-open");
+      document.querySelectorAll(".nav-toggle").forEach((button) => {
+        button.setAttribute("aria-expanded", "false");
+        button.setAttribute("aria-label", "Άνοιγμα μενού");
+      });
+    });
+
+    window.addEventListener("resize", () => {
+      if (window.innerWidth <= 768) return;
+      document.body.classList.remove("nav-open");
+      document.querySelectorAll(".nav-toggle").forEach((button) => {
+        button.setAttribute("aria-expanded", "false");
+        button.setAttribute("aria-label", "Άνοιγμα μενού");
+      });
     });
 
     document.querySelectorAll(".modal .close").forEach((close) => {
