@@ -15,7 +15,7 @@ const maintenanceRoutes = require("./routes/maintenances");
 const costRoutes = require("./routes/costs");
 const interestRoutes = require("./routes/interest");
 const cronRoutes = require("./routes/cron");
-const { authenticateToken } = require("./middleware");
+const { authenticateToken } = require("./authMiddleware");
 const db = require("./db");
 
 const app = express();

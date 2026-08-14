@@ -5,7 +5,7 @@ const db = require("../db");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const bcrypt = require("bcrypt");
-const { JWT_SECRET, authenticateToken } = require("../middleware");
+const { JWT_SECRET, authenticateToken } = require("../authMiddleware");
 const sendMail = require("../emailService");
 
 const USERNAME_PATTERN = /^[\p{L}\p{N}._-]{3,50}$/u;

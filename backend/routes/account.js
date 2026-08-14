@@ -9,7 +9,7 @@ const bcrypt = require("bcrypt");
 const { requirePositiveId } = require("../validation");
 const db = require("../db");
 const sendMail = require("../emailService");
-const { JWT_SECRET } = require("../middleware");
+const { JWT_SECRET } = require("../authMiddleware");
 
 const router = express.Router();
 router.param("id", requirePositiveId);
