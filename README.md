@@ -22,7 +22,7 @@ The portfolio demo runs entirely in the browser. It loads realistic seed data in
 - Expense summaries, charts, filters and CSV export
 - Maintenance reminders and configurable email recipients
 - Responsive vanilla JavaScript interface with accessible dialogs and feedback
-- Non-destructive, checksum-protected MySQL migrations
+- Non-destructive, checksum-protected PostgreSQL migrations
 - Automated API, authorization and demo-flow tests in GitHub Actions
 
 ## Architecture
@@ -35,7 +35,7 @@ flowchart LR
   User["Registered user"] --> Frontend["HTML / CSS / Vanilla JS"]
   Frontend -->|"HTTPS + JSON"| API["Express REST API"]
   API --> Auth["JWT access + refresh sessions"]
-  API --> MySQL["MySQL 8"]
+  API --> Neon["Neon PostgreSQL"]
   API --> Resend["Resend email service"]
   Scheduler["Protected cron request"] --> API
 ```
@@ -47,8 +47,8 @@ The frontend calls one API adapter. When demo mode is enabled, that adapter dele
 | Layer | Technology |
 | --- | --- |
 | Frontend | HTML5, CSS3, Vanilla JavaScript, Chart.js |
-| Backend | Node.js 22, Express 5 |
-| Database | MySQL 8, custom ordered migrations |
+| Backend | Node.js 22, Express 5 on Vercel Functions |
+| Database | Neon PostgreSQL, custom ordered migrations |
 | Security | bcrypt, JWT, HttpOnly cookies, Helmet, rate limiting |
 | Email | Resend |
 | Quality | Node test runner, GitHub Actions, npm audit |
@@ -67,7 +67,7 @@ Additional screens: [registration](screenshots/register.png), [account](screensh
 
 ## Run locally
 
-Requirements: Node.js 22+, npm and MySQL 8+.
+Requirements: Node.js 22+, npm and PostgreSQL 17+ (or a Neon project).
 
 ```bash
 git clone https://github.com/panagiotiseleftheriadis/CaReMind.git
@@ -78,7 +78,7 @@ npm run db:setup
 npm start
 ```
 
-On macOS/Linux, use `cp .env.example .env`. Edit `.env` before running the migration. `npm run db:setup` creates the configured database if necessary and applies every pending migration without dropping existing tables or data.
+On macOS/Linux, use `cp .env.example .env`. Set `DATABASE_URL` in `.env` before running the migration. `npm run db:setup` applies every pending migration without dropping existing tables or data.
 
 Serve `frontend/` with any static server, for example VS Code Live Server. The deployed frontend automatically uses `https://api.car-remind.gr/api`; localhost uses `http://localhost:3000/api`.
 
@@ -102,7 +102,9 @@ The seed refuses to run in production and hashes the password with bcrypt.
 
 | Variable | Required | Purpose |
 | --- | --- | --- |
-| `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASS`, `DB_NAME` | Yes | MySQL connection and migration target |
+| `DATABASE_URL` | Yes | Pooled PostgreSQL connection string from Neon or a local PostgreSQL server |
+| `DB_SSL` | Neon | Enables TLS for the database connection |
+| `DB_POOL_MAX` | Optional | Maximum connections per serverless instance; defaults to 5 |
 | `JWT_SECRET` | Yes | Access-token signing; the API refuses to start without it |
 | `RESEND_API_KEY` | For email | Verification, reset and reminder delivery |
 | `CRON_SECRET` | For reminders | Protects the maintenance cron endpoint |
@@ -116,13 +118,36 @@ See [`backend/.env.example`](backend/.env.example) for a complete template. Neve
 
 Migration files live in `backend/migrations/` and execute in filename order. The runner:
 
-- creates the configured database and `schema_migrations` table when needed;
+- creates the `schema_migrations` table when needed;
 - records a SHA-256 checksum for every applied migration;
 - skips migrations already applied;
 - stops if an applied migration was later modified;
 - never drops tables or seeds default credentials.
 
 Legacy installations are aligned by `002_align_legacy_schema.js`, which adds the missing authentication fields, indexes and database constraints. If legacy data violates a new constraint—for example duplicate chassis numbers for one user—the migration stops so the data can be reviewed instead of silently deleting or rewriting it.
+
+### One-time MySQL import
+
+Existing installations can be copied safely into an empty PostgreSQL database. Keep the old MySQL credentials only for the duration of the import, configure the Neon `DATABASE_URL` as the target and run:
+
+```bash
+npm run db:import:mysql
+```
+
+The importer applies the PostgreSQL migrations, refuses to overwrite a non-empty target, copies all application tables inside a transaction and aligns every generated ID sequence. Remove the `MYSQL_SOURCE_*` values after verifying the new deployment.
+
+## Deploy the API on Vercel with Neon
+
+Create a separate Vercel project from this repository and set its Root Directory to `backend`. Use the Other framework preset and add the production environment variables from `backend/.env.example`; at minimum the deployment requires `DATABASE_URL`, `DB_SSL=true`, `NODE_ENV=production` and `JWT_SECRET`.
+
+The `vercel-build` command applies pending migrations during deployment, while `api/[...path].js` exposes the existing Express application as a Vercel Function. After the deployment is healthy:
+
+1. Add `api.car-remind.gr` as a custom domain in the backend Vercel project.
+2. Replace the old Render DNS record with the CNAME value shown by Vercel.
+3. Verify `https://api.car-remind.gr/api/health`, registration and login.
+4. Remove the old Render service only after the production checks pass.
+
+Do not store the Neon connection string or application secrets in Git; configure them through Vercel Environment Variables and the local ignored `.env` file.
 
 ## API
 

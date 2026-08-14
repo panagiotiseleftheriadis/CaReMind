@@ -16,6 +16,7 @@ const costRoutes = require("./routes/costs");
 const interestRoutes = require("./routes/interest");
 const cronRoutes = require("./routes/cron");
 const { authenticateToken } = require("./middleware");
+const db = require("./db");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -94,6 +95,20 @@ app.use(
   verificationLimiter
 );
 app.use("/api/interest", publicFormLimiter);
+
+app.get("/api/health", async (req, res) => {
+  try {
+    await db.query("SELECT 1 AS database_ok");
+    return res.json({ status: "ok", service: "CaReMind API", database: "ok" });
+  } catch (error) {
+    console.error("Health check database error:", error.message);
+    return res.status(503).json({
+      status: "error",
+      service: "CaReMind API",
+      database: "unavailable",
+    });
+  }
+});
 
 app.use("/api", authRoutes);
 app.use("/api/vehicles", authenticateToken, vehicleRoutes);

@@ -11,7 +11,7 @@ router.get("/", async (req, res) => {
          m.id,
          m.maintenance_type AS maintenanceType,
          m.next_date AS dueDate,
-         DATEDIFF(m.next_date, CURDATE()) AS daysUntilDue,
+         m.next_date - CURRENT_DATE AS daysUntilDue,
          v.model,
          v.chassis_number AS chassisNumber
        FROM maintenances m
@@ -19,7 +19,7 @@ router.get("/", async (req, res) => {
        WHERE m.user_id = ?
          AND m.next_date IS NOT NULL
          AND m.status <> 'completed'
-         AND DATEDIFF(m.next_date, CURDATE()) <= COALESCE(m.notification_days, 7)
+         AND m.next_date - CURRENT_DATE <= COALESCE(m.notification_days, 7)
        ORDER BY m.next_date ASC
        LIMIT 50`,
       [req.user.id]

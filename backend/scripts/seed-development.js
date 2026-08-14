@@ -23,7 +23,11 @@ async function seed() {
     `INSERT INTO users
        (username, password, full_name, email, role, account_type, is_active, email_verified)
      VALUES (?, ?, 'Development Administrator', ?, 'admin', 'individual', 1, 1)
-     ON DUPLICATE KEY UPDATE password = VALUES(password), role = 'admin', is_active = 1, email_verified = 1`,
+     ON CONFLICT (username) DO UPDATE SET
+       password = EXCLUDED.password,
+       role = 'admin',
+       is_active = 1,
+       email_verified = 1`,
     [username, passwordHash, email]
   );
 

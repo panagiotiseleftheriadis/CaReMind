@@ -2,5 +2,7 @@ node_modules/
 backend/node_modules/
 .env
 backend/.env
+.vercel/
+backend/.vercel/
 *.log
 /frontend/sql.txt

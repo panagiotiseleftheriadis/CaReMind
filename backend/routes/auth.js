@@ -89,7 +89,7 @@ async function createAndSendVerificationCode(user) {
 
   await db.query(
     `INSERT INTO email_verification_codes (user_id, code_hash, expires_at)
-     VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 5 MINUTE))`,
+     VALUES (?, ?, NOW() + INTERVAL '5 minutes')`,
     [user.id, codeHash]
   );
 
@@ -417,7 +417,7 @@ router.post("/forgot-password", async (req, res) => {
 
     await db.query(
       `INSERT INTO password_reset_codes (user_id, code_hash, expires_at)
-       VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 10 MINUTE))`,
+       VALUES (?, ?, NOW() + INTERVAL '10 minutes')`,
       [user.id, codeHash]
     );
 

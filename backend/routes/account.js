@@ -77,7 +77,7 @@ router.post("/send-code", async (req, res) => {
     // 10 minutes validity
     await db.query(
       `INSERT INTO verification_codes (user_id, code_hash, purpose, expires_at)
-       VALUES (?, ?, 'account_change', DATE_ADD(NOW(), INTERVAL 10 MINUTE))`,
+       VALUES (?, ?, 'account_change', NOW() + INTERVAL '10 minutes')`,
       [userId, codeHash]
     );
 

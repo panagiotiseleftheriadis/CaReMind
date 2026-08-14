@@ -3,52 +3,28 @@ require("dotenv").config();
 const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
-const mysql = require("mysql2/promise");
+const db = require("../db");
 
 const migrationsDirectory = path.join(__dirname, "..", "migrations");
 
-function databaseConfig(includeDatabase = true) {
-  const database = process.env.DB_NAME || "caremind";
-  return {
-    host: process.env.DB_HOST || "localhost",
-    port: Number(process.env.DB_PORT || 3306),
-    user: process.env.DB_USER || "root",
-    password: process.env.DB_PASS || "",
-    ...(includeDatabase ? { database } : {}),
-    charset: "utf8mb4",
-  };
-}
-
-async function ensureDatabase() {
-  const database = process.env.DB_NAME || "caremind";
-  if (!/^[a-zA-Z0-9_]+$/.test(database)) {
-    throw new Error("DB_NAME may only contain letters, numbers and underscores");
-  }
-
-  const connection = await mysql.createConnection(databaseConfig(false));
-  try {
-    await connection.query(
-      `CREATE DATABASE IF NOT EXISTS \`${database}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`
-    );
-  } finally {
-    await connection.end();
-  }
-}
-
 async function migrate() {
-  await ensureDatabase();
-  const connection = await mysql.createConnection(databaseConfig(true));
+  if (!process.env.DATABASE_URL) {
+    throw new Error("DATABASE_URL is required for PostgreSQL migrations");
+  }
+
+  const connection = await db.getConnection();
 
   try {
+    // Prevent two serverless deployments from applying the same migration concurrently.
+    await connection.query("SELECT pg_advisory_lock(hashtext('caremind_migrations'))");
+
     await connection.query(`
       CREATE TABLE IF NOT EXISTS schema_migrations (
-        id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-        name VARCHAR(255) NOT NULL,
+        id BIGSERIAL PRIMARY KEY,
+        name VARCHAR(255) NOT NULL UNIQUE,
         checksum CHAR(64) NOT NULL,
-        executed_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        PRIMARY KEY (id),
-        UNIQUE KEY uq_schema_migrations_name (name)
-      ) ENGINE=InnoDB
+        executed_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )
     `);
 
     const files = fs
@@ -81,20 +57,36 @@ async function migrate() {
       }
 
       console.log(`run  ${file}`);
-      await migration.up(connection);
-      await connection.query(
-        "INSERT INTO schema_migrations (name, checksum) VALUES (?, ?)",
-        [file, checksum]
-      );
+      await connection.beginTransaction();
+      try {
+        await migration.up(connection);
+        await connection.query(
+          "INSERT INTO schema_migrations (name, checksum) VALUES (?, ?)",
+          [file, checksum]
+        );
+        await connection.commit();
+      } catch (error) {
+        await connection.rollback();
+        throw error;
+      }
     }
 
     console.log("Database migrations are up to date.");
   } finally {
-    await connection.end();
+    await connection
+      .query("SELECT pg_advisory_unlock(hashtext('caremind_migrations'))")
+      .catch(() => {});
+    connection.release();
   }
 }
 
-migrate().catch((error) => {
-  console.error("Migration failed:", error.message);
-  process.exitCode = 1;
-});
+if (require.main === module) {
+  migrate()
+    .catch((error) => {
+      console.error("Migration failed:", error.message);
+      process.exitCode = 1;
+    })
+    .finally(() => db.end());
+}
+
+module.exports = { migrate };

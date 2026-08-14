@@ -51,7 +51,7 @@ router.get("/maintenance", async (req, res) => {
       WHERE 
         m.next_date IS NOT NULL
         AND m.notification_days IS NOT NULL
-        AND DATE(m.next_date) - INTERVAL m.notification_days DAY = CURDATE();
+        AND m.next_date - (m.notification_days * INTERVAL '1 day') = CURRENT_DATE;
     `);
 
     let sent = 0;

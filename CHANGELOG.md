@@ -2,6 +2,19 @@
 
 All notable changes to CaReMind are documented in this file. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- Vercel Function entry point and deployment configuration for the Express API.
+- Transactional one-time importer for copying the existing MySQL data into Neon PostgreSQL.
+- Database-backed health endpoint for deployment verification.
+
+### Changed
+
+- Production persistence and ordered migrations now target PostgreSQL/Neon instead of MySQL.
+- Serverless database pooling is limited per instance to protect the Neon connection allowance.
+
 ## [1.0.0] - 2026-08-13
 
 ### Added
