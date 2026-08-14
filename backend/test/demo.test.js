@@ -60,11 +60,13 @@ test("demo session refresh sets the API token used by protected pages", async ()
 
 test("portfolio demo starts without backend and persists a complete vehicle flow", async () => {
   const { api, localStorage } = createDemoApi();
+  localStorage.setItem("caremindDemoTourV1", JSON.stringify({ welcomed: true }));
   const user = api.start();
 
   assert.equal(api.isActive(), true);
   assert.equal(user.isDemo, true);
   assert.ok(localStorage.getItem("currentUser"));
+  assert.equal(localStorage.getItem("caremindDemoTourV1"), null);
 
   const vehicle = await api.request("/vehicles", {
     method: "POST",

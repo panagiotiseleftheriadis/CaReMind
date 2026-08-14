@@ -1,0 +1,402 @@
+:root {
+  --tour-ink: #102d34;
+  --tour-ink-2: #183d45;
+  --tour-paper: #fffaf2;
+  --tour-coral: #f16f69;
+  --tour-coral-dark: #d65250;
+  --tour-muted: #718083;
+}
+
+body.demo-tour-open {
+  overflow: hidden;
+}
+
+.demo-tour-layer,
+.demo-tour-welcome {
+  position: fixed;
+  inset: 0;
+  z-index: 10040;
+}
+
+.demo-tour-layer {
+  background: rgba(5, 25, 30, 0.17);
+}
+
+.demo-tour-highlight {
+  position: fixed;
+  top: var(--tour-top, 20px);
+  left: var(--tour-left, 20px);
+  width: var(--tour-width, 120px);
+  height: var(--tour-height, 80px);
+  border: 2px solid var(--tour-coral);
+  border-radius: 16px;
+  box-shadow:
+    0 0 0 9999px rgba(5, 25, 30, 0.72),
+    0 0 0 6px rgba(241, 111, 105, 0.15),
+    0 14px 45px rgba(0, 0, 0, 0.26);
+  pointer-events: none;
+  transition: top 220ms ease, left 220ms ease, width 220ms ease, height 220ms ease;
+}
+
+.demo-tour-highlight::after {
+  position: absolute;
+  inset: -8px;
+  border: 1px solid rgba(241, 111, 105, 0.45);
+  border-radius: 20px;
+  content: "";
+  animation: tourPulse 1.8s ease-in-out infinite;
+}
+
+.demo-tour-card {
+  position: fixed;
+  z-index: 2;
+  width: min(365px, calc(100vw - 32px));
+  padding: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  outline: 0;
+  background:
+    radial-gradient(circle at 100% 0, rgba(241, 111, 105, 0.2), transparent 190px),
+    var(--tour-ink);
+  box-shadow: 0 26px 75px rgba(0, 0, 0, 0.36);
+  color: #fff;
+  font-family: "Manrope", "Trebuchet MS", sans-serif;
+}
+
+.demo-tour-card::before {
+  position: absolute;
+  inset: 7px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 14px;
+  content: "";
+  pointer-events: none;
+}
+
+.demo-tour-close {
+  position: absolute;
+  top: 13px;
+  right: 13px;
+  display: grid;
+  width: 31px;
+  height: 31px;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.75);
+  font: 300 21px/1 sans-serif;
+  cursor: pointer;
+}
+
+.demo-tour-kicker,
+.demo-tour-welcome-kicker {
+  margin: 0 42px 9px 0;
+  color: var(--tour-coral);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.19em;
+  text-transform: uppercase;
+}
+
+.demo-tour-card h2,
+.demo-tour-welcome-card h2 {
+  margin: 0;
+  font-family: "DM Serif Display", Georgia, serif;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+}
+
+.demo-tour-card h2 {
+  padding-right: 18px;
+  font-size: 29px;
+  line-height: 1.08;
+}
+
+.demo-tour-copy {
+  min-height: 78px;
+  margin: 13px 0 22px;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.demo-tour-road {
+  position: relative;
+  height: 25px;
+  margin: 0 5px 17px;
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.2);
+}
+
+.demo-tour-road-fill {
+  position: absolute;
+  left: 0;
+  bottom: -1px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--tour-coral);
+  transition: width 280ms ease;
+}
+
+.demo-tour-car {
+  position: absolute;
+  bottom: 1px;
+  width: 43px;
+  color: var(--tour-coral);
+  transform: translateX(-50%);
+  transition: left 280ms ease;
+}
+
+.demo-tour-car svg,
+.demo-tour-welcome-car svg {
+  width: 100%;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.6;
+}
+
+.demo-tour-footer,
+.demo-tour-controls,
+.demo-tour-welcome-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.demo-tour-footer {
+  justify-content: space-between;
+}
+
+.demo-tour-card button,
+.demo-tour-welcome-card button {
+  font-family: "Manrope", "Trebuchet MS", sans-serif;
+}
+
+.demo-tour-skip,
+.demo-tour-back,
+.demo-tour-next,
+.demo-tour-explore,
+.demo-tour-start {
+  min-height: 39px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 800;
+  transition: 150ms ease;
+}
+
+.demo-tour-skip {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.46);
+}
+
+.demo-tour-back {
+  padding: 0 12px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: transparent;
+  color: #fff;
+}
+
+.demo-tour-back:disabled {
+  cursor: default;
+  opacity: 0.28;
+}
+
+.demo-tour-next,
+.demo-tour-start {
+  padding: 0 15px;
+  border: 1px solid var(--tour-coral);
+  background: var(--tour-coral);
+  color: #fff;
+  box-shadow: 0 8px 20px rgba(241, 111, 105, 0.2);
+}
+
+.demo-tour-next:hover,
+.demo-tour-start:hover {
+  transform: translateY(-1px);
+  background: var(--tour-coral-dark);
+}
+
+.demo-tour-welcome {
+  display: grid;
+  padding: 18px;
+  place-items: center;
+  background:
+    radial-gradient(circle at 70% 15%, rgba(241, 111, 105, 0.18), transparent 28rem),
+    rgba(5, 25, 30, 0.88);
+  backdrop-filter: blur(8px);
+}
+
+.demo-tour-welcome-card {
+  position: relative;
+  width: min(620px, 100%);
+  padding: clamp(28px, 5vw, 52px);
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 28px;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.04), transparent 40%),
+    var(--tour-ink);
+  box-shadow: 0 35px 100px rgba(0, 0, 0, 0.42);
+  color: #fff;
+  text-align: center;
+}
+
+.demo-tour-welcome-card::after {
+  position: absolute;
+  right: -100px;
+  bottom: -120px;
+  width: 280px;
+  height: 280px;
+  border: 1px solid rgba(241, 111, 105, 0.22);
+  border-radius: 50%;
+  content: "";
+}
+
+.demo-tour-welcome-car {
+  width: 98px;
+  margin: 0 auto 18px;
+  color: var(--tour-coral);
+  animation: tourArrival 700ms cubic-bezier(.2,.8,.2,1) both;
+}
+
+.demo-tour-welcome-card .demo-tour-welcome-kicker {
+  margin-right: 0;
+}
+
+.demo-tour-welcome-card h2 {
+  max-width: 470px;
+  margin-inline: auto;
+  font-size: clamp(35px, 6vw, 54px);
+  line-height: 0.98;
+}
+
+.demo-tour-welcome-card > p:not(.demo-tour-welcome-kicker) {
+  max-width: 470px;
+  margin: 18px auto 24px;
+  color: rgba(255, 255, 255, 0.66);
+  font: 12px/1.7 "Manrope", "Trebuchet MS", sans-serif;
+}
+
+.demo-tour-welcome-route {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 0 auto 28px;
+  color: rgba(255, 255, 255, 0.72);
+  font: 700 9px/1 "Manrope", "Trebuchet MS", sans-serif;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.demo-tour-welcome-route i {
+  color: var(--tour-coral);
+  font-style: normal;
+}
+
+.demo-tour-welcome-actions {
+  position: relative;
+  z-index: 1;
+  justify-content: center;
+}
+
+.demo-tour-explore {
+  padding: 0 17px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: transparent;
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.demo-tour-complete-mark {
+  display: grid;
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 18px;
+  place-items: center;
+  border: 1px solid rgba(241, 111, 105, 0.42);
+  border-radius: 50%;
+  background: rgba(241, 111, 105, 0.1);
+  color: var(--tour-coral);
+  font: 300 33px/1 "Manrope", sans-serif;
+}
+
+.demo-tour-welcome-actions--single .demo-tour-start {
+  min-width: 200px;
+}
+
+@keyframes tourPulse {
+  0%, 100% { opacity: 0.38; transform: scale(1); }
+  50% { opacity: 0; transform: scale(1.025); }
+}
+
+@keyframes tourArrival {
+  from { opacity: 0; transform: translateX(-48px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@media (max-width: 700px) {
+  .demo-tour-card {
+    inset: auto 10px 10px !important;
+    width: auto;
+    padding: 21px 18px 18px;
+    border-radius: 19px;
+  }
+
+  .demo-tour-card h2 {
+    font-size: 25px;
+  }
+
+  .demo-tour-copy {
+    min-height: 0;
+    margin-bottom: 17px;
+    font-size: 11px;
+  }
+
+  .demo-tour-footer {
+    align-items: flex-end;
+  }
+
+  .demo-tour-skip {
+    max-width: 72px;
+    text-align: left;
+  }
+
+  .demo-tour-welcome {
+    align-items: end;
+    padding: 10px;
+  }
+
+  .demo-tour-welcome-card {
+    padding: 30px 20px 24px;
+    border-radius: 24px;
+  }
+
+  .demo-tour-welcome-card h2 {
+    font-size: 38px;
+  }
+
+  .demo-tour-welcome-actions {
+    flex-direction: column-reverse;
+  }
+
+  .demo-tour-welcome-actions button {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .demo-tour-highlight,
+  .demo-tour-road-fill,
+  .demo-tour-car,
+  .demo-tour-welcome-car {
+    animation: none !important;
+    transition: none !important;
+  }
+}

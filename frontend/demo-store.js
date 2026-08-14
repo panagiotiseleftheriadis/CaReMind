@@ -3,6 +3,7 @@
 (function () {
   const MODE_KEY = "caremindDemoMode";
   const DATA_KEY = "caremindDemoData";
+  const TOUR_KEY = "caremindDemoTourV1";
   const DEMO_VERSION = 1;
 
   function dateOffset(days) {
@@ -221,7 +222,10 @@
 
   function start(options = {}) {
     localStorage.setItem(MODE_KEY, "1");
-    if (options.reset !== false) save(createSeedData());
+    if (options.reset !== false) {
+      save(createSeedData());
+      localStorage.removeItem(TOUR_KEY);
+    }
     const state = load();
     syncCurrentUser(state.user);
     return clone(state.user);
@@ -230,6 +234,7 @@
   function end() {
     localStorage.removeItem(MODE_KEY);
     localStorage.removeItem(DATA_KEY);
+    localStorage.removeItem(TOUR_KEY);
     localStorage.removeItem("currentUser");
   }
 
@@ -388,7 +393,10 @@
     banner.setAttribute("aria-label", "Λειτουργία επίδειξης");
     banner.innerHTML = `
       <span><strong>Demo λειτουργία</strong> · Τα δεδομένα μένουν μόνο σε αυτόν τον browser.</span>
-      <button type="button" id="resetDemoDataBtn">Επαναφορά demo</button>
+      <span class="demo-banner-actions">
+        <button type="button" id="startDemoTourBtn">Ξενάγηση</button>
+        <button type="button" id="resetDemoDataBtn">Επαναφορά demo</button>
+      </span>
     `;
 
     const style = document.createElement("style");
@@ -405,8 +413,13 @@
         padding: 7px 10px; color: #fff; background: transparent; cursor: pointer; font-weight: 700;
       }
       #demoModeBanner button:hover { background: rgba(255,255,255,.12); }
+      #demoModeBanner .demo-banner-actions { display:flex; gap:7px; flex:0 0 auto; }
+      #startDemoTourBtn { background: #f16f69 !important; border-color:#f16f69 !important; }
+      #startDemoTourBtn:hover { background: #d65250 !important; }
       @media (max-width: 620px) {
-        #demoModeBanner { left: 12px; right: 12px; bottom: 12px; align-items: flex-start; }
+        #demoModeBanner { left: 12px; right: 12px; bottom: 12px; align-items: flex-start; flex-wrap:wrap; }
+        #demoModeBanner .demo-banner-actions { width:100%; }
+        #demoModeBanner .demo-banner-actions button { flex:1; }
       }
     `;
 

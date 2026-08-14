@@ -12,7 +12,9 @@
     <link rel="stylesheet" href="styles.css" />
     <link rel="stylesheet" href="maintenance.css" />
     <link rel="stylesheet" href="ui.css" />
+    <link rel="stylesheet" href="demo-tour.css?v=1" />
     <script src="ui.js?v=20260814-3"></script>
+    <script src="demo-tour.js?v=1"></script>
   </head>
   <body>
     <div class="container">
@@ -45,15 +47,15 @@
 
       <main>
         <!-- Page Header -->
-        <div class="page-header">
+        <div class="page-header" data-tour="maintenance-intro">
           <h2>Προγραμματισμός & Ιστορικό Συντήρησης</h2>
-          <button type="button" class="btn-primary" id="addMaintenanceBtn">
+          <button type="button" class="btn-primary" id="addMaintenanceBtn" data-tour="maintenance-add">
             + Νέα Συντήρηση
           </button>
         </div>
 
         <!-- Maintenance Summary -->
-        <div class="maintenance-summary">
+        <div class="maintenance-summary" data-tour="maintenance-summary">
           <div class="summary-card pending">
             <h3>Επικείμενη</h3>
             <div class="count" id="pendingCount">0</div>
@@ -73,7 +75,7 @@
         </div>
 
         <!-- Filters Section -->
-        <div class="filters-section" id="debugFilters">
+        <div class="filters-section" id="debugFilters" data-tour="maintenance-filters">
           <div class="filter-group">
             <label for="vehicleFilter">Φίλτρο Οχήματος:</label>
             <select id="vehicleFilter">
@@ -103,7 +105,7 @@
           </div>
         </div>
         <!-- Στο maintenance list -->
-        <div class="maintenance-list" id="debugMaintenanceList">
+        <div class="maintenance-list" id="debugMaintenanceList" data-tour="maintenance-list">
           <h3>Πρόγραμμα Συντήρησης</h3>
           <div
             id="maintenanceTable"

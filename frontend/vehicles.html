@@ -12,7 +12,9 @@
     <link rel="stylesheet" href="styles.css" />
     <link rel="stylesheet" href="vehicles.css" />
     <link rel="stylesheet" href="ui.css" />
+    <link rel="stylesheet" href="demo-tour.css?v=1" />
     <script src="ui.js?v=20260814-3"></script>
+    <script src="demo-tour.js?v=1"></script>
   </head>
   <body>
     <div class="container">
@@ -43,9 +45,9 @@
       </header>
 
       <main>
-        <div class="page-header">
+        <div class="page-header" data-tour="vehicles-intro">
           <h2>Οχήματα Εταιρείας</h2>
-          <button type="button" class="btn-primary" onclick="showAddVehicleForm()">
+          <button type="button" class="btn-primary" data-tour="vehicles-add" onclick="showAddVehicleForm()">
             + Προσθήκη Νέου Οχήματος
           </button>
         </div>
@@ -212,7 +214,7 @@
         </div>
 
         <!-- Λίστα Οχημάτων -->
-        <div class="vehicles-table-container">
+        <div class="vehicles-table-container" data-tour="vehicles-list">
           <table id="vehiclesTable" class="data-table">
             <thead>
               <tr>

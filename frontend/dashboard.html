@@ -12,7 +12,9 @@
     <link rel="stylesheet" href="styles.css" />
     <link rel="stylesheet" href="dashboard.css" />
     <link rel="stylesheet" href="ui.css" />
+    <link rel="stylesheet" href="demo-tour.css?v=1" />
     <script src="ui.js?v=20260814-3"></script>
+    <script src="demo-tour.js?v=1"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   </head>
   <body>
@@ -43,7 +45,7 @@
       </header>
 
       <main>
-        <section class="welcome">
+        <section class="welcome" data-tour="dashboard-welcome">
           <div class="welcome-bg"></div>
 
           <div class="welcome-card">
@@ -54,7 +56,7 @@
         </section>
 
         <!-- Stats Grid -->
-        <div class="stats-grid">
+        <div class="stats-grid" data-tour="dashboard-stats">
           <div class="stat-card">
             <div class="stat-info">
               <h5>Σύνολο Οχημάτων</h5>
@@ -87,7 +89,7 @@
         </div>
 
         <!-- Charts Section -->
-        <div class="charts-section">
+        <div class="charts-section" data-tour="dashboard-charts">
           <div class="chart-container">
             <h3>Κόστος ανά Κατηγορία</h3>
             <canvas id="costsChart"></canvas>
@@ -107,7 +109,7 @@
         </div>
 
         <!-- Quick Actions -->
-        <div class="quick-actions">
+        <div class="quick-actions" data-tour="dashboard-actions">
           <h3>Γρήγορες Ενέργειες</h3>
           <div class="action-buttons">
             <button type="button" class="action-btn" id="addVehicleBtn">

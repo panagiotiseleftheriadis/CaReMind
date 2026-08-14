@@ -12,7 +12,9 @@
     <link rel="stylesheet" href="styles.css" />
     <link rel="stylesheet" href="costs.css" />
     <link rel="stylesheet" href="ui.css" />
+    <link rel="stylesheet" href="demo-tour.css?v=1" />
     <script src="ui.js?v=20260814-3"></script>
+    <script src="demo-tour.js?v=1"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   </head>
   <body>
@@ -44,7 +46,7 @@
 
       <main>
         <!-- Page Header -->
-        <div class="page-header">
+        <div class="page-header" data-tour="costs-intro">
           <h2>Κόστη Οχημάτων</h2>
           <button
             type="button"
@@ -57,7 +59,7 @@
         </div>
 
         <!-- Cost Summary -->
-        <div class="cost-summary">
+        <div class="cost-summary" data-tour="costs-summary">
           <div class="summary-card total">
             <h3>Συνολικό Κόστος</h3>
             <div class="amount" id="totalCost">€0.00</div>
@@ -80,7 +82,7 @@
           </div>
         </div>
         <!-- Filters Section -->
-        <div class="filters-section" id="debugFilters">
+        <div class="filters-section" id="debugFilters" data-tour="costs-filters">
           <div class="filter-group">
             <label for="costPeriod">Περίοδος:</label>
             <select id="costPeriod">
@@ -126,7 +128,7 @@
           </div>
         </div>
         <!-- Costs List -->
-        <div class="costs-list-section">
+        <div class="costs-list-section" data-tour="costs-list">
           <div class="section-header">
             <h3>Καταχωρημένα Κόστη</h3>
             <div class="section-actions">

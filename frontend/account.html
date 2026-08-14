@@ -13,7 +13,9 @@
     <link rel="stylesheet" href="styles.css" />
     <link rel="stylesheet" href="account.css" />
     <link rel="stylesheet" href="ui.css" />
+    <link rel="stylesheet" href="demo-tour.css?v=1" />
     <script src="ui.js?v=20260814-3"></script>
+    <script src="demo-tour.js?v=1"></script>
   </head>
   <body>
     <div class="container">
@@ -44,7 +46,7 @@
 
       <main>
         <!-- TOP SUMMARY CARD -->
-        <section class="account-hero">
+        <section class="account-hero" data-tour="account-profile">
           <div class="account-hero-card">
             <div class="hero-left">
               <div class="hero-name" id="heroCompany">—</div>
@@ -58,7 +60,7 @@
           </div>
         </section>
 
-        <div class="account-grid">
+        <div class="account-grid" data-tour="account-settings">
           <div class="acc-list" id="accountAccordion">
             <!-- ACCOUNT DETAILS -->
             <section class="acc-item">
