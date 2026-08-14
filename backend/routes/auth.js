@@ -158,7 +158,7 @@ router.post("/login", async (req, res) => {
     }
 
     // 3. Email verification check
-    if (user.role !== "admin" && user.role !== "guest" && user.email && String(user.email_verified) !== "1") {
+    if (!["admin", "owner", "guest"].includes(user.role) && user.email && String(user.email_verified) !== "1") {
       return res.status(403).json({
         error: "Πρέπει να επιβεβαιώσετε το email σας.",
         code: "EMAIL_NOT_VERIFIED",

@@ -143,7 +143,7 @@
       currentUser?.isDemo ||
       currentUser?.role === "guest"
     );
-    const canAccessAdmin = currentUser?.role === "admin" && !demoIsActive;
+    const canAccessAdmin = ["admin", "owner"].includes(currentUser?.role) && !demoIsActive;
 
     document.querySelectorAll("[data-admin-only]").forEach((element) => {
       element.hidden = !canAccessAdmin;

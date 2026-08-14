@@ -665,6 +665,11 @@ svg {
   text-transform: uppercase;
 }
 
+.role-badge--owner {
+  background: var(--ink);
+  color: #fff;
+}
+
 .resource-counts {
   display: flex;
   flex-wrap: wrap;
@@ -743,6 +748,17 @@ svg {
 
 .row-action--danger {
   color: var(--danger);
+}
+
+.row-action--role {
+  border-color: rgba(241, 111, 105, 0.28);
+  background: rgba(241, 111, 105, 0.08);
+  color: var(--coral-dark);
+}
+
+.row-action--role:hover {
+  border-color: rgba(241, 111, 105, 0.44);
+  background: rgba(241, 111, 105, 0.16);
 }
 
 .row-action--danger:hover {

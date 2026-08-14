@@ -98,10 +98,14 @@ function createNavigationUi({ role = null, demoActive = false, isDemo = false } 
   };
 }
 
-test("admin navigation is visible only to real admin sessions, never in demo", () => {
+test("admin navigation is visible only to privileged sessions, never in demo", () => {
   const realAdmin = createNavigationUi({ role: "admin" });
   assert.equal(realAdmin.adminLink.hidden, false);
   assert.equal(realAdmin.adminLinkStyles.has("display"), false);
+
+  const owner = createNavigationUi({ role: "owner" });
+  assert.equal(owner.adminLink.hidden, false);
+  assert.equal(owner.adminLinkStyles.has("display"), false);
 
   const demoAdmin = createNavigationUi({ role: "admin", demoActive: true });
   assert.equal(demoAdmin.adminLink.hidden, true);

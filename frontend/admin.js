@@ -37,7 +37,7 @@ class AdminPanel {
 
     try {
       const profile = await api.getAccountMe();
-      if (!profile || profile.role !== "admin") {
+      if (!profile || !["admin", "owner"].includes(profile.role)) {
         window.location.replace("dashboard.html");
         return false;
       }
@@ -129,6 +129,9 @@ class AdminPanel {
 
       if (button.dataset.action === "edit") this.openEditDialog(user);
       if (button.dataset.action === "toggle") this.toggleUser(user);
+      if (button.dataset.action === "role") {
+        this.updateUserRole(user, button.dataset.role);
+      }
       if (button.dataset.action === "delete") this.deleteUser(user);
     });
   }
@@ -167,7 +170,7 @@ class AdminPanel {
     const total = this.users.length;
     const active = this.users.filter((user) => this.toBoolean(user.is_active)).length;
     const unverified = this.users.filter(
-      (user) => user.role !== "admin" && !this.toBoolean(user.email_verified)
+      (user) => !["admin", "owner"].includes(user.role) && !this.toBoolean(user.email_verified)
     ).length;
     const vehicles = this.users.reduce(
       (sum, user) => sum + Number(user.vehicle_count || 0),
@@ -187,7 +190,7 @@ class AdminPanel {
       ? `${Math.round((active / total) * 100)}% του συνόλου`
       : "Δεν υπάρχουν λογαριασμοί";
 
-    const admins = this.users.filter((user) => user.role === "admin");
+    const admins = this.users.filter((user) => ["admin", "owner"].includes(user.role));
     document.getElementById("multipleAdminsNotice").hidden = admins.length <= 1;
   }
 
@@ -211,7 +214,10 @@ class AdminPanel {
       if (this.statusFilter === "inactive" && active) return false;
       if (this.statusFilter === "unverified" && verified) return false;
 
-      if (this.typeFilter === "admin" && user.role !== "admin") return false;
+      if (
+        this.typeFilter === "admin" &&
+        !["admin", "owner"].includes(user.role)
+      ) return false;
       if (
         this.typeFilter !== "all" &&
         this.typeFilter !== "admin" &&
@@ -234,38 +240,60 @@ class AdminPanel {
   userRow(user) {
     const id = Number(user.id);
     const isAdmin = user.role === "admin";
+    const isOwner = user.role === "owner";
+    const isPrivileged = isAdmin || isOwner;
+    const sessionIsOwner = this.sessionUser?.role === "owner";
     const isSelf = this.toBoolean(user.is_self) || id === Number(this.sessionUser?.id);
     const active = this.toBoolean(user.is_active);
     const verified = this.toBoolean(user.email_verified);
     const displayName = user.full_name || user.username || "Χρήστης";
-    const typeLabel = isAdmin
-      ? "Διαχειριστής"
+    const typeLabel = isOwner
+      ? "Owner"
+      : isAdmin
+        ? "Διαχειριστής"
       : user.account_type === "business"
         ? "Επιχείρηση"
         : "Ιδιώτης";
 
-    const actions = isAdmin && !isSelf
-      ? '<span class="protected-label">Προστατευμένος</span>'
-      : `
-          <button class="row-action" type="button" data-action="edit" data-user-id="${id}" title="Επεξεργασία" aria-label="Επεξεργασία ${this.escape(displayName)}">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 4 6 6M4 20l4.5-1L19 8a2.1 2.1 0 0 0-3-3L5 16.5 4 20Z" /></svg>
-          </button>
-          ${isAdmin ? "" : `
-            <button class="row-action" type="button" data-action="toggle" data-user-id="${id}" title="${active ? "Απενεργοποίηση" : "Ενεργοποίηση"}" aria-label="${active ? "Απενεργοποίηση" : "Ενεργοποίηση"} ${this.escape(displayName)}">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2v10M6.4 5.6a8 8 0 1 0 11.2 0" /></svg>
-            </button>
-            <button class="row-action row-action--danger" type="button" data-action="delete" data-user-id="${id}" title="Οριστική διαγραφή" aria-label="Διαγραφή ${this.escape(displayName)}">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 10v6M14 10v6" /></svg>
-            </button>`}
-        `;
+    const editAction = `
+      <button class="row-action" type="button" data-action="edit" data-user-id="${id}" title="Επεξεργασία" aria-label="Επεξεργασία ${this.escape(displayName)}">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 4 6 6M4 20l4.5-1L19 8a2.1 2.1 0 0 0-3-3L5 16.5 4 20Z" /></svg>
+      </button>`;
+    const userActions = `
+      <button class="row-action" type="button" data-action="toggle" data-user-id="${id}" title="${active ? "Απενεργοποίηση" : "Ενεργοποίηση"}" aria-label="${active ? "Απενεργοποίηση" : "Ενεργοποίηση"} ${this.escape(displayName)}">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2v10M6.4 5.6a8 8 0 1 0 11.2 0" /></svg>
+      </button>
+      <button class="row-action row-action--danger" type="button" data-action="delete" data-user-id="${id}" title="Οριστική διαγραφή" aria-label="Διαγραφή ${this.escape(displayName)}">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 10v6M14 10v6" /></svg>
+      </button>`;
+    const roleAction = sessionIsOwner && !isOwner
+      ? `<button class="row-action row-action--role" type="button" data-action="role" data-role="${isAdmin ? "user" : "admin"}" data-user-id="${id}" title="${isAdmin ? "Αφαίρεση Admin" : "Ορισμός ως Admin"}" aria-label="${isAdmin ? "Αφαίρεση δικαιωμάτων Admin από" : "Ορισμός ως Admin του"} ${this.escape(displayName)}">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 20 6v5c0 5-3.4 8.2-8 10-4.6-1.8-8-5-8-10V6l8-3Z" /><path d="m9 12 2 2 4-4" /></svg>
+        </button>`
+      : "";
+
+    let actions;
+    if (isOwner) {
+      actions = isSelf
+        ? `${editAction}<span class="protected-label">Owner</span>`
+        : '<span class="protected-label">Owner</span>';
+    } else if (isAdmin) {
+      actions = sessionIsOwner
+        ? `${editAction}${roleAction}`
+        : isSelf
+          ? editAction
+          : '<span class="protected-label">Προστατευμένος</span>';
+    } else {
+      actions = `${editAction}${roleAction}${userActions}`;
+    }
 
     return `
       <tr>
         <td data-label="Χρήστης">
           <div class="user-identity">
-            <span class="user-avatar ${isAdmin ? "user-avatar--admin" : ""}">${this.escape(this.initials(displayName))}</span>
+            <span class="user-avatar ${isPrivileged ? "user-avatar--admin" : ""}">${this.escape(this.initials(displayName))}</span>
             <span class="user-identity__copy">
-              <strong>${this.escape(displayName)}${isSelf ? '<span class="role-badge">Εσύ</span>' : ""}</strong>
+              <strong>${this.escape(displayName)}${isOwner ? '<span class="role-badge role-badge--owner">Owner</span>' : ""}${isSelf ? '<span class="role-badge">Εσύ</span>' : ""}</strong>
               <small>@${this.escape(user.username)} · ${this.escape(user.email || "χωρίς email")}</small>
             </span>
           </div>
@@ -322,14 +350,14 @@ class AdminPanel {
     document.getElementById("userDialogEyebrow").textContent = `ΧΡΗΣΤΗΣ #${user.id}`;
     document.getElementById("userDialogTitle").textContent = "Επεξεργασία λογαριασμού";
     document.getElementById("userDialogDescription").textContent =
-      user.role === "admin"
-        ? "Επεξεργάζεσαι τον δικό σου προστατευμένο λογαριασμό."
+      ["admin", "owner"].includes(user.role)
+        ? "Επεξεργάζεσαι έναν προστατευμένο λογαριασμό διαχείρισης."
         : "Οι αλλαγές εφαρμόζονται αμέσως.";
     document.getElementById("passwordLabel").textContent = "Νέος κωδικός (προαιρετικό)";
     document.getElementById("passwordHint").textContent =
       "Άφησέ το κενό για να παραμείνει ο υπάρχων κωδικός.";
     document.getElementById("password").required = false;
-    document.getElementById("activeField").hidden = user.role === "admin";
+    document.getElementById("activeField").hidden = ["admin", "owner"].includes(user.role);
     document.getElementById("saveUserButton").textContent = "Αποθήκευση αλλαγών";
     this.elements.dialog.showModal();
     window.setTimeout(() => document.getElementById("fullName").focus(), 0);
@@ -384,7 +412,7 @@ class AdminPanel {
           const stored = this.readStoredUser() || {};
           localStorage.setItem(
             "currentUser",
-            JSON.stringify({ ...stored, username: payload.username, role: "admin" })
+            JSON.stringify({ ...stored, username: payload.username, role: this.sessionUser.role })
           );
         }
       } else {
@@ -427,6 +455,39 @@ class AdminPanel {
     } catch (error) {
       window.CaReMindUI.toast(
         error.message || "Δεν ήταν δυνατή η αλλαγή κατάστασης.",
+        "error"
+      );
+    }
+  }
+
+  async updateUserRole(user, role) {
+    if (this.sessionUser?.role !== "owner") {
+      window.CaReMindUI.toast(
+        "Μόνο ο owner μπορεί να αλλάζει δικαιώματα admin.",
+        "error"
+      );
+      return;
+    }
+
+    const promoting = role === "admin";
+    const confirmed = await window.CaReMindUI.confirm(
+      promoting
+        ? `Ο χρήστης “${user.username}” θα αποκτήσει πρόσβαση στο Admin Panel και στη διαχείριση χρηστών.`
+        : `Ο χρήστης “${user.username}” θα χάσει αμέσως την πρόσβαση στο Admin Panel και θα αποσυνδεθεί.`,
+      {
+        title: promoting ? "Ορισμός ως Admin" : "Αφαίρεση Admin",
+        confirmLabel: promoting ? "Ορισμός ως Admin" : "Αφαίρεση δικαιωμάτων",
+      }
+    );
+    if (!confirmed) return;
+
+    try {
+      const result = await api.updateUserRole(user.id, role);
+      window.CaReMindUI.toast(result.message || "Ο ρόλος ενημερώθηκε.", "success");
+      await this.loadUsers();
+    } catch (error) {
+      window.CaReMindUI.toast(
+        error.message || "Δεν ήταν δυνατή η αλλαγή δικαιωμάτων.",
         "error"
       );
     }

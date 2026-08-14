@@ -171,6 +171,7 @@ class API {
   async getUsers() { return this.request("/users", { method: "GET" }); }
   async updateUser(id, updates) { return this.request(`/users/${id}`, { method: "PUT", body: updates }); }
   async toggleUserActive(id) { return this.request(`/users/${id}/toggle-active`, { method: "PATCH" }); }
+  async updateUserRole(id, role) { return this.request(`/users/${id}/role`, { method: "PATCH", body: { role } }); }
   async deleteUser(id) { return this.request(`/users/${id}`, { method: "DELETE" }); }
 
   async register(data) { return this.request("/register", { method: "POST", body: data }); }

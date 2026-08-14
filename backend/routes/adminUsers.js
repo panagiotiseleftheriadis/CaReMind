@@ -10,12 +10,23 @@ router.param("id", requirePositiveId);
 const USERNAME_PATTERN = /^[\p{L}\p{N}._-]{3,50}$/u;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const ACCOUNT_TYPES = new Set(["individual", "business"]);
+const ADMIN_ROLES = new Set(["admin", "owner"]);
 
 function requireAdmin(req, res, next) {
-  if (!req.user || req.user.role !== "admin") {
+  if (!req.user || !ADMIN_ROLES.has(req.user.role)) {
     return res.status(403).json({
       error: "Δεν έχετε δικαίωμα πρόσβασης στη διαχείριση χρηστών.",
       code: "ADMIN_REQUIRED",
+    });
+  }
+  return next();
+}
+
+function requireOwner(req, res, next) {
+  if (!req.user || req.user.role !== "owner") {
+    return res.status(403).json({
+      error: "Μόνο ο owner μπορεί να αλλάζει δικαιώματα διαχειριστή.",
+      code: "OWNER_REQUIRED",
     });
   }
   return next();
@@ -216,7 +227,10 @@ router.put("/:id", authenticateToken, requireAdmin, async (req, res) => {
       await connection.rollback();
       return res.status(404).json({ error: "Ο χρήστης δεν βρέθηκε." });
     }
-    if (userRows[0].role === "admin" && userId !== Number(req.user.id)) {
+    const targetRole = userRows[0].role;
+    const targetIsPrivileged = ADMIN_ROLES.has(targetRole);
+    const editingSelf = userId === Number(req.user.id);
+    if (targetIsPrivileged && !editingSelf && req.user.role !== "owner") {
       await connection.rollback();
       return res.status(403).json({
         error: "Δεν μπορείτε να επεξεργαστείτε άλλον διαχειριστή.",
@@ -273,7 +287,7 @@ router.put("/:id", authenticateToken, requireAdmin, async (req, res) => {
       fields.push("password = ?");
       params.push(await bcrypt.hash(password, 12));
     }
-    if (typeof req.body.isActive === "boolean" && userRows[0].role !== "admin") {
+    if (typeof req.body.isActive === "boolean" && !targetIsPrivileged) {
       fields.push("is_active = ?");
       params.push(req.body.isActive ? 1 : 0);
     }
@@ -301,6 +315,61 @@ router.put("/:id", authenticateToken, requireAdmin, async (req, res) => {
 });
 
 router.patch(
+  "/:id/role",
+  authenticateToken,
+  requireAdmin,
+  requireOwner,
+  async (req, res) => {
+    const userId = Number(req.params.id);
+    const role = String(req.body?.role || "").trim();
+    if (!new Set(["user", "admin"]).has(role)) {
+      return res.status(400).json({ error: "Ο ρόλος πρέπει να είναι user ή admin." });
+    }
+
+    try {
+      const [rows] = await db.query(
+        "SELECT id, username, role FROM users WHERE id = ? LIMIT 1",
+        [userId]
+      );
+      if (!rows.length) {
+        return res.status(404).json({ error: "Ο χρήστης δεν βρέθηκε." });
+      }
+      if (rows[0].role === "owner") {
+        return res.status(403).json({
+          error: "Ο owner είναι προστατευμένος και ο ρόλος του δεν αλλάζει.",
+        });
+      }
+      if (rows[0].role === role) {
+        return res.json({
+          success: true,
+          role,
+          message: "Ο χρήστης έχει ήδη αυτόν τον ρόλο.",
+        });
+      }
+
+      await db.query("UPDATE users SET role = ? WHERE id = ?", [role, userId]);
+      if (role === "user") {
+        await db.query(
+          "UPDATE refresh_tokens SET revoked_at = NOW() WHERE user_id = ? AND revoked_at IS NULL",
+          [userId]
+        );
+      }
+
+      return res.json({
+        success: true,
+        role,
+        message:
+          role === "admin"
+            ? `Ο χρήστης ${rows[0].username} έγινε admin.`
+            : `Αφαιρέθηκαν τα δικαιώματα admin από τον χρήστη ${rows[0].username}.`,
+      });
+    } catch (error) {
+      return databaseError(res, error, "PATCH /api/users/:id/role failed:");
+    }
+  }
+);
+
+router.patch(
   "/:id/toggle-active",
   authenticateToken,
   requireAdmin,
@@ -314,7 +383,7 @@ router.patch(
       if (!rows.length) {
         return res.status(404).json({ error: "Ο χρήστης δεν βρέθηκε." });
       }
-      if (rows[0].role === "admin") {
+      if (ADMIN_ROLES.has(rows[0].role)) {
         return res.status(403).json({
           error: "Δεν μπορείτε να απενεργοποιήσετε διαχειριστή.",
         });
@@ -365,7 +434,7 @@ router.delete("/:id", authenticateToken, requireAdmin, async (req, res) => {
       await connection.rollback();
       return res.status(404).json({ error: "Ο χρήστης δεν βρέθηκε." });
     }
-    if (rows[0].role === "admin") {
+    if (ADMIN_ROLES.has(rows[0].role)) {
       await connection.rollback();
       return res.status(403).json({
         error: "Οι λογαριασμοί διαχειριστή προστατεύονται από διαγραφή.",

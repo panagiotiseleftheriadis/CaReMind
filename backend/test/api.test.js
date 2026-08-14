@@ -139,6 +139,42 @@ test("admin user directory rejects normal users and accepts administrators", asy
   assert.equal(allowed.body[0].vehicle_count, 3);
 });
 
+test("only the owner can promote or demote administrators", async () => {
+  const admin = { ...activeUser, id: 9, username: "admin", role: "admin" };
+  queryHandler = authenticatedHandler(async () => {
+    throw new Error("An admin must not reach owner-only role updates");
+  }, admin);
+  const denied = await request("/api/users/5/role", {
+    method: "PATCH",
+    token: tokenFor(admin),
+    body: { role: "admin" },
+  });
+  assert.equal(denied.response.status, 403);
+  assert.equal(denied.body.code, "OWNER_REQUIRED");
+
+  const owner = { ...activeUser, id: 10, username: "panos", role: "owner" };
+  queryHandler = authenticatedHandler(async (sql, params) => {
+    const normalized = String(sql);
+    if (normalized.includes("SELECT id, username, role FROM users")) {
+      assert.equal(params[0], 5);
+      return [[{ id: 5, username: "new-admin", role: "user" }], []];
+    }
+    if (normalized.includes("UPDATE users SET role = ?")) {
+      assert.deepEqual(params, ["admin", 5]);
+      return [{ affectedRows: 1 }, []];
+    }
+    throw new Error(`Unexpected owner role query: ${sql}`);
+  }, owner);
+
+  const promoted = await request("/api/users/5/role", {
+    method: "PATCH",
+    token: tokenFor(owner),
+    body: { role: "admin" },
+  });
+  assert.equal(promoted.response.status, 200);
+  assert.equal(promoted.body.role, "admin");
+});
+
 test("login issues an access token and httpOnly refresh cookie", async () => {
   const passwordHash = await bcrypt.hash("correct-password", 4);
   queryHandler = async (sql) => {
