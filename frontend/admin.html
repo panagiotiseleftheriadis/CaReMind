@@ -3,131 +3,233 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Διαχείριση χρηστών - CaReMind</title>
-    <link rel="stylesheet" href="admin.css" />
+    <meta name="robots" content="noindex,nofollow" />
+    <title>Owner Console · CaReMind</title>
+    <link rel="icon" type="image/png" href="favicon.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Manrope:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
     <link rel="stylesheet" href="ui.css" />
+    <link rel="stylesheet" href="admin.css" />
+    <script src="demo-store.js"></script>
     <script src="ui.js"></script>
-    <style>
-      .admin-container {
-        max-width: 800px;
-        margin: 50px auto;
-        padding: 20px;
-      }
-      .form-section {
-        background: white;
-        padding: 20px;
-        border-radius: 8px;
-        margin-bottom: 20px;
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-      }
-      .users-list {
-        margin-top: 30px;
-      }
-      .user-item {
-        background: #f8f9fa;
-        padding: 15px;
-        margin: 10px 0;
-        border-radius: 5px;
-        border-left: 4px solid #007bff;
-      }
-    </style>
-
-    <style>
-      .user-item {
-        background: #f8f9fa;
-        padding: 15px;
-        margin: 12px 0;
-        border-radius: 8px;
-        border-left: 5px solid #28a745;
-        transition: transform 0.2s;
-      }
-      .user-item:hover {
-        transform: translateX(5px);
-      }
-      .user-item p {
-        margin: 5px 0;
-        font-size: 14px;
-        font-family: "Courier New", monospace;
-      }
-      .password-display {
-        background: #ffeb3b;
-        padding: 2px 6px;
-        border-radius: 3px;
-        font-weight: bold;
-      }
-    </style>
   </head>
-  <body>
-    <div class="admin-container">
-      <h1>🚗 CaReMind Admin Panel</h1>
+  <body class="auth-pending">
+    <div class="admin-shell">
+      <aside class="admin-sidebar" aria-label="Πλοήγηση διαχείρισης">
+        <a class="brand" href="dashboard.html" aria-label="CaReMind αρχική">
+          <img src="logo.svg" alt="" />
+          <span>CaReMind</span>
+        </a>
 
-      <div class="form-section">
-        <h3>Δημιουργία Νέου Χρήστη</h3>
-        <form id="createUserForm">
-          <div class="form-group">
-            <label for="newUsername">Όνομα Χρήστη:</label>
-            <input
-              type="text"
-              id="newUsername"
-              required
-              placeholder="π.χ. company123"
-            />
-          </div>
-
-          <div class="form-group">
-            <label for="newPassword">Κωδικός Πρόσβασης:</label>
-            <input
-              type="password"
-              id="newPassword"
-              minlength="8"
-              maxlength="128"
-              autocomplete="new-password"
-              required
-              placeholder="Εισάγετε τον κωδικό που θέλετε"
-            />
-            <!-- Αφαίρεσε το readonly attribute -->
-          </div>
-          <!-- ΝΕΟ: Email χρήστη -->
-          <div class="form-group">
-            <label for="userEmail">Email Χρήστη:</label>
-            <input
-              type="email"
-              id="userEmail"
-              required
-              placeholder="π.χ. info@company.gr"
-            />
-          </div>
-
-          <!-- ΝΕΟ: Αριθμός χρήστη (τηλέφωνο ή κωδικός πελάτη) -->
-          <div class="form-group">
-            <label for="userNumber">Αριθμός Χρήστη (τηλέφωνο ή κωδικός):</label>
-            <input type="text" id="userNumber" required />
-          </div>
-          <div class="form-group">
-            <label for="companyName">Ονομασία Εταιρείας:</label>
-            <input
-              type="text"
-              id="companyName"
-              required
-              placeholder="π.χ. Εταιρεία ΑΕ"
-            />
-          </div>
-
-          <button type="submit" class="btn-primary">Δημιουργία Χρήστη</button>
-        </form>
-      </div>
-
-      <div class="form-section users-list">
-        <h3>Υπάρχοντες Χρήστες</h3>
-        <div id="usersList">
-          <p>Φόρτωση χρηστών...</p>
+        <div class="owner-mark">
+          <span class="owner-mark__line"></span>
+          <span>OWNER CONSOLE</span>
         </div>
-      </div>
 
-      <div style="text-align: center; margin-top: 30px">
-        <a href="index.html" class="btn-secondary">Πίσω στο Login</a>
-      </div>
+        <nav class="admin-nav">
+          <a class="admin-nav__item active" href="#usersSection" aria-current="page">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></svg>
+            Χρήστες
+          </a>
+          <a class="admin-nav__item" href="dashboard.html">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11 12 3l9 8M5 10v10h14V10M9 20v-6h6v6" /></svg>
+            Εφαρμογή
+          </a>
+        </nav>
+
+        <div class="admin-sidebar__footer">
+          <div class="admin-profile">
+            <span class="admin-avatar" id="adminAvatar">A</span>
+            <span>
+              <strong id="adminUsername">Διαχειριστής</strong>
+              <small id="adminEmail">Έλεγχος πρόσβασης…</small>
+            </span>
+          </div>
+          <button class="icon-button" id="logoutButton" type="button" aria-label="Αποσύνδεση" title="Αποσύνδεση">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 17l5-5-5-5M15 12H3M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" /></svg>
+          </button>
+        </div>
+      </aside>
+
+      <main class="admin-main">
+        <header class="admin-topbar">
+          <div>
+            <p class="eyebrow">ΔΙΑΧΕΙΡΙΣΗ ΣΥΣΤΗΜΑΤΟΣ</p>
+            <h1>Οι άνθρωποι πίσω από τα οχήματα.</h1>
+            <p class="lead">Παρακολούθησε λογαριασμούς, δεδομένα και πρόσβαση από ένα ασφαλές σημείο.</p>
+          </div>
+          <button class="primary-action" id="openCreateUser" type="button">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+            Νέος χρήστης
+          </button>
+        </header>
+
+        <section class="stats-grid" aria-label="Στατιστικά χρηστών">
+          <article class="stat-card stat-card--accent">
+            <div class="stat-card__icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM22 21v-2a4 4 0 0 0-3-3.87" /></svg></div>
+            <span>Σύνολο χρηστών</span>
+            <strong id="statTotal">—</strong>
+            <small id="statNew">Περιμένει δεδομένα</small>
+          </article>
+          <article class="stat-card">
+            <div class="stat-card__icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6" /></svg></div>
+            <span>Ενεργοί</span>
+            <strong id="statActive">—</strong>
+            <small id="statActiveRate">—</small>
+          </article>
+          <article class="stat-card">
+            <div class="stat-card__icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 17h.01" /></svg></div>
+            <span>Μη επιβεβαιωμένοι</span>
+            <strong id="statUnverified">—</strong>
+            <small>Χρειάζονται έλεγχο email</small>
+          </article>
+          <article class="stat-card">
+            <div class="stat-card__icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 17h14M7 17l1.5-7h7L17 17M9 10l1-3h4l1 3M7 17v2M17 17v2" /><circle cx="9" cy="17" r="1.5"/><circle cx="15" cy="17" r="1.5"/></svg></div>
+            <span>Καταχωρημένα οχήματα</span>
+            <strong id="statVehicles">—</strong>
+            <small>Σε όλους τους λογαριασμούς</small>
+          </article>
+        </section>
+
+        <section class="users-panel" id="usersSection" aria-labelledby="usersTitle">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">DIRECTORY</p>
+              <h2 id="usersTitle">Χρήστες</h2>
+            </div>
+            <button class="refresh-button" id="refreshUsers" type="button">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6v5h-5M4 18v-5h5M18.5 9A7 7 0 0 0 6 6.5L4 11M5.5 15A7 7 0 0 0 18 17.5l2-4.5" /></svg>
+              Ανανέωση
+            </button>
+          </div>
+
+          <div class="toolbar">
+            <label class="search-field">
+              <span class="sr-only">Αναζήτηση χρηστών</span>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4" /></svg>
+              <input id="userSearch" type="search" placeholder="Αναζήτηση σε όνομα, email ή εταιρεία…" autocomplete="off" />
+            </label>
+            <label class="select-field">
+              <span class="sr-only">Φίλτρο κατάστασης</span>
+              <select id="statusFilter">
+                <option value="all">Όλες οι καταστάσεις</option>
+                <option value="active">Ενεργοί</option>
+                <option value="inactive">Ανενεργοί</option>
+                <option value="unverified">Μη επιβεβαιωμένοι</option>
+              </select>
+            </label>
+            <label class="select-field">
+              <span class="sr-only">Φίλτρο τύπου</span>
+              <select id="typeFilter">
+                <option value="all">Όλοι οι τύποι</option>
+                <option value="individual">Ιδιώτες</option>
+                <option value="business">Επιχειρήσεις</option>
+                <option value="admin">Διαχειριστές</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="admin-notice" id="multipleAdminsNotice" hidden>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 9v4M12 17h.01M10.3 4.4 2.6 18a2 2 0 0 0 1.7 3h15.4a2 2 0 0 0 1.7-3L13.7 4.4a2 2 0 0 0-3.4 0Z" /></svg>
+            <span><strong>Βρέθηκαν πολλαπλοί διαχειριστές.</strong> Οι admin λογαριασμοί είναι προστατευμένοι και δεν αλλάζουν από αυτή την οθόνη.</span>
+          </div>
+
+          <div class="table-wrap">
+            <table class="users-table">
+              <thead>
+                <tr>
+                  <th scope="col">Χρήστης</th>
+                  <th scope="col">Εταιρεία / Τύπος</th>
+                  <th scope="col">Δεδομένα</th>
+                  <th scope="col">Κατάσταση</th>
+                  <th scope="col"><span class="sr-only">Ενέργειες</span></th>
+                </tr>
+              </thead>
+              <tbody id="usersTableBody"></tbody>
+            </table>
+            <div class="table-state" id="usersLoading" role="status">
+              <span class="loader"></span>
+              <p>Φόρτωση χρηστών…</p>
+            </div>
+            <div class="table-state" id="usersEmpty" hidden>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4" /></svg>
+              <h3>Δεν βρέθηκαν χρήστες</h3>
+              <p>Δοκίμασε διαφορετική αναζήτηση ή φίλτρο.</p>
+            </div>
+          </div>
+          <p class="results-count" id="resultsCount" aria-live="polite"></p>
+        </section>
+      </main>
     </div>
+
+    <dialog class="user-dialog" id="userDialog" aria-labelledby="userDialogTitle">
+      <form id="userForm">
+        <div class="dialog-heading">
+          <div>
+            <p class="eyebrow" id="userDialogEyebrow">ΝΕΟΣ ΛΟΓΑΡΙΑΣΜΟΣ</p>
+            <h2 id="userDialogTitle">Δημιουργία χρήστη</h2>
+            <p id="userDialogDescription">Τα στοιχεία σύνδεσης θα ισχύσουν αμέσως.</p>
+          </div>
+          <button class="dialog-close" id="closeUserDialog" type="button" aria-label="Κλείσιμο">×</button>
+        </div>
+
+        <input id="editingUserId" type="hidden" />
+        <div class="form-grid">
+          <label class="field field--wide">
+            <span>Ονοματεπώνυμο <small>προαιρετικό</small></span>
+            <input id="fullName" type="text" maxlength="100" autocomplete="name" placeholder="π.χ. Γιώργος Παπαδόπουλος" />
+          </label>
+          <label class="field">
+            <span>Username</span>
+            <input id="username" type="text" minlength="3" maxlength="50" autocomplete="off" required />
+          </label>
+          <label class="field">
+            <span>Email</span>
+            <input id="email" type="email" maxlength="100" autocomplete="off" required />
+          </label>
+          <label class="field">
+            <span>Τηλέφωνο / αριθμός χρήστη</span>
+            <input id="userNumber" type="text" maxlength="50" autocomplete="off" required />
+          </label>
+          <label class="field">
+            <span>Εταιρεία / όνομα λογαριασμού</span>
+            <input id="companyName" type="text" maxlength="100" required />
+          </label>
+          <label class="field">
+            <span>Τύπος λογαριασμού</span>
+            <select id="accountType">
+              <option value="individual">Ιδιώτης</option>
+              <option value="business">Επιχείρηση</option>
+            </select>
+          </label>
+          <label class="field">
+            <span id="passwordLabel">Κωδικός πρόσβασης</span>
+            <span class="password-field">
+              <input id="password" type="password" minlength="8" maxlength="128" autocomplete="new-password" />
+              <button id="generatePassword" type="button">Δημιουργία</button>
+            </span>
+            <small class="field-hint" id="passwordHint">Τουλάχιστον 8 χαρακτήρες.</small>
+          </label>
+          <label class="switch-field" id="activeField" hidden>
+            <span>
+              <strong>Ενεργός λογαριασμός</strong>
+              <small>Ο χρήστης μπορεί να συνδεθεί στην εφαρμογή.</small>
+            </span>
+            <input id="isActive" type="checkbox" checked />
+            <i aria-hidden="true"></i>
+          </label>
+        </div>
+
+        <div class="dialog-actions">
+          <button class="secondary-action" id="cancelUserDialog" type="button">Ακύρωση</button>
+          <button class="primary-action" id="saveUserButton" type="submit">Δημιουργία χρήστη</button>
+        </div>
+      </form>
+    </dialog>
 
     <script src="api.js"></script>
     <script src="admin.js"></script>

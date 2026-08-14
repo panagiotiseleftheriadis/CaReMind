@@ -132,6 +132,16 @@
   }
 
   function initializeAccessibility() {
+    let currentUser = null;
+    try {
+      currentUser = JSON.parse(localStorage.getItem("currentUser") || "null");
+    } catch {
+      currentUser = null;
+    }
+    document.querySelectorAll("[data-admin-only]").forEach((element) => {
+      element.hidden = currentUser?.role !== "admin";
+    });
+
     document.querySelectorAll(".modal").forEach(prepareModal);
     document.querySelectorAll(".nav-toggle").forEach((button) => {
       if (!button.hasAttribute("aria-expanded")) button.setAttribute("aria-expanded", "false");

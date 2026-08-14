@@ -1,308 +1,404 @@
-// backend/routes/adminUsers.js
 const express = require("express");
-const router = express.Router();
-const db = require("../db");
 const bcrypt = require("bcrypt");
+const db = require("../db");
 const { authenticateToken } = require("../authMiddleware");
 const { requirePositiveId } = require("../validation");
 
+const router = express.Router();
 router.param("id", requirePositiveId);
 
 const USERNAME_PATTERN = /^[\p{L}\p{N}._-]{3,50}$/u;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const ACCOUNT_TYPES = new Set(["individual", "business"]);
 
-// Μόνο admin επιτρέπεται
 function requireAdmin(req, res, next) {
   if (!req.user || req.user.role !== "admin") {
-    return res.status(403).json({ error: "Access denied – Admins only" });
+    return res.status(403).json({
+      error: "Δεν έχετε δικαίωμα πρόσβασης στη διαχείριση χρηστών.",
+      code: "ADMIN_REQUIRED",
+    });
   }
-  next();
+  return next();
 }
 
-/* ----------------------------------------------
-   GET /api/users
-   Επιστρέφει όλους τους χρήστες με στοιχεία εταιρείας
----------------------------------------------- */
+function normalizeUserInput(body = {}, { passwordRequired = false } = {}) {
+  const username = String(body.username || "").trim();
+  const password = String(body.password || "");
+  const email = String(body.email || "").trim().toLowerCase();
+  const userNumber = String(body.userNumber || "").trim();
+  const companyName = String(body.companyName || "").trim();
+  const fullName = String(body.fullName || "").trim();
+  const accountType = String(body.accountType || "individual").trim();
+
+  if (!username || !email || !userNumber || !companyName) {
+    return { error: "Συμπληρώστε username, email, τηλέφωνο και εταιρεία." };
+  }
+  if (!USERNAME_PATTERN.test(username)) {
+    return { error: "Το username πρέπει να έχει 3-50 έγκυρους χαρακτήρες." };
+  }
+  if (!EMAIL_PATTERN.test(email)) {
+    return { error: "Το email δεν είναι έγκυρο." };
+  }
+  if (!ACCOUNT_TYPES.has(accountType)) {
+    return { error: "Ο τύπος λογαριασμού δεν είναι έγκυρος." };
+  }
+  if (passwordRequired && !password) {
+    return { error: "Ο κωδικός πρόσβασης είναι υποχρεωτικός." };
+  }
+  if (password && (password.length < 8 || password.length > 128)) {
+    return { error: "Ο κωδικός πρέπει να έχει 8-128 χαρακτήρες." };
+  }
+
+  return {
+    value: {
+      username,
+      password,
+      email,
+      userNumber,
+      companyName,
+      fullName: fullName || null,
+      accountType,
+    },
+  };
+}
+
+function databaseError(res, error, fallback) {
+  if (error?.code === "23505") {
+    return res.status(409).json({
+      error: "Το username ή το email χρησιμοποιείται ήδη.",
+      code: "USER_EXISTS",
+    });
+  }
+  console.error(fallback, error);
+  return res.status(500).json({ error: "Παρουσιάστηκε σφάλμα διακομιστή." });
+}
+
+// Complete, read-only overview used by the owner console.
 router.get("/", authenticateToken, requireAdmin, async (req, res) => {
   try {
     const [rows] = await db.query(
-      `SELECT 
-     users.id,
-     users.username,
-     users.role,
-     users.company_id,
-     users.is_active,
-     users.created_at,
-     users.email,
-     users.user_number,
-     companies.name AS company_name
-   FROM users
-   LEFT JOIN companies ON users.company_id = companies.id
-   ORDER BY users.id DESC`
+      `SELECT
+         u.id,
+         u.username,
+         u.full_name,
+         u.email,
+         u.user_number,
+         u.role,
+         u.company_id,
+         u.account_type,
+         u.is_active,
+         u.email_verified,
+         u.created_at,
+         u.updated_at,
+         c.name AS company_name,
+         (SELECT COUNT(*) FROM vehicles v WHERE v.user_id = u.id) AS vehicle_count,
+         (SELECT COUNT(*) FROM maintenances m WHERE m.user_id = u.id) AS maintenance_count,
+         (SELECT COUNT(*) FROM costs co WHERE co.user_id = u.id) AS cost_count,
+         COALESCE((SELECT SUM(co.amount) FROM costs co WHERE co.user_id = u.id), 0) AS total_cost,
+         CASE WHEN u.id = ? THEN 1 ELSE 0 END AS is_self
+       FROM users u
+       LEFT JOIN companies c ON c.id = u.company_id
+       ORDER BY
+         CASE WHEN u.id = ? THEN 0 ELSE 1 END,
+         u.created_at DESC,
+         u.id DESC`,
+      [req.user.id, req.user.id]
     );
 
-    res.json(rows);
-  } catch (err) {
-    console.error("GET /users error:", err);
-    res.status(500).json({ error: "Σφάλμα κατά τη φόρτωση χρηστών" });
+    return res.json(rows);
+  } catch (error) {
+    return databaseError(res, error, "GET /api/users failed:");
   }
 });
 
-/* ----------------------------------------------
-   POST /api/users
-   Δημιουργία εταιρείας + χρήστη (role = 'user')
----------------------------------------------- */
 router.post("/", authenticateToken, requireAdmin, async (req, res) => {
+  const parsed = normalizeUserInput(req.body, { passwordRequired: true });
+  if (parsed.error) return res.status(400).json({ error: parsed.error });
+
+  const {
+    username,
+    password,
+    email,
+    userNumber,
+    companyName,
+    fullName,
+    accountType,
+  } = parsed.value;
+
   let connection;
-  const { username, password, companyName, email, userNumber } = req.body;
-
-  if (!username || !password || !companyName || !email || !userNumber) {
-    return res.status(400).json({ error: "Λείπουν απαιτούμενα πεδία" });
-  }
-  if (password.length < 8 || password.length > 128) {
-    return res.status(400).json({ error: "Ο κωδικός πρέπει να έχει 8-128 χαρακτήρες" });
-  }
-  if (!USERNAME_PATTERN.test(username) || !EMAIL_PATTERN.test(email)) {
-    return res.status(400).json({ error: "Μη έγκυρο username ή email" });
-  }
-
   try {
-    // 1. Έλεγχος αν υπάρχει ήδη ο χρήστης
     connection = await db.getConnection();
     await connection.beginTransaction();
 
     const [existing] = await connection.query(
-      "SELECT id FROM users WHERE email = ? OR username = ? LIMIT 1",
+      "SELECT id FROM users WHERE LOWER(email) = LOWER(?) OR LOWER(username) = LOWER(?) LIMIT 1",
       [email, username]
     );
-
-    if (existing.length > 0) {
+    if (existing.length) {
       await connection.rollback();
-      return res
-        .status(400)
-        .json({ error: "Το email ή το username χρησιμοποιείται ήδη." });
+      return res.status(409).json({
+        error: "Το username ή το email χρησιμοποιείται ήδη.",
+        code: "USER_EXISTS",
+      });
     }
 
-    // 2. Δημιουργία εταιρείας
-    const [companyResult] = await connection.query(
-      `INSERT INTO companies (name) VALUES (?)`,
+    let companyId;
+    const [companies] = await connection.query(
+      "SELECT id FROM companies WHERE LOWER(name) = LOWER(?) LIMIT 1",
       [companyName]
     );
-
-    const companyId = companyResult.insertId;
-
-    const passwordHash = await bcrypt.hash(password, 12);
-
-    // 3. Δημιουργία χρήστη
-    await connection.query(
-      `INSERT INTO users
-       (username, password, role, company_id, is_active, email, user_number, email_verified)
-       VALUES (?, ?, 'user', ?, 1, ?, ?, 1)`,
-      [username, passwordHash, companyId, email.trim().toLowerCase(), userNumber]
-    );
-
-    await connection.commit();
-
-    res.json({
-      success: true,
-      message: "Ο χρήστης δημιουργήθηκε",
-      username,
-      companyId,
-    });
-  } catch (err) {
-    if (connection) await connection.rollback().catch(() => {});
-    console.error("POST /users error:", err);
-    res.status(500).json({ error: "Σφάλμα κατά τη δημιουργία χρήστη" });
-  } finally {
-    connection?.release();
-  }
-});
-
-/* ----------------------------------------------
-   PUT /api/users/:id
-   Επεξεργασία χρήστη (username, password, companyName, is_active)
----------------------------------------------- */
-router.put("/:id", authenticateToken, requireAdmin, async (req, res) => {
-  const userId = parseInt(req.params.id, 10);
-  const { username, password, companyName, isActive, email, userNumber } =
-    req.body;
-
-  if (!username || !companyName || !email || !userNumber) {
-    return res.status(400).json({ error: "Λείπουν απαιτούμενα πεδία" });
-  }
-  if (!USERNAME_PATTERN.test(username) || !EMAIL_PATTERN.test(email)) {
-    return res.status(400).json({ error: "Μη έγκυρο username ή email" });
-  }
-
-  try {
-    // Δεν επιτρέπουμε αλλαγή / πείραγμα άλλου admin (προαιρετικό)
-    const [userRows] = await db.query(
-      `SELECT id, role FROM users WHERE id = ?`,
-      [userId]
-    );
-    if (!userRows.length) {
-      return res.status(404).json({ error: "Ο χρήστης δεν βρέθηκε" });
-    }
-
-    const targetUser = userRows[0];
-    if (targetUser.role === "admin" && userId !== req.user.id) {
-      return res
-        .status(403)
-        .json({ error: "Δεν μπορείτε να επεξεργαστείτε άλλον admin" });
-    }
-
-    // 1. Αν υπάρχει companyName, διασφαλίζουμε ότι υπάρχει εταιρεία
-    let companyId = null;
-
-    // Αναζητούμε αν υπάρχει ήδη εταιρεία με αυτό το όνομα
-    const [existingCompanies] = await db.query(
-      `SELECT id FROM companies WHERE name = ? LIMIT 1`,
-      [companyName]
-    );
-
-    if (existingCompanies.length > 0) {
-      companyId = existingCompanies[0].id;
+    if (companies.length) {
+      companyId = companies[0].id;
     } else {
-      const [companyResult] = await db.query(
-        `INSERT INTO companies (name) VALUES (?)`,
+      const [companyResult] = await connection.query(
+        "INSERT INTO companies (name) VALUES (?)",
         [companyName]
       );
       companyId = companyResult.insertId;
     }
 
-    // 2. Ενημέρωση χρήστη
-    const fields = [];
-    const params = [];
+    const passwordHash = await bcrypt.hash(password, 12);
+    const [result] = await connection.query(
+      `INSERT INTO users
+         (username, password, full_name, email, role, company_id, user_number,
+          account_type, is_active, email_verified)
+       VALUES (?, ?, ?, ?, 'user', ?, ?, ?, 1, 1)`,
+      [
+        username,
+        passwordHash,
+        fullName,
+        email,
+        companyId,
+        userNumber,
+        accountType,
+      ]
+    );
 
-    fields.push("username = ?");
-    params.push(username);
+    await connection.commit();
+    return res.status(201).json({
+      success: true,
+      message: "Ο χρήστης δημιουργήθηκε.",
+      user: { id: result.insertId, username, email, companyId },
+    });
+  } catch (error) {
+    if (connection) await connection.rollback().catch(() => {});
+    return databaseError(res, error, "POST /api/users failed:");
+  } finally {
+    connection?.release();
+  }
+});
+
+router.put("/:id", authenticateToken, requireAdmin, async (req, res) => {
+  const userId = Number(req.params.id);
+  const parsed = normalizeUserInput(req.body);
+  if (parsed.error) return res.status(400).json({ error: parsed.error });
+
+  const {
+    username,
+    password,
+    email,
+    userNumber,
+    companyName,
+    fullName,
+    accountType,
+  } = parsed.value;
+
+  let connection;
+  try {
+    connection = await db.getConnection();
+    await connection.beginTransaction();
+
+    const [userRows] = await connection.query(
+      "SELECT id, role FROM users WHERE id = ? LIMIT 1",
+      [userId]
+    );
+    if (!userRows.length) {
+      await connection.rollback();
+      return res.status(404).json({ error: "Ο χρήστης δεν βρέθηκε." });
+    }
+    if (userRows[0].role === "admin" && userId !== Number(req.user.id)) {
+      await connection.rollback();
+      return res.status(403).json({
+        error: "Δεν μπορείτε να επεξεργαστείτε άλλον διαχειριστή.",
+      });
+    }
+
+    const [duplicates] = await connection.query(
+      `SELECT id FROM users
+       WHERE id <> ? AND (LOWER(email) = LOWER(?) OR LOWER(username) = LOWER(?))
+       LIMIT 1`,
+      [userId, email, username]
+    );
+    if (duplicates.length) {
+      await connection.rollback();
+      return res.status(409).json({
+        error: "Το username ή το email χρησιμοποιείται ήδη.",
+        code: "USER_EXISTS",
+      });
+    }
+
+    let companyId;
+    const [companies] = await connection.query(
+      "SELECT id FROM companies WHERE LOWER(name) = LOWER(?) LIMIT 1",
+      [companyName]
+    );
+    if (companies.length) {
+      companyId = companies[0].id;
+    } else {
+      const [companyResult] = await connection.query(
+        "INSERT INTO companies (name) VALUES (?)",
+        [companyName]
+      );
+      companyId = companyResult.insertId;
+    }
+
+    const fields = [
+      "username = ?",
+      "full_name = ?",
+      "email = ?",
+      "user_number = ?",
+      "company_id = ?",
+      "account_type = ?",
+    ];
+    const params = [
+      username,
+      fullName,
+      email,
+      userNumber,
+      companyId,
+      accountType,
+    ];
 
     if (password) {
-      if (password.length < 8 || password.length > 128) {
-        return res.status(400).json({ error: "Ο κωδικός πρέπει να έχει 8-128 χαρακτήρες" });
-      }
       fields.push("password = ?");
       params.push(await bcrypt.hash(password, 12));
     }
-
-    fields.push("company_id = ?");
-    params.push(companyId);
-
-    // ΝΕΟ: email & user_number
-    fields.push("email = ?");
-    params.push(email.trim().toLowerCase());
-
-    fields.push("user_number = ?");
-    params.push(userNumber);
-
-    if (typeof isActive === "boolean") {
+    if (typeof req.body.isActive === "boolean" && userRows[0].role !== "admin") {
       fields.push("is_active = ?");
-      params.push(isActive ? 1 : 0);
+      params.push(req.body.isActive ? 1 : 0);
     }
-
     params.push(userId);
 
-    const sql = `UPDATE users SET ${fields.join(", ")} WHERE id = ?`;
-    await db.query(sql, params);
-
+    await connection.query(
+      `UPDATE users SET ${fields.join(", ")} WHERE id = ?`,
+      params
+    );
     if (password) {
-      await db.query(
+      await connection.query(
         "UPDATE refresh_tokens SET revoked_at = NOW() WHERE user_id = ? AND revoked_at IS NULL",
         [userId]
       );
     }
 
-    res.json({ success: true, message: "Ο χρήστης ενημερώθηκε" });
-  } catch (err) {
-    console.error("PUT /users/:id error:", err);
-    res.status(500).json({ error: "Σφάλμα κατά την ενημέρωση χρήστη" });
+    await connection.commit();
+    return res.json({ success: true, message: "Ο χρήστης ενημερώθηκε." });
+  } catch (error) {
+    if (connection) await connection.rollback().catch(() => {});
+    return databaseError(res, error, "PUT /api/users/:id failed:");
+  } finally {
+    connection?.release();
   }
 });
 
-/* ----------------------------------------------
-   PATCH /api/users/:id/toggle-active
-   Αλλαγή is_active (ενεργοποίηση / απενεργοποίηση)
----------------------------------------------- */
 router.patch(
   "/:id/toggle-active",
   authenticateToken,
   requireAdmin,
   async (req, res) => {
-    const userId = parseInt(req.params.id, 10);
-
+    const userId = Number(req.params.id);
     try {
       const [rows] = await db.query(
-        `SELECT id, is_active, role FROM users WHERE id = ?`,
+        "SELECT id, is_active, role FROM users WHERE id = ? LIMIT 1",
         [userId]
       );
-
       if (!rows.length) {
-        return res.status(404).json({ error: "Ο χρήστης δεν βρέθηκε" });
+        return res.status(404).json({ error: "Ο χρήστης δεν βρέθηκε." });
+      }
+      if (rows[0].role === "admin") {
+        return res.status(403).json({
+          error: "Δεν μπορείτε να απενεργοποιήσετε διαχειριστή.",
+        });
       }
 
-      const user = rows[0];
-
-      // Δεν απενεργοποιούμε admin (προαιρετικό)
-      if (user.role === "admin") {
-        return res
-          .status(403)
-          .json({ error: "Δεν μπορείτε να απενεργοποιήσετε admin" });
-      }
-
-      const newStatus = user.is_active ? 0 : 1;
-
-      await db.query(`UPDATE users SET is_active = ? WHERE id = ?`, [
-        newStatus,
+      const isActive = rows[0].is_active ? 0 : 1;
+      await db.query("UPDATE users SET is_active = ? WHERE id = ?", [
+        isActive,
         userId,
       ]);
+      if (!isActive) {
+        await db.query(
+          "UPDATE refresh_tokens SET revoked_at = NOW() WHERE user_id = ? AND revoked_at IS NULL",
+          [userId]
+        );
+      }
 
-      res.json({
+      return res.json({
         success: true,
-        isActive: !!newStatus,
-        message: newStatus
-          ? "Ο χρήστης ενεργοποιήθηκε"
-          : "Ο χρήστης απενεργοποιήθηκε",
+        isActive: Boolean(isActive),
+        message: isActive
+          ? "Ο χρήστης ενεργοποιήθηκε."
+          : "Ο χρήστης απενεργοποιήθηκε και αποσυνδέθηκε.",
       });
-    } catch (err) {
-      console.error("PATCH /users/:id/toggle-active error:", err);
-      res
-        .status(500)
-        .json({ error: "Σφάλμα κατά την αλλαγή κατάστασης χρήστη" });
+    } catch (error) {
+      return databaseError(res, error, "PATCH /api/users/:id/toggle-active failed:");
     }
   }
 );
 
-/* ----------------------------------------------
-   DELETE /api/users/:id
-   Διαγραφή χρήστη
----------------------------------------------- */
 router.delete("/:id", authenticateToken, requireAdmin, async (req, res) => {
-  const userId = parseInt(req.params.id, 10);
-
+  const userId = Number(req.params.id);
+  let connection;
   try {
-    const [rows] = await db.query(`SELECT id, role FROM users WHERE id = ?`, [
-      userId,
-    ]);
+    connection = await db.getConnection();
+    await connection.beginTransaction();
 
+    const [rows] = await connection.query(
+      `SELECT
+         u.id, u.username, u.role, u.company_id,
+         (SELECT COUNT(*) FROM vehicles v WHERE v.user_id = u.id) AS vehicle_count,
+         (SELECT COUNT(*) FROM maintenances m WHERE m.user_id = u.id) AS maintenance_count,
+         (SELECT COUNT(*) FROM costs c WHERE c.user_id = u.id) AS cost_count
+       FROM users u WHERE u.id = ? LIMIT 1`,
+      [userId]
+    );
     if (!rows.length) {
-      return res.status(404).json({ error: "Ο χρήστης δεν βρέθηκε" });
+      await connection.rollback();
+      return res.status(404).json({ error: "Ο χρήστης δεν βρέθηκε." });
+    }
+    if (rows[0].role === "admin") {
+      await connection.rollback();
+      return res.status(403).json({
+        error: "Οι λογαριασμοί διαχειριστή προστατεύονται από διαγραφή.",
+      });
     }
 
-    const user = rows[0];
-
-    // Δεν επιτρέπουμε διαγραφή admin
-    if (user.role === "admin") {
-      return res
-        .status(403)
-        .json({ error: "Δεν μπορείτε να διαγράψετε admin" });
+    const target = rows[0];
+    await connection.query("DELETE FROM users WHERE id = ?", [userId]);
+    if (target.company_id) {
+      await connection.query(
+        `DELETE FROM companies
+         WHERE id = ? AND NOT EXISTS (SELECT 1 FROM users WHERE company_id = ?)`,
+        [target.company_id, target.company_id]
+      );
     }
+    await connection.commit();
 
-    await db.query(`DELETE FROM users WHERE id = ?`, [userId]);
-
-    res.json({ success: true, message: "Ο χρήστης διαγράφηκε" });
-  } catch (err) {
-    console.error("DELETE /users/:id error:", err);
-    res.status(500).json({ error: "Σφάλμα κατά τη διαγραφή χρήστη" });
+    return res.json({
+      success: true,
+      message: `Ο χρήστης ${target.username} διαγράφηκε οριστικά.`,
+      deleted: {
+        id: target.id,
+        username: target.username,
+        vehicles: Number(target.vehicle_count || 0),
+        maintenances: Number(target.maintenance_count || 0),
+        costs: Number(target.cost_count || 0),
+      },
+    });
+  } catch (error) {
+    if (connection) await connection.rollback().catch(() => {});
+    return databaseError(res, error, "DELETE /api/users/:id failed:");
+  } finally {
+    connection?.release();
   }
 });
 

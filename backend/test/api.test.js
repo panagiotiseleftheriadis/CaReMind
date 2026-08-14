@@ -107,6 +107,38 @@ test("inactive users are denied after token validation", async () => {
   assert.equal(result.body.error, "User inactive");
 });
 
+test("admin user directory rejects normal users and accepts administrators", async () => {
+  queryHandler = authenticatedHandler(async () => {
+    throw new Error("A normal user must not reach the admin query");
+  });
+  const denied = await request("/api/users", { token: tokenFor() });
+  assert.equal(denied.response.status, 403);
+  assert.equal(denied.body.code, "ADMIN_REQUIRED");
+
+  const admin = { ...activeUser, id: 9, username: "admin", role: "admin" };
+  queryHandler = authenticatedHandler(async (sql, params) => {
+    assert.match(String(sql), /FROM users u/);
+    assert.deepEqual(params, [admin.id, admin.id]);
+    return [[{
+      id: admin.id,
+      username: admin.username,
+      role: "admin",
+      is_active: 1,
+      email_verified: 1,
+      vehicle_count: 3,
+      maintenance_count: 4,
+      cost_count: 5,
+      is_self: 1,
+    }], []];
+  }, admin);
+
+  const allowed = await request("/api/users", { token: tokenFor(admin) });
+  assert.equal(allowed.response.status, 200);
+  assert.equal(allowed.body.length, 1);
+  assert.equal(allowed.body[0].is_self, 1);
+  assert.equal(allowed.body[0].vehicle_count, 3);
+});
+
 test("login issues an access token and httpOnly refresh cookie", async () => {
   const passwordHash = await bcrypt.hash("correct-password", 4);
   queryHandler = async (sql) => {
