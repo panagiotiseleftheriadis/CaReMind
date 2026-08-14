@@ -28,7 +28,15 @@ function createNavigationUi({ role = null, demoActive = false, isDemo = false } 
   const navigationListeners = {};
   const attributes = new Map();
   const body = { classList: classList() };
-  const adminLink = { hidden: false };
+  const adminLinkStyles = new Map();
+  const adminLink = {
+    hidden: false,
+    style: {
+      removeProperty: (name) => adminLinkStyles.delete(name),
+      setProperty: (name, value, priority) =>
+        adminLinkStyles.set(name, { value, priority }),
+    },
+  };
 
   const navigation = {
     id: "",
@@ -80,6 +88,7 @@ function createNavigationUi({ role = null, demoActive = false, isDemo = false } 
 
   return {
     adminLink,
+    adminLinkStyles,
     attributes,
     body,
     buttonListeners,
@@ -90,11 +99,16 @@ function createNavigationUi({ role = null, demoActive = false, isDemo = false } 
 }
 
 test("admin navigation is visible only to real admin sessions, never in demo", () => {
-  assert.equal(createNavigationUi({ role: "admin" }).adminLink.hidden, false);
-  assert.equal(
-    createNavigationUi({ role: "admin", demoActive: true }).adminLink.hidden,
-    true
-  );
+  const realAdmin = createNavigationUi({ role: "admin" });
+  assert.equal(realAdmin.adminLink.hidden, false);
+  assert.equal(realAdmin.adminLinkStyles.has("display"), false);
+
+  const demoAdmin = createNavigationUi({ role: "admin", demoActive: true });
+  assert.equal(demoAdmin.adminLink.hidden, true);
+  assert.deepEqual(demoAdmin.adminLinkStyles.get("display"), {
+    value: "none",
+    priority: "important",
+  });
   assert.equal(
     createNavigationUi({ role: "admin", isDemo: true }).adminLink.hidden,
     true

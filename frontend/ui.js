@@ -147,6 +147,11 @@
 
     document.querySelectorAll("[data-admin-only]").forEach((element) => {
       element.hidden = !canAccessAdmin;
+      if (canAccessAdmin) {
+        element.style.removeProperty("display");
+      } else {
+        element.style.setProperty("display", "none", "important");
+      }
     });
   }
 
