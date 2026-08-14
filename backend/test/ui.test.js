@@ -21,13 +21,14 @@ function classList() {
   };
 }
 
-function createNavigationUi() {
+function createNavigationUi({ role = null, demoActive = false, isDemo = false } = {}) {
   const documentListeners = {};
   const windowListeners = {};
   const buttonListeners = {};
   const navigationListeners = {};
   const attributes = new Map();
   const body = { classList: classList() };
+  const adminLink = { hidden: false };
 
   const navigation = {
     id: "",
@@ -45,6 +46,7 @@ function createNavigationUi() {
     body,
     querySelectorAll(selector) {
       if (selector === ".nav-toggle") return [button];
+      if (selector === "[data-admin-only]") return [adminLink];
       return [];
     },
     addEventListener(name, handler) {
@@ -54,18 +56,52 @@ function createNavigationUi() {
   };
   const window = {
     innerWidth: 390,
+    CaReMindDemo: { isActive: () => demoActive },
     addEventListener: (name, handler) => (windowListeners[name] = handler),
+  };
+  const localStorage = {
+    getItem: (key) =>
+      key === "currentUser" && role
+        ? JSON.stringify({ role, isDemo })
+        : null,
   };
 
   const source = fs.readFileSync(
     path.join(__dirname, "..", "..", "frontend", "ui.js"),
     "utf8"
   );
-  vm.runInNewContext(source, { window, document, MutationObserver: class {} });
+  vm.runInNewContext(source, {
+    window,
+    document,
+    localStorage,
+    MutationObserver: class {},
+  });
   documentListeners.DOMContentLoaded[0]();
 
-  return { attributes, body, buttonListeners, documentListeners, window, windowListeners };
+  return {
+    adminLink,
+    attributes,
+    body,
+    buttonListeners,
+    documentListeners,
+    window,
+    windowListeners,
+  };
 }
+
+test("admin navigation is visible only to real admin sessions, never in demo", () => {
+  assert.equal(createNavigationUi({ role: "admin" }).adminLink.hidden, false);
+  assert.equal(
+    createNavigationUi({ role: "admin", demoActive: true }).adminLink.hidden,
+    true
+  );
+  assert.equal(
+    createNavigationUi({ role: "admin", isDemo: true }).adminLink.hidden,
+    true
+  );
+  assert.equal(createNavigationUi({ role: "guest" }).adminLink.hidden, true);
+  assert.equal(createNavigationUi({ role: "user" }).adminLink.hidden, true);
+});
 
 test("mobile navigation toggles, closes with Escape and resets on desktop", () => {
   const ui = createNavigationUi();

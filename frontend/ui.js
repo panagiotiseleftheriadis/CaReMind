@@ -131,16 +131,27 @@
     observer.observe(modal, { attributes: true, attributeFilter: ["class", "style"] });
   }
 
-  function initializeAccessibility() {
+  function syncAdminOnlyVisibility() {
     let currentUser = null;
     try {
       currentUser = JSON.parse(localStorage.getItem("currentUser") || "null");
     } catch {
       currentUser = null;
     }
+    const demoIsActive = Boolean(
+      window.CaReMindDemo?.isActive?.() ||
+      currentUser?.isDemo ||
+      currentUser?.role === "guest"
+    );
+    const canAccessAdmin = currentUser?.role === "admin" && !demoIsActive;
+
     document.querySelectorAll("[data-admin-only]").forEach((element) => {
-      element.hidden = currentUser?.role !== "admin";
+      element.hidden = !canAccessAdmin;
     });
+  }
+
+  function initializeAccessibility() {
+    syncAdminOnlyVisibility();
 
     document.querySelectorAll(".modal").forEach(prepareModal);
     document.querySelectorAll(".nav-toggle").forEach((button) => {
@@ -224,5 +235,6 @@
   }
 
   window.CaReMindUI = { escapeHtml, toast, confirm: confirmAction, setBusy };
+  window.addEventListener("caremind:session-changed", syncAdminOnlyVisibility);
   document.addEventListener("DOMContentLoaded", initializeAccessibility);
 })();
