@@ -582,11 +582,11 @@ svg {
   text-transform: uppercase;
 }
 
-.users-table th:nth-child(1) { width: 28%; }
-.users-table th:nth-child(2) { width: 23%; }
-.users-table th:nth-child(3) { width: 20%; }
+.users-table th:nth-child(1) { width: 26%; }
+.users-table th:nth-child(2) { width: 22%; }
+.users-table th:nth-child(3) { width: 19%; }
 .users-table th:nth-child(4) { width: 16%; }
-.users-table th:nth-child(5) { width: 13%; }
+.users-table th:nth-child(5) { width: 17%; }
 
 .users-table td {
   padding: 16px 12px;
@@ -1047,10 +1047,10 @@ svg {
     display: none;
   }
 
-  .users-table th:nth-child(1) { width: 32%; }
-  .users-table th:nth-child(2) { width: 27%; }
-  .users-table th:nth-child(4) { width: 22%; }
-  .users-table th:nth-child(5) { width: 19%; }
+  .users-table th:nth-child(1) { width: 30%; }
+  .users-table th:nth-child(2) { width: 25%; }
+  .users-table th:nth-child(4) { width: 21%; }
+  .users-table th:nth-child(5) { width: 24%; }
 }
 
 @media (max-width: 760px) {
