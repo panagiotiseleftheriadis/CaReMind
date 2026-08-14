@@ -5,8 +5,9 @@ const test = require("node:test");
 
 const backendRoot = path.join(__dirname, "..");
 
-test("Express authentication is not mistaken for Vercel Edge Middleware", () => {
+test("Vercel auto-detects the Express entry point without Edge Middleware", () => {
   assert.equal(fs.existsSync(path.join(backendRoot, "middleware.js")), false);
   assert.equal(fs.existsSync(path.join(backendRoot, "authMiddleware.js")), true);
-  assert.equal(fs.existsSync(path.join(backendRoot, "api", "[...path].js")), true);
+  assert.equal(fs.existsSync(path.join(backendRoot, "server.js")), true);
+  assert.equal(fs.existsSync(path.join(backendRoot, "vercel.json")), false);
 });

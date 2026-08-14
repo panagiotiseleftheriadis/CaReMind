@@ -140,7 +140,7 @@ The importer applies the PostgreSQL migrations, refuses to overwrite a non-empty
 
 Create a separate Vercel project from this repository and set its Root Directory to `backend`. Use the Other framework preset and add the production environment variables from `backend/.env.example`; at minimum the deployment requires `DATABASE_URL`, `DB_SSL=true`, `NODE_ENV=production` and `JWT_SECRET`.
 
-The `vercel-build` command applies pending migrations during deployment, while `api/[...path].js` exposes the existing Express application as a Vercel Function. After the deployment is healthy:
+The `vercel-build` command applies pending migrations during deployment. Vercel automatically detects the exported Express application in `server.js` and deploys it as one Vercel Function, preserving nested REST routes such as `/api/account/me`. After the deployment is healthy:
 
 1. Add `api.car-remind.gr` as a custom domain in the backend Vercel project.
 2. Replace the old Render DNS record with the CNAME value shown by Vercel.
