@@ -245,10 +245,12 @@ document.addEventListener("DOMContentLoaded", () => {
   initAccordion();
 
   // logout button inside account
-  $("logoutAccountBtn")?.addEventListener("click", (e) => {
+  $("logoutAccountBtn")?.addEventListener("click", async (e) => {
     e.preventDefault();
-    auth.logout();
-    window.location.href = "index.html";
+    const button = e.currentTarget;
+    button.disabled = true;
+    button.textContent = "Αποσύνδεση…";
+    await auth.logout();
   });
 
   // default fields

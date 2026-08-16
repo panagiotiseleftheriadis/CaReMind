@@ -256,7 +256,7 @@ router.post("/refresh", async (req, res) => {
 });
 
 // 3. LOGOUT
-router.post("/logout", authenticateToken, async (req, res) => {
+router.post("/logout", async (req, res) => {
   try {
     const refreshToken = req.cookies.refreshToken;
 
@@ -264,8 +264,8 @@ router.post("/logout", authenticateToken, async (req, res) => {
       await db.query(
         `UPDATE refresh_tokens
          SET revoked_at = NOW()
-         WHERE token_hash = ? AND user_id = ? AND revoked_at IS NULL`,
-        [hashToken(refreshToken), req.user.id]
+         WHERE token_hash = ? AND revoked_at IS NULL`,
+        [hashToken(refreshToken)]
       );
     }
 

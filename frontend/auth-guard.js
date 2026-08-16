@@ -1,4 +1,5 @@
 // frontend/auth-guard.js
+const AUTH_GUARD_LOGOUT_KEY = "caremindExplicitLogout";
 
 async function checkAuth() {
   const path = window.location.pathname;
@@ -8,6 +9,11 @@ async function checkAuth() {
                        path.endsWith("register.html") ||
                        path === "/" ||
                        path.endsWith("/");
+
+  if (localStorage.getItem(AUTH_GUARD_LOGOUT_KEY) === "1") {
+    if (!isPublicPage) redirectToLogin();
+    return;
+  }
 
   // ΠΕΡΙΠΤΩΣΗ 1: Είμαστε στη σελίδα Login/Register (Public)
   if (isPublicPage) {

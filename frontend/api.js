@@ -129,13 +129,35 @@ class API {
   }
 
   async logout() {
-    try {
-        await this.request("/logout", { method: "POST" });
-    } catch (e) { console.warn("Logout failed remotely"); }
-    
+    const isDemo = Boolean(window.CaReMindDemo?.isActive?.());
+
     this.accessToken = null;
     localStorage.removeItem("currentUser");
-    window.location.href = "index.html";
+    localStorage.removeItem("authToken");
+    localStorage.setItem("caremindExplicitLogout", "1");
+
+    if (isDemo) {
+      window.CaReMindDemo.end();
+      window.location.replace("index.html");
+      return;
+    }
+
+    const controller = new AbortController();
+    const logoutTimeout = window.setTimeout(() => controller.abort(), 3000);
+    try {
+      await fetch(`${this.baseURL}/logout`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        keepalive: true,
+        signal: controller.signal,
+      });
+    } catch (error) {
+      console.warn("Logout failed remotely", error);
+    } finally {
+      window.clearTimeout(logoutTimeout);
+      window.location.replace("index.html");
+    }
   }
 
   // ✅ Η μέθοδος που καλείται αυτόματα

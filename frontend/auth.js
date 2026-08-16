@@ -1,4 +1,6 @@
 // auth.js
+const EXPLICIT_LOGOUT_KEY = "caremindExplicitLogout";
+
 function showLoginError(message) {
   const el = document.getElementById("loginError");
   if (!el) return;
@@ -59,7 +61,10 @@ class AuthService {
     
     // Αν είμαστε σε σελίδα Login, ίσως θέλουμε να δούμε αν υπάρχει ήδη cookie
     // και να κάνουμε redirect στο dashboard αυτόματα.
-    if (window.location.pathname.endsWith("index.html")) {
+    if (
+      window.location.pathname.endsWith("index.html") &&
+      localStorage.getItem(EXPLICIT_LOGOUT_KEY) !== "1"
+    ) {
         api.refreshToken().then(data => {
             if (data && data.accessToken) {
                  window.location.href = "dashboard.html";
@@ -94,6 +99,7 @@ class AuthService {
       hideLoginError();
       
       // Αποθηκεύουμε ΜΟΝΟ τα user info (όχι το token) στο localStorage για το UI
+      localStorage.removeItem(EXPLICIT_LOGOUT_KEY);
       localStorage.setItem("currentUser", JSON.stringify(this.currentUser));
       
       this.updateNavigation();
@@ -114,8 +120,8 @@ class AuthService {
     }
   }
   
-  logout() {
-      api.logout(); // Αυτό κάνει clear cookie και redirect
+  async logout() {
+    return api.logout();
   }
 
   requireAuth() {
@@ -197,6 +203,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     demoLoginButton.disabled = true;
+    localStorage.removeItem(EXPLICIT_LOGOUT_KEY);
     window.CaReMindDemo.start({ reset: true });
     window.location.href = "dashboard.html";
   });

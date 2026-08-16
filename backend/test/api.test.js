@@ -207,7 +207,7 @@ test("invalid credentials do not reveal whether an account exists", async () => 
   assert.equal(result.body.code, "INVALID_CREDENTIALS");
 });
 
-test("refresh accepts an active session and logout revokes only the signed-in user token", async () => {
+test("refresh accepts an active session and logout revokes the matching refresh token", async () => {
   queryHandler = async (sql, params) => {
     const normalized = String(sql);
     if (normalized.includes("FROM refresh_tokens rt")) {
@@ -226,7 +226,7 @@ test("refresh accepts an active session and logout revokes only the signed-in us
       return [[activeUser], []];
     }
     if (normalized.includes("UPDATE refresh_tokens")) {
-      assert.equal(params[1], activeUser.id);
+      assert.equal(params.length, 1);
       return [{ affectedRows: 1 }, []];
     }
     throw new Error(`Unexpected session query: ${sql}`);
@@ -241,7 +241,6 @@ test("refresh accepts an active session and logout revokes only the signed-in us
 
   const logout = await request("/api/logout", {
     method: "POST",
-    token: tokenFor(),
     cookie: "refreshToken=test-refresh-token",
   });
   assert.equal(logout.response.status, 200);
