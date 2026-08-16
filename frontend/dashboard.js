@@ -30,18 +30,14 @@ class DashboardManager {
 
   /* ================== INIT ================== */
 
- /* ================== INIT ================== */
-
   async init() {
-
-    // 1. 🔥 ΑΛΛΑΓΗ: Φτιάχνουμε τα γραφήματα ΑΜΕΣΩΣ (έστω και κενά)
-    this.setupCharts();
-
-    // 2. Μετά ζητάμε τα δεδομένα από τον server
+    // Περιμένουμε πρώτα τα δεδομένα, ώστε να μη ζωγραφιστούν κενά charts.
     await this.loadDashboardData();
+
+    // Δημιουργούμε τα charts μόνο όταν τα πραγματικά δεδομένα είναι έτοιμα.
+    this.setupCharts();
     
     this.updateCompanyName();
-    // this.setupCharts(); // <-- ΑΥΤΟ ΤΟ ΣΒΗΝΕΙΣ ΑΠΟ ΕΔΩ (το βάλαμε πάνω)
     this.setupEventListeners();
     this.updateActivityFeed();
     this.updateNotifications();
@@ -202,6 +198,8 @@ class DashboardManager {
   setupCharts() {
     const costsCtx = document.getElementById("costsChart");
     const maintenanceCtx = document.getElementById("maintenanceChart");
+    const costsByCategory = this.getCostsByCategory(this.costs);
+    const maintenanceByType = this.getMaintenanceByType(this.maintenance);
 
     if (costsCtx && window.Chart) {
       this.charts.costsChart = new Chart(costsCtx, {
@@ -217,7 +215,14 @@ class DashboardManager {
           ],
           datasets: [
             {
-              data: [0, 0, 0, 0, 0, 0],
+              data: [
+                costsByCategory.fuel || 0,
+                costsByCategory.maintenance || 0,
+                costsByCategory.insurance || 0,
+                costsByCategory.repair || 0,
+                costsByCategory.taxes || 0,
+                costsByCategory.other || 0,
+              ],
               backgroundColor: [
                 "#FF6384",
                 "#36A2EB",
@@ -232,11 +237,14 @@ class DashboardManager {
         },
         options: {
           responsive: true,
+          maintainAspectRatio: false,
+          animation: false,
           plugins: {
             legend: { position: "bottom" },
           },
         },
       });
+      this.revealChart(costsCtx);
     }
 
     if (maintenanceCtx && window.Chart) {
@@ -247,7 +255,14 @@ class DashboardManager {
           datasets: [
             {
               label: "Πλήθος",
-              data: [0, 0, 0, 0, 0, 0],
+              data: [
+                maintenanceByType.oil || 0,
+                maintenanceByType.service || 0,
+                maintenanceByType.kteo || 0,
+                maintenanceByType.insurance || 0,
+                maintenanceByType.tires || 0,
+                maintenanceByType.other || 0,
+              ],
               backgroundColor: "#3498db",
               borderColor: "#2980b9",
               borderWidth: 1,
@@ -256,17 +271,25 @@ class DashboardManager {
         },
         options: {
           responsive: true,
+          maintainAspectRatio: false,
+          animation: false,
           scales: {
             y: { beginAtZero: true },
           },
         },
       });
+      this.revealChart(maintenanceCtx);
     }
 
-    // Αρχική ενημέρωση αν υπάρχουν ήδη δεδομένα
-    if (this.vehicles.length || this.maintenance.length || this.costs.length) {
-      this.updateCharts(this.vehicles, this.maintenance, this.costs);
-    }
+  }
+
+  revealChart(canvas) {
+    window.requestAnimationFrame(() => {
+      const container = canvas.closest(".chart-container");
+      container?.classList.remove("is-loading");
+      container?.classList.add("is-ready");
+      container?.setAttribute("aria-busy", "false");
+    });
   }
 
   updateCharts(vehicles, maintenance, costs) {

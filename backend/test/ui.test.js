@@ -139,3 +139,25 @@ test("mobile navigation toggles, closes with Escape and resets on desktop", () =
   assert.equal(ui.body.classList.contains("nav-open"), false);
   assert.equal(ui.attributes.get("aria-label"), "Άνοιγμα μενού");
 });
+
+test("dashboard charts stay in a stable loading state until real data is ready", () => {
+  const frontendRoot = path.join(__dirname, "..", "..", "frontend");
+  const dashboardSource = fs.readFileSync(path.join(frontendRoot, "dashboard.js"), "utf8");
+  const dashboardHtml = fs.readFileSync(path.join(frontendRoot, "dashboard.html"), "utf8");
+  const dashboardCss = fs.readFileSync(path.join(frontendRoot, "dashboard.css"), "utf8");
+  const initBlock = dashboardSource.match(
+    /async init\(\)\s*\{([\s\S]*?)async refreshDashboard/,
+  )?.[1];
+
+  assert.ok(initBlock, "dashboard init block should be present");
+  assert.ok(
+    initBlock.indexOf("await this.loadDashboardData()") < initBlock.indexOf("this.setupCharts()"),
+    "chart instances must be created after dashboard data resolves",
+  );
+  assert.equal((dashboardHtml.match(/chart-container is-loading/g) || []).length, 2);
+  assert.equal((dashboardHtml.match(/class="chart-loading"/g) || []).length, 2);
+  assert.match(dashboardSource, /animation:\s*false/);
+  assert.match(dashboardSource, /revealChart\(canvas\)/);
+  assert.match(dashboardCss, /\.chart-stage\s*\{[\s\S]*?min-height:\s*250px/);
+  assert.match(dashboardCss, /\.chart-container\.is-ready canvas/);
+});
