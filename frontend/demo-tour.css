@@ -61,6 +61,7 @@ body.demo-tour-open {
 .demo-tour-card {
   position: fixed;
   z-index: 2;
+  isolation: isolate;
   width: min(340px, calc(100vw - 32px));
   padding: 19px;
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -108,6 +109,8 @@ body.demo-tour-open {
 }
 
 .demo-tour-step-content {
+  position: relative;
+  z-index: 1;
   transition:
     opacity 160ms ease,
     transform 220ms cubic-bezier(.22, 1, .36, 1);
@@ -141,6 +144,7 @@ body.demo-tour-open {
 
 .demo-tour-close {
   position: absolute;
+  z-index: 5;
   top: 13px;
   right: 13px;
   display: grid;
@@ -153,6 +157,7 @@ body.demo-tour-open {
   color: rgba(255, 255, 255, 0.75);
   font: 300 21px/1 sans-serif;
   cursor: pointer;
+  pointer-events: auto;
 }
 
 .demo-tour-kicker,
@@ -307,6 +312,11 @@ body.demo-tour-open {
   pointer-events: none;
 }
 
+.demo-tour-welcome.is-starting {
+  pointer-events: none;
+  animation: tourLaunchBackdrop 760ms cubic-bezier(.4, 0, .2, 1) both;
+}
+
 .demo-tour-welcome-card {
   position: relative;
   width: min(620px, 100%);
@@ -330,6 +340,22 @@ body.demo-tour-open {
   opacity: 0;
   filter: blur(4px);
   transform: translateY(-16px) scale(0.975);
+}
+
+.demo-tour-welcome.is-starting .demo-tour-welcome-card {
+  animation: tourLaunchCard 760ms cubic-bezier(.4, 0, .2, 1) both;
+}
+
+.demo-tour-welcome.is-starting .demo-tour-welcome-kicker,
+.demo-tour-welcome.is-starting .demo-tour-welcome-card h2,
+.demo-tour-welcome.is-starting .demo-tour-welcome-card > p:not(.demo-tour-welcome-kicker),
+.demo-tour-welcome.is-starting .demo-tour-welcome-route,
+.demo-tour-welcome.is-starting .demo-tour-welcome-actions {
+  animation: tourLaunchContent 260ms ease both;
+}
+
+.demo-tour-welcome.is-starting .demo-tour-welcome-car {
+  animation: tourLaunchCar 720ms cubic-bezier(.55, .05, .25, 1) both;
 }
 
 .demo-tour-welcome-card::after {
@@ -446,6 +472,28 @@ body.demo-tour-open {
 @keyframes tourCarStart {
   from { opacity: 0; transform: translateX(-85%) translateY(3px) scale(0.92); }
   to { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+}
+
+@keyframes tourLaunchBackdrop {
+  0%, 72% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@keyframes tourLaunchCard {
+  0%, 58% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(0.975); }
+}
+
+@keyframes tourLaunchContent {
+  from { opacity: 1; transform: translateY(0); }
+  to { opacity: 0; transform: translateY(7px); }
+}
+
+@keyframes tourLaunchCar {
+  0% { opacity: 1; transform: translateX(0) rotate(0); }
+  16% { transform: translateX(-12px) rotate(-1deg); }
+  28% { transform: translateX(-4px) rotate(0); }
+  100% { opacity: 1; transform: translateX(calc(50vw + 190px)) rotate(1deg); }
 }
 
 @media (max-width: 700px) {

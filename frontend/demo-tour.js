@@ -509,11 +509,11 @@
       state.enabled = true;
       state.paused = false;
       saveState(state);
-      welcome.classList.add("is-leaving");
+      welcome.classList.add("is-starting");
       welcome.querySelectorAll("button").forEach((button) => {
         button.disabled = true;
       });
-      if (!reducedMotion.matches) await wait(320);
+      if (!reducedMotion.matches) await wait(760);
       welcome.remove();
       document.body.classList.remove("demo-tour-open");
       startChapter("dashboard", { restart: true });

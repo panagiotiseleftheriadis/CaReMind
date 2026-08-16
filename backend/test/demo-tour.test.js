@@ -17,8 +17,8 @@ const pageTargets = {
 test("every guided-tour chapter is wired to real page targets", () => {
   for (const [page, targets] of Object.entries(pageTargets)) {
     const html = fs.readFileSync(path.join(frontendRoot, `${page}.html`), "utf8");
-    assert.match(html, /demo-tour\.css\?v=4/);
-    assert.match(html, /demo-tour\.js\?v=4/);
+    assert.match(html, /demo-tour\.css\?v=5/);
+    assert.match(html, /demo-tour\.js\?v=5/);
 
     for (const target of targets) {
       assert.match(html, new RegExp(`data-tour=["']${target}["']`));
@@ -40,6 +40,9 @@ test("guided tour stays concise and uses smooth, non-overlapping presentation", 
   assert.match(tourSource, /M8 80h12l2-16/);
   assert.match(tourCss, /max-height:\s*36dvh/);
   assert.match(tourCss, /is-positioning/);
+  assert.match(tourSource, /is-starting/);
+  assert.match(tourCss, /tourLaunchCar/);
+  assert.match(tourCss, /\.demo-tour-close\s*\{[\s\S]*?z-index:\s*5/);
 });
 
 test("guided tour is demo-only, resumable and exposes the banner launcher", () => {
