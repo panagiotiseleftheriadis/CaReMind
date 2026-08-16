@@ -106,6 +106,9 @@
   let highlightedTarget = null;
   let previousFocus = null;
   let positionFrame = null;
+  let stepTransition = 0;
+
+  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 
   function isDemoActive() {
     return Boolean(window.CaReMindDemo?.isActive?.());
@@ -176,23 +179,25 @@
   function createLayer() {
     if (layer) return layer;
     layer = document.createElement("div");
-    layer.className = "demo-tour-layer";
+    layer.className = "demo-tour-layer is-positioning";
     layer.innerHTML = `
       <div class="demo-tour-highlight" aria-hidden="true"></div>
       <section class="demo-tour-card" role="dialog" aria-modal="true" aria-labelledby="demoTourTitle" tabindex="-1">
         <button class="demo-tour-close" type="button" aria-label="Κλείσιμο ξενάγησης">×</button>
-        <div class="demo-tour-kicker"></div>
-        <h2 id="demoTourTitle"></h2>
-        <p class="demo-tour-copy"></p>
-        <div class="demo-tour-road" aria-hidden="true">
-          <span class="demo-tour-road-fill"></span>
-          <span class="demo-tour-car">${createCarIcon()}</span>
-        </div>
-        <div class="demo-tour-footer">
-          <button class="demo-tour-skip" type="button">Παράλειψη κεφαλαίου</button>
-          <div class="demo-tour-controls">
-            <button class="demo-tour-back" type="button">Πίσω</button>
-            <button class="demo-tour-next" type="button">Επόμενο</button>
+        <div class="demo-tour-step-content">
+          <div class="demo-tour-kicker"></div>
+          <h2 id="demoTourTitle"></h2>
+          <p class="demo-tour-copy"></p>
+          <div class="demo-tour-road" aria-hidden="true">
+            <span class="demo-tour-road-fill"></span>
+            <span class="demo-tour-car">${createCarIcon()}</span>
+          </div>
+          <div class="demo-tour-footer">
+            <button class="demo-tour-skip" type="button">Παράλειψη κεφαλαίου</button>
+            <div class="demo-tour-controls">
+              <button class="demo-tour-back" type="button">Πίσω</button>
+              <button class="demo-tour-next" type="button">Επόμενο</button>
+            </div>
           </div>
         </div>
       </section>`;
@@ -217,11 +222,12 @@
 
   function schedulePosition() {
     if (!layer || !highlightedTarget) return;
+    if (layer.classList.contains("is-positioning")) return;
     window.cancelAnimationFrame(positionFrame);
     positionFrame = window.requestAnimationFrame(positionLayer);
   }
 
-  async function scrollTargetInstantly(target) {
+  async function scrollTargetSmoothly(target) {
     document.body.classList.remove("demo-tour-open");
     const root = document.documentElement;
     const previousBehavior = root.style.scrollBehavior;
@@ -229,8 +235,38 @@
     const rect = target.getBoundingClientRect();
     const destination = Math.max(0, window.scrollY + rect.top - targetTop);
     root.style.scrollBehavior = "auto";
-    window.scrollTo(0, destination);
-    await new Promise((resolve) => window.requestAnimationFrame(resolve));
+    if (reducedMotion.matches || Math.abs(destination - window.scrollY) < 2) {
+      window.scrollTo(0, destination);
+      await new Promise((resolve) => window.requestAnimationFrame(resolve));
+      root.style.scrollBehavior = previousBehavior;
+      return;
+    }
+
+    window.scrollTo({ top: destination, left: 0, behavior: "smooth" });
+    await new Promise((resolve) => {
+      const startedAt = performance.now();
+      let previousY = window.scrollY;
+      let settledFrames = 0;
+
+      function observeScroll(now) {
+        const currentY = window.scrollY;
+        const reachedTarget = Math.abs(currentY - destination) < 2;
+        const stoppedMoving = Math.abs(currentY - previousY) < 0.5;
+        settledFrames = stoppedMoving ? settledFrames + 1 : 0;
+        previousY = currentY;
+
+        if (
+          reachedTarget ||
+          (settledFrames >= 5 && now - startedAt > 160) ||
+          now - startedAt > 1200
+        ) {
+          resolve();
+          return;
+        }
+        window.requestAnimationFrame(observeScroll);
+      }
+      window.requestAnimationFrame(observeScroll);
+    });
     root.style.scrollBehavior = previousBehavior;
   }
 
@@ -258,7 +294,6 @@
       highlight.style.setProperty("--tour-left", `${highlightLeft}px`);
       highlight.style.setProperty("--tour-width", `${highlightWidth}px`);
       highlight.style.setProperty("--tour-height", `${highlightHeight}px`);
-      layer.classList.remove("is-positioning");
       return;
     }
 
@@ -279,7 +314,6 @@
     highlight.style.setProperty("--tour-height", `${highlightHeight}px`);
     card.style.left = `${cardLeft}px`;
     card.style.top = `${highlightBottom + gap}px`;
-    layer.classList.remove("is-positioning");
   }
 
   function clearTarget() {
@@ -288,6 +322,7 @@
   }
 
   function closeLayer() {
+    stepTransition += 1;
     clearTarget();
     layer?.remove();
     layer = null;
@@ -352,21 +387,37 @@
   async function showStep(index) {
     const chapter = chapters[activeChapter];
     if (!chapter) return;
-    activeIndex = Math.max(0, Math.min(index, chapter.steps.length - 1));
-    const step = chapter.steps[activeIndex];
+    const nextIndex = Math.max(0, Math.min(index, chapter.steps.length - 1));
+    const previousIndex = activeIndex;
+    const step = chapter.steps[nextIndex];
+    const transition = ++stepTransition;
     const target = await findTarget(step.target);
+    if (transition !== stepTransition) return;
     if (!target) {
-      if (activeIndex < chapter.steps.length - 1) return showStep(activeIndex + 1);
+      if (nextIndex < chapter.steps.length - 1) return showStep(nextIndex + 1);
       return nextStep();
     }
 
+    const tourLayer = createLayer();
+    const hasVisibleStep = tourLayer.classList.contains("is-ready");
+    const direction = nextIndex < previousIndex ? "backward" : "forward";
+    tourLayer.dataset.direction = direction;
+    window.cancelAnimationFrame(positionFrame);
+    tourLayer.classList.add("is-positioning");
+    tourLayer.setAttribute("aria-busy", "true");
+    if (hasVisibleStep && !reducedMotion.matches) {
+      tourLayer.classList.add("is-step-exiting");
+      await wait(150);
+      if (transition !== stepTransition) return;
+    }
+
+    activeIndex = nextIndex;
     clearTarget();
-    layer?.classList.add("is-positioning");
     highlightedTarget = target;
     highlightedTarget.classList.add("demo-tour-active-target");
-    await scrollTargetInstantly(target);
+    await scrollTargetSmoothly(target);
+    if (transition !== stepTransition) return;
 
-    const tourLayer = createLayer();
     const progress = ((activeIndex + 1) / chapter.steps.length) * 100;
     tourLayer.querySelector(".demo-tour-kicker").textContent =
       `${chapter.title} · ${activeIndex + 1}/${chapter.steps.length}`;
@@ -387,7 +438,19 @@
     state.paused = false;
     saveState(state);
     document.body.classList.add("demo-tour-open");
-    schedulePosition();
+    positionLayer();
+    tourLayer.classList.remove("is-step-exiting");
+    tourLayer.classList.add("is-step-entering");
+    await new Promise((resolve) => window.requestAnimationFrame(resolve));
+    await new Promise((resolve) => window.requestAnimationFrame(resolve));
+    if (transition !== stepTransition) return;
+    tourLayer.classList.remove("is-positioning", "is-step-entering");
+    tourLayer.classList.add("is-ready");
+    if (!hasVisibleStep) {
+      tourLayer.classList.add("is-opening");
+      window.setTimeout(() => tourLayer.classList.remove("is-opening"), 700);
+    }
+    tourLayer.removeAttribute("aria-busy");
     tourLayer.querySelector(".demo-tour-card").focus({ preventScroll: true });
   }
 
@@ -440,12 +503,17 @@
       document.body.classList.remove("demo-tour-open");
       previousFocus?.focus?.();
     });
-    welcome.querySelector(".demo-tour-start").addEventListener("click", () => {
+    welcome.querySelector(".demo-tour-start").addEventListener("click", async () => {
       const state = loadState();
       state.welcomed = true;
       state.enabled = true;
       state.paused = false;
       saveState(state);
+      welcome.classList.add("is-leaving");
+      welcome.querySelectorAll("button").forEach((button) => {
+        button.disabled = true;
+      });
+      if (!reducedMotion.matches) await wait(320);
       welcome.remove();
       document.body.classList.remove("demo-tour-open");
       startChapter("dashboard", { restart: true });

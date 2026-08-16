@@ -17,8 +17,8 @@ const pageTargets = {
 test("every guided-tour chapter is wired to real page targets", () => {
   for (const [page, targets] of Object.entries(pageTargets)) {
     const html = fs.readFileSync(path.join(frontendRoot, `${page}.html`), "utf8");
-    assert.match(html, /demo-tour\.css\?v=2/);
-    assert.match(html, /demo-tour\.js\?v=2/);
+    assert.match(html, /demo-tour\.css\?v=4/);
+    assert.match(html, /demo-tour\.js\?v=4/);
 
     for (const target of targets) {
       assert.match(html, new RegExp(`data-tour=["']${target}["']`));
@@ -27,13 +27,16 @@ test("every guided-tour chapter is wired to real page targets", () => {
   }
 });
 
-test("guided tour stays concise and uses instant, non-overlapping presentation", () => {
+test("guided tour stays concise and uses smooth, non-overlapping presentation", () => {
   const tourCss = fs.readFileSync(path.join(frontendRoot, "demo-tour.css"), "utf8");
   const configuredSteps = tourSource.match(/target: '\[data-tour=/g) || [];
 
   assert.equal(configuredSteps.length, 12);
-  assert.doesNotMatch(tourSource, /scrollIntoView|behavior:\s*"smooth"/);
-  assert.match(tourSource, /scrollTargetInstantly/);
+  assert.match(tourSource, /behavior:\s*"smooth"/);
+  assert.match(tourSource, /observeScroll/);
+  assert.match(tourSource, /scrollTargetSmoothly/);
+  assert.match(tourSource, /is-step-entering/);
+  assert.match(tourCss, /cubic-bezier\(\.22, 1, \.36, 1\)/);
   assert.match(tourSource, /M8 80h12l2-16/);
   assert.match(tourCss, /max-height:\s*36dvh/);
   assert.match(tourCss, /is-positioning/);
