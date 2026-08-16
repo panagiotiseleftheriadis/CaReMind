@@ -22,6 +22,11 @@ body.demo-tour-open {
   background: rgba(5, 25, 30, 0.17);
 }
 
+.demo-tour-layer.is-positioning .demo-tour-highlight,
+.demo-tour-layer.is-positioning .demo-tour-card {
+  opacity: 0;
+}
+
 .demo-tour-highlight {
   position: fixed;
   top: var(--tour-top, 20px);
@@ -35,7 +40,6 @@ body.demo-tour-open {
     0 0 0 6px rgba(241, 111, 105, 0.15),
     0 14px 45px rgba(0, 0, 0, 0.26);
   pointer-events: none;
-  transition: top 220ms ease, left 220ms ease, width 220ms ease, height 220ms ease;
 }
 
 .demo-tour-highlight::after {
@@ -50,8 +54,8 @@ body.demo-tour-open {
 .demo-tour-card {
   position: fixed;
   z-index: 2;
-  width: min(365px, calc(100vw - 32px));
-  padding: 24px;
+  width: min(340px, calc(100vw - 32px));
+  padding: 19px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 20px;
   outline: 0;
@@ -108,22 +112,22 @@ body.demo-tour-open {
 
 .demo-tour-card h2 {
   padding-right: 18px;
-  font-size: 29px;
-  line-height: 1.08;
+  font-size: 25px;
+  line-height: 1.05;
 }
 
 .demo-tour-copy {
-  min-height: 78px;
-  margin: 13px 0 22px;
+  min-height: 0;
+  margin: 10px 0 13px;
   color: rgba(255, 255, 255, 0.72);
-  font-size: 12px;
-  line-height: 1.7;
+  font-size: 11px;
+  line-height: 1.55;
 }
 
 .demo-tour-road {
   position: relative;
-  height: 25px;
-  margin: 0 5px 17px;
+  height: 22px;
+  margin: 0 5px 12px;
   border-bottom: 1px dashed rgba(255, 255, 255, 0.2);
 }
 
@@ -139,8 +143,8 @@ body.demo-tour-open {
 
 .demo-tour-car {
   position: absolute;
-  bottom: 1px;
-  width: 43px;
+  bottom: -1px;
+  width: 58px;
   color: var(--tour-coral);
   transform: translateX(-50%);
   transition: left 280ms ease;
@@ -148,12 +152,15 @@ body.demo-tour-open {
 
 .demo-tour-car svg,
 .demo-tour-welcome-car svg {
+  display: block;
   width: 100%;
+  overflow: visible;
   fill: none;
   stroke: currentColor;
   stroke-linecap: round;
   stroke-linejoin: round;
-  stroke-width: 1.6;
+  stroke-width: 2.2;
+  filter: drop-shadow(0 0 7px rgba(255, 105, 109, 0.24));
 }
 
 .demo-tour-footer,
@@ -257,7 +264,7 @@ body.demo-tour-open {
 }
 
 .demo-tour-welcome-car {
-  width: 98px;
+  width: 148px;
   margin: 0 auto 18px;
   color: var(--tour-coral);
   animation: tourArrival 700ms cubic-bezier(.2,.8,.2,1) both;
@@ -343,29 +350,67 @@ body.demo-tour-open {
 
 @media (max-width: 700px) {
   .demo-tour-card {
-    inset: auto 10px 10px !important;
+    inset: auto 8px 8px !important;
     width: auto;
-    padding: 21px 18px 18px;
-    border-radius: 19px;
+    max-height: 36vh;
+    max-height: 36dvh;
+    padding: 13px 14px 12px;
+    overflow-y: auto;
+    border-radius: 16px;
   }
 
   .demo-tour-card h2 {
-    font-size: 25px;
+    padding-right: 30px;
+    font-size: 20px;
   }
 
   .demo-tour-copy {
     min-height: 0;
-    margin-bottom: 17px;
-    font-size: 11px;
+    margin: 7px 0 8px;
+    font-size: 10px;
+    line-height: 1.45;
+  }
+
+  .demo-tour-kicker {
+    margin-bottom: 5px;
+    font-size: 8px;
+  }
+
+  .demo-tour-close {
+    top: 9px;
+    right: 9px;
+    width: 27px;
+    height: 27px;
+  }
+
+  .demo-tour-road {
+    height: 17px;
+    margin-bottom: 8px;
+  }
+
+  .demo-tour-car {
+    width: 45px;
   }
 
   .demo-tour-footer {
-    align-items: flex-end;
+    align-items: center;
   }
 
   .demo-tour-skip {
-    max-width: 72px;
+    max-width: 62px;
     text-align: left;
+  }
+
+  .demo-tour-skip,
+  .demo-tour-back,
+  .demo-tour-next {
+    min-height: 33px;
+    font-size: 9px;
+  }
+
+  .demo-tour-back,
+  .demo-tour-next {
+    padding-inline: 10px;
   }
 
   .demo-tour-welcome {

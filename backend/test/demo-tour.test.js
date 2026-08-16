@@ -7,30 +7,36 @@ const frontendRoot = path.join(__dirname, "..", "..", "frontend");
 const tourSource = fs.readFileSync(path.join(frontendRoot, "demo-tour.js"), "utf8");
 
 const pageTargets = {
-  dashboard: ["dashboard-welcome", "dashboard-stats", "dashboard-charts", "dashboard-actions"],
-  vehicles: ["vehicles-intro", "vehicles-add", "vehicles-list"],
-  maintenance: [
-    "maintenance-intro",
-    "maintenance-summary",
-    "maintenance-add",
-    "maintenance-filters",
-    "maintenance-list",
-  ],
-  costs: ["costs-intro", "costs-summary", "costs-filters", "costs-list"],
-  account: ["account-profile", "account-settings"],
+  dashboard: ["dashboard-stats", "dashboard-charts", "dashboard-actions"],
+  vehicles: ["vehicles-add", "vehicles-list"],
+  maintenance: ["maintenance-summary", "maintenance-add", "maintenance-list"],
+  costs: ["costs-intro", "costs-summary", "costs-list"],
+  account: ["account-profile"],
 };
 
 test("every guided-tour chapter is wired to real page targets", () => {
   for (const [page, targets] of Object.entries(pageTargets)) {
     const html = fs.readFileSync(path.join(frontendRoot, `${page}.html`), "utf8");
-    assert.match(html, /demo-tour\.css\?v=1/);
-    assert.match(html, /demo-tour\.js\?v=1/);
+    assert.match(html, /demo-tour\.css\?v=2/);
+    assert.match(html, /demo-tour\.js\?v=2/);
 
     for (const target of targets) {
       assert.match(html, new RegExp(`data-tour=["']${target}["']`));
       assert.match(tourSource, new RegExp(`data-tour=\\\\?"${target}\\\\?"`));
     }
   }
+});
+
+test("guided tour stays concise and uses instant, non-overlapping presentation", () => {
+  const tourCss = fs.readFileSync(path.join(frontendRoot, "demo-tour.css"), "utf8");
+  const configuredSteps = tourSource.match(/target: '\[data-tour=/g) || [];
+
+  assert.equal(configuredSteps.length, 12);
+  assert.doesNotMatch(tourSource, /scrollIntoView|behavior:\s*"smooth"/);
+  assert.match(tourSource, /scrollTargetInstantly/);
+  assert.match(tourSource, /M8 80h12l2-16/);
+  assert.match(tourCss, /max-height:\s*36dvh/);
+  assert.match(tourCss, /is-positioning/);
 });
 
 test("guided tour is demo-only, resumable and exposes the banner launcher", () => {

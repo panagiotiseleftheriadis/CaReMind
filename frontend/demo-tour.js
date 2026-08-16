@@ -1,6 +1,6 @@
 (function () {
   const STORAGE_KEY = "caremindDemoTourV1";
-  const TOUR_VERSION = 1;
+  const TOUR_VERSION = 2;
 
   const chapters = {
     dashboard: {
@@ -9,14 +9,9 @@
       nextHref: "vehicles.html",
       steps: [
         {
-          target: '[data-tour="dashboard-welcome"]',
-          title: "Η συνολική εικόνα σου",
-          text: "Ο Πίνακας ελέγχου συγκεντρώνει ό,τι χρειάζεται άμεση προσοχή. Με μια ματιά βλέπεις την κατάσταση του στόλου ή του προσωπικού σου οχήματος.",
-        },
-        {
           target: '[data-tour="dashboard-stats"]',
-          title: "Οι σημαντικότεροι αριθμοί",
-          text: "Εδώ εμφανίζονται τα ενεργά οχήματα, τα έξοδα του μήνα και οι επικείμενες ή εκπρόθεσμες συντηρήσεις.",
+          title: "Η εικόνα σου με μία ματιά",
+          text: "Εδώ βλέπεις τα οχήματα, τα έξοδα του μήνα και τις συντηρήσεις που πλησιάζουν ή έχουν καθυστερήσει.",
         },
         {
           target: '[data-tour="dashboard-charts"]',
@@ -36,24 +31,14 @@
       nextHref: "maintenance.html",
       steps: [
         {
-          target: '[data-tour="vehicles-intro"]',
-          title: "Η βάση της εφαρμογής",
-          text: "Κάθε συντήρηση και κάθε έξοδο συνδέεται με ένα όχημα. Γι’ αυτό η σωστή καταχώρηση των οχημάτων είναι το πρώτο βήμα.",
-        },
-        {
           target: '[data-tour="vehicles-add"]',
           title: "Πρόσθεσε όχημα",
-          text: "Καταχώρησε τύπο, αριθμό πλαισίου, μοντέλο, έτος και τρέχοντα χιλιόμετρα. Ο αριθμός πλαισίου ξεχωρίζει με ασφάλεια κάθε όχημα.",
+          text: "Από εδώ καταχωρείς τύπο, αριθμό πλαισίου, μοντέλο, έτος και τρέχοντα χιλιόμετρα.",
         },
         {
           target: '[data-tour="vehicles-list"]',
-          title: "Ο στόλος σου σε μία λίστα",
-          text: "Εδώ βλέπεις τα βασικά στοιχεία όλων των οχημάτων. Τα έτοιμα Demo δεδομένα δείχνουν πώς θα φαίνεται η δική σου λίστα.",
-        },
-        {
-          target: '[data-tour="vehicles-list"]',
-          title: "Ενημέρωση και διαγραφή",
-          text: "Από τις ενέργειες κάθε γραμμής μπορείς να διορθώσεις στοιχεία ή χιλιόμετρα. Η διαγραφή οχήματος αφαιρεί και τις συνδεδεμένες συντηρήσεις και δαπάνες, γι’ αυτό ζητείται επιβεβαίωση.",
+          title: "Οχήματα και ενέργειες",
+          text: "Η λίστα δείχνει όλα τα βασικά στοιχεία. Σε κάθε όχημα μπορείς να ενημερώσεις δεδομένα, να πας στη συντήρηση ή να το διαγράψεις με επιβεβαίωση.",
         },
       ],
     },
@@ -63,14 +48,9 @@
       nextHref: "costs.html",
       steps: [
         {
-          target: '[data-tour="maintenance-intro"]',
-          title: "Πρόγραμμα και ιστορικό",
-          text: "Η σελίδα Συντήρηση σε βοηθά να γνωρίζεις τι έγινε, τι έρχεται και τι έχει ήδη καθυστερήσει για κάθε όχημα.",
-        },
-        {
           target: '[data-tour="maintenance-summary"]',
           title: "Κατάσταση συντηρήσεων",
-          text: "Επικείμενη σημαίνει ότι πλησιάζει η ημερομηνία, εκπρόθεσμη ότι χρειάζεται άμεση ενέργεια και ολοκληρωμένη ότι έχει ήδη πραγματοποιηθεί.",
+          text: "Βλέπεις αμέσως ποιες εργασίες πλησιάζουν, ποιες έχουν καθυστερήσει και ποιες ολοκληρώθηκαν.",
         },
         {
           target: '[data-tour="maintenance-add"]',
@@ -78,14 +58,9 @@
           text: "Επίλεξε όχημα και τύπο εργασίας. Μπορείς να ορίσεις επόμενο έλεγχο με ημερομηνία, χιλιόμετρα ή και με τα δύο.",
         },
         {
-          target: '[data-tour="maintenance-filters"]',
-          title: "Βρες γρήγορα αυτό που ψάχνεις",
-          text: "Φίλτραρε το πρόγραμμα ανά όχημα, τύπο εργασίας ή κατάσταση χωρίς να χάνονται οι υπόλοιπες καταχωρήσεις.",
-        },
-        {
           target: '[data-tour="maintenance-list"]',
-          title: "Όλο το ιστορικό οργανωμένο",
-          text: "Κάθε γραμμή δείχνει το όχημα, την εργασία και το επόμενο όριο. Από εδώ ενημερώνεις την εργασία όταν ολοκληρωθεί ή αλλάξει ο προγραμματισμός.",
+          title: "Πρόγραμμα και ιστορικό",
+          text: "Η λίστα δείχνει όχημα, εργασία και επόμενο όριο. Με τα φίλτρα ακριβώς από πάνω βρίσκεις γρήγορα ό,τι χρειάζεσαι.",
         },
       ],
     },
@@ -102,17 +77,12 @@
         {
           target: '[data-tour="costs-summary"]',
           title: "Οι δαπάνες με μία ματιά",
-          text: "Οι κάρτες υπολογίζουν αυτόματα συνολικό κόστος, τρέχοντα μήνα, μέσο μηνιαίο κόστος και μεταβολή σε σχέση με πριν.",
-        },
-        {
-          target: '[data-tour="costs-filters"]',
-          title: "Ανάλυση χωρίς υπολογιστικά φύλλα",
-          text: "Περιόρισε τα αποτελέσματα ανά περίοδο, όχημα ή κατηγορία για να εντοπίσεις γρήγορα πού πηγαίνουν τα χρήματα.",
+          text: "Οι κάρτες υπολογίζουν αυτόματα το συνολικό και μηνιαίο κόστος, καθώς και τη μεταβολή σε σχέση με πριν.",
         },
         {
           target: '[data-tour="costs-list"]',
           title: "Ιστορικό και εξαγωγή",
-          text: "Η λίστα κρατά ημερομηνία, ποσό, περιγραφή και παραστατικό. Μπορείς επίσης να εξαγάγεις τα φιλτραρισμένα δεδομένα για περαιτέρω χρήση.",
+          text: "Η λίστα κρατά ημερομηνία, ποσό και περιγραφή. Με τα φίλτρα βρίσκεις συγκεκριμένες δαπάνες και μπορείς να τις εξαγάγεις.",
         },
       ],
     },
@@ -123,13 +93,8 @@
       steps: [
         {
           target: '[data-tour="account-profile"]',
-          title: "Το προφίλ της εγκατάστασης",
-          text: "Εδώ εμφανίζονται τα στοιχεία λογαριασμού και εταιρείας. Στο Demo είναι ενδεικτικά και δεν αποστέλλονται σε κάποιον server.",
-        },
-        {
-          target: '[data-tour="account-settings"]',
-          title: "Στοιχεία και ασφάλεια",
-          text: "Σε πραγματικό λογαριασμό από εδώ αλλάζεις username, email ή κωδικό με επιβεβαίωση ασφαλείας. Στο Demo μπορείς να εξερευνήσεις χωρίς να αλλάξει πραγματικό προφίλ.",
+          title: "Λογαριασμός και ασφάλεια",
+          text: "Εδώ βλέπεις τα στοιχεία του λογαριασμού. Σε πραγματική σύνδεση μπορείς να αλλάξεις username, email ή κωδικό με επιβεβαίωση ασφαλείας.",
         },
       ],
     },
@@ -179,10 +144,6 @@
     return state.chapters[key];
   }
 
-  function reduceMotion() {
-    return window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
-  }
-
   function wait(ms) {
     return new Promise((resolve) => window.setTimeout(resolve, ms));
   }
@@ -199,10 +160,16 @@
 
   function createCarIcon() {
     return `
-      <svg viewBox="0 0 72 28" aria-hidden="true">
-        <path d="M9 20h5l4-9c1-2 3-3 5-3h25c3 0 5 1 7 3l7 9h3c2 0 3 1 3 3v1H5v-1c0-2 2-3 4-3Z" />
-        <circle cx="20" cy="23" r="4" /><circle cx="55" cy="23" r="4" />
-        <path d="m24 9-3 9h31l-6-9" />
+      <svg viewBox="0 0 320 112" aria-hidden="true">
+        <path d="M8 80h12l2-16c1-7 6-11 14-13l59-14c18-11 39-16 65-16h31c27 0 52 8 73 22l17 15 21 5c8 2 12 8 12 16v3h-17" />
+        <path d="M103 82h127m-222 0h31m253 0h22" />
+        <path d="M101 38c17-10 36-14 59-14h26c22 0 42 6 59 17l-72 1-72 1Z" />
+        <path d="M171 25l2 17m4 6v29m-72-27c45 4 99 4 160 0m-75 2h14m78 6 19 4 7 7h-21M19 58l24-5 12 6-33 8m88 17h115" />
+        <path d="M39 82c0-19 13-32 32-32s32 13 32 32m127 0c0-19 13-32 32-32s32 13 32 32" />
+        <circle cx="71" cy="82" r="20" />
+        <circle cx="71" cy="82" r="11" />
+        <circle cx="262" cy="82" r="20" />
+        <circle cx="262" cy="82" r="11" />
       </svg>`;
   }
 
@@ -254,38 +221,65 @@
     positionFrame = window.requestAnimationFrame(positionLayer);
   }
 
+  async function scrollTargetInstantly(target) {
+    document.body.classList.remove("demo-tour-open");
+    const root = document.documentElement;
+    const previousBehavior = root.style.scrollBehavior;
+    const targetTop = window.innerWidth <= 700 ? 12 : 22;
+    const rect = target.getBoundingClientRect();
+    const destination = Math.max(0, window.scrollY + rect.top - targetTop);
+    root.style.scrollBehavior = "auto";
+    window.scrollTo(0, destination);
+    await new Promise((resolve) => window.requestAnimationFrame(resolve));
+    root.style.scrollBehavior = previousBehavior;
+  }
+
   function positionLayer() {
     if (!layer || !highlightedTarget) return;
     const rect = highlightedTarget.getBoundingClientRect();
-    const padding = 8;
     const highlight = layer.querySelector(".demo-tour-highlight");
     const card = layer.querySelector(".demo-tour-card");
-    highlight.style.setProperty("--tour-top", `${Math.max(6, rect.top - padding)}px`);
-    highlight.style.setProperty("--tour-left", `${Math.max(6, rect.left - padding)}px`);
-    highlight.style.setProperty("--tour-width", `${Math.min(window.innerWidth - 12, rect.width + padding * 2)}px`);
-    highlight.style.setProperty("--tour-height", `${Math.min(window.innerHeight - 12, rect.height + padding * 2)}px`);
+    const isMobile = window.innerWidth <= 700;
+    const margin = isMobile ? 8 : 18;
+    const padding = isMobile ? 5 : 8;
+    const gap = isMobile ? 10 : 16;
+    const cardRect = card.getBoundingClientRect();
+    const highlightTop = Math.max(margin, rect.top - padding);
+    const highlightLeft = Math.max(margin, rect.left - padding);
+    const highlightWidth = Math.min(
+      window.innerWidth - highlightLeft - margin,
+      rect.width + padding * 2,
+    );
 
-    if (window.innerWidth <= 700) {
-      card.removeAttribute("style");
+    if (isMobile) {
+      const availableHeight = Math.max(72, cardRect.top - gap - highlightTop);
+      const highlightHeight = Math.min(rect.height + padding * 2, availableHeight);
+      highlight.style.setProperty("--tour-top", `${highlightTop}px`);
+      highlight.style.setProperty("--tour-left", `${highlightLeft}px`);
+      highlight.style.setProperty("--tour-width", `${highlightWidth}px`);
+      highlight.style.setProperty("--tour-height", `${highlightHeight}px`);
+      layer.classList.remove("is-positioning");
       return;
     }
 
-    const cardRect = card.getBoundingClientRect();
-    const gap = 18;
-    let left = rect.right + gap;
-    let top = Math.max(18, rect.top);
-    if (left + cardRect.width > window.innerWidth - 18) {
-      left = rect.left - cardRect.width - gap;
-    }
-    if (left < 18) {
-      left = Math.min(window.innerWidth - cardRect.width - 18, Math.max(18, rect.left));
-      top = rect.bottom + gap;
-    }
-    if (top + cardRect.height > window.innerHeight - 18) {
-      top = Math.max(18, window.innerHeight - cardRect.height - 18);
-    }
-    card.style.left = `${left}px`;
-    card.style.top = `${top}px`;
+    const availableHighlightHeight = Math.max(
+      86,
+      window.innerHeight - highlightTop - cardRect.height - gap - margin,
+    );
+    const highlightHeight = Math.min(rect.height + padding * 2, availableHighlightHeight);
+    const highlightBottom = highlightTop + highlightHeight;
+    const cardLeft = Math.min(
+      window.innerWidth - cardRect.width - margin,
+      Math.max(margin, rect.left),
+    );
+
+    highlight.style.setProperty("--tour-top", `${highlightTop}px`);
+    highlight.style.setProperty("--tour-left", `${highlightLeft}px`);
+    highlight.style.setProperty("--tour-width", `${highlightWidth}px`);
+    highlight.style.setProperty("--tour-height", `${highlightHeight}px`);
+    card.style.left = `${cardLeft}px`;
+    card.style.top = `${highlightBottom + gap}px`;
+    layer.classList.remove("is-positioning");
   }
 
   function clearTarget() {
@@ -301,7 +295,7 @@
     document.removeEventListener("keydown", handleKeys);
     window.removeEventListener("resize", schedulePosition);
     window.removeEventListener("scroll", schedulePosition, true);
-    previousFocus?.focus?.();
+    previousFocus?.focus?.({ preventScroll: true });
     previousFocus = null;
   }
 
@@ -348,6 +342,7 @@
     closeLayer();
 
     if (chapter.nextHref) {
+      if ("scrollRestoration" in history) history.scrollRestoration = "manual";
       window.location.href = chapter.nextHref;
     } else {
       showCompletion();
@@ -366,15 +361,10 @@
     }
 
     clearTarget();
+    layer?.classList.add("is-positioning");
     highlightedTarget = target;
     highlightedTarget.classList.add("demo-tour-active-target");
-    document.body.classList.remove("demo-tour-open");
-    target.scrollIntoView({
-      behavior: reduceMotion() ? "auto" : "smooth",
-      block: "center",
-      inline: "nearest",
-    });
-    await wait(reduceMotion() ? 0 : 320);
+    await scrollTargetInstantly(target);
 
     const tourLayer = createLayer();
     const progress = ((activeIndex + 1) / chapter.steps.length) * 100;
