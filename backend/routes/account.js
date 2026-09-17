@@ -134,7 +134,7 @@ router.post("/verify-code", async (req, res) => {
     const accountToken = jwt.sign(
       { userId, verificationId, purpose: "account_change" },
       JWT_SECRET,
-      { expiresIn: "15m" }
+      { algorithm: "HS256", expiresIn: "15m" }
     );
 
     return res.json({ accountToken });
@@ -155,7 +155,7 @@ router.post("/update", async (req, res) => {
   }
 
   try {
-    const payload = jwt.verify(accountToken, JWT_SECRET);
+    const payload = jwt.verify(accountToken, JWT_SECRET, { algorithms: ["HS256"] });
     if (payload?.purpose !== "account_change") {
       return res.status(401).json({ error: "Μη έγκυρο token" });
     }

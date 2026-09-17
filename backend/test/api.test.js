@@ -26,7 +26,7 @@ let queryHandler;
 
 function tokenFor(user = activeUser, options = { expiresIn: "15m" }) {
   return jwt.sign(
-    { id: user.id, username: user.username, role: user.role },
+    { id: user.id, username: user.username, role: user.role, purpose: "access" },
     process.env.JWT_SECRET,
     options
   );
@@ -105,6 +105,156 @@ test("inactive users are denied after token validation", async () => {
   const result = await request("/api/vehicles", { token: tokenFor() });
   assert.equal(result.response.status, 403);
   assert.equal(result.body.error, "User inactive");
+});
+
+function scopedToken(purpose, options = {}, claims = {}) {
+  return jwt.sign(
+    { id: activeUser.id, userId: activeUser.id, role: "owner", resetCodeId: 21, verificationId: 31, purpose, ...claims },
+    process.env.JWT_SECRET,
+    { algorithm: "HS256", expiresIn: "15m", ...options }
+  );
+}
+
+test("protected routes reject every non-access purpose before querying the database", async () => {
+  let queries = 0;
+  queryHandler = async () => { queries++; return [[activeUser], []]; };
+  for (const purpose of ["password_reset", "account_change", "email_verification", "unknown", undefined]) {
+    for (const path of ["/api/vehicles", "/api/maintenances", "/api/costs", "/api/notifications", "/api/account/me", "/api/users"]) {
+      const result = await request(path, { token: scopedToken(purpose) });
+      assert.equal(result.response.status, 401, `${path}: ${purpose || "missing purpose"}`);
+    }
+  }
+  assert.equal(queries, 0);
+});
+
+test("bearer authentication rejects malformed, forged, unsigned and wrong-algorithm tokens", async () => {
+  const tokens = [
+    "not-a-jwt",
+    jwt.sign({ id: 1, purpose: "access" }, "different-test-secret"),
+    scopedToken("access", { algorithm: "HS384" }),
+    scopedToken("access", { algorithm: "HS512" }),
+    jwt.sign({ id: 1, purpose: "access" }, null, { algorithm: "none" }),
+    scopedToken("access", {}, { id: undefined }),
+  ];
+  for (const token of tokens) {
+    assert.equal((await request("/api/vehicles", { token })).response.status, 401);
+  }
+});
+
+test("password reset rejects access, account-change, missing-purpose and wrong-algorithm JWTs", async () => {
+  for (const resetToken of [
+    scopedToken("access"), scopedToken("account_change"), scopedToken(undefined),
+    scopedToken("password_reset", { algorithm: "HS384" }),
+  ]) {
+    const result = await request("/api/reset-password", {
+      method: "POST", body: { resetToken, newPassword: "new-password-123" },
+    });
+    assert.equal(result.response.status, 401);
+  }
+});
+
+test("account update rejects unrelated purposes and wrong algorithms with a valid access session", async () => {
+  queryHandler = authenticatedHandler(async () => {
+    throw new Error("Rejected account tokens must not reach account queries");
+  });
+  for (const accountToken of [
+    scopedToken("access"), scopedToken("password_reset"), scopedToken(undefined),
+    scopedToken("account_change_email"), scopedToken("account_change_password"),
+    scopedToken("account_change", { algorithm: "HS512" }),
+    scopedToken("account_change", { expiresIn: -1 }),
+    "not-a-jwt",
+  ]) {
+    const result = await request("/api/account/update", {
+      method: "POST", token: tokenFor(), body: { accountToken, updates: { username: "updated-user" } },
+    });
+    assert.equal(result.response.status, 401);
+  }
+  const otherUser = await request("/api/account/update", {
+    method: "POST", token: tokenFor(),
+    body: { accountToken: scopedToken("account_change", {}, { userId: 2 }), updates: { username: "updated-user" } },
+  });
+  assert.equal(otherUser.response.status, 403);
+});
+
+test("issued password-reset JWT works only in its intended flow", async () => {
+  queryHandler = async (sql) => {
+    if (String(sql).includes("SELECT id FROM users")) return [[{ id: 1 }], []];
+    if (String(sql).includes("SELECT id FROM password_reset_codes")) return [[{ id: 21 }], []];
+    throw new Error("Unexpected reset-code query");
+  };
+  const issued = await request("/api/verify-reset-code", {
+    method: "POST", body: { email: activeUser.email, code: "123456" },
+  });
+  assert.equal(issued.response.status, 200);
+  const resetToken = issued.body.resetToken;
+  assert.equal(jwt.verify(resetToken, process.env.JWT_SECRET, { algorithms: ["HS256"] }).purpose, "password_reset");
+  assert.equal((await request("/api/vehicles", { token: resetToken })).response.status, 401);
+  let passwordWritten = false;
+  let codeConsumed = false;
+  let sessionsRevoked = false;
+  queryHandler = async (sql, params) => {
+    if (String(sql).includes("SELECT id FROM password_reset_codes")) {
+      assert.deepEqual(params, [21]);
+      return [[{ id: 21 }], []];
+    }
+    if (String(sql).includes("UPDATE users SET password")) {
+      assert.equal(params[1], 1);
+      assert.equal(await bcrypt.compare("new-password-123", params[0]), true);
+      passwordWritten = true;
+    } else if (String(sql).includes("UPDATE password_reset_codes")) {
+      assert.deepEqual(params, [21]);
+      codeConsumed = true;
+    } else if (String(sql).includes("UPDATE refresh_tokens")) {
+      assert.deepEqual(params, [1]);
+      sessionsRevoked = true;
+    } else throw new Error("Unexpected reset query");
+    return [{ affectedRows: 1 }, []];
+  };
+  const reset = await request("/api/reset-password", {
+    method: "POST", body: { resetToken, newPassword: "new-password-123" },
+  });
+  assert.equal(reset.response.status, 200);
+  assert.ok(passwordWritten && codeConsumed && sessionsRevoked);
+});
+
+test("issued account-change JWT requires access authentication and matching verification record", async () => {
+  queryHandler = authenticatedHandler(async (sql, params) => {
+    assert.match(String(sql), /purpose = 'account_change'/);
+    assert.equal(params[0], 1);
+    return [[{ id: 31 }], []];
+  });
+  const issued = await request("/api/account/verify-code", {
+    method: "POST", token: tokenFor(), body: { code: "123456" },
+  });
+  assert.equal(issued.response.status, 200);
+  const accountToken = issued.body.accountToken;
+  assert.equal(jwt.verify(accountToken, process.env.JWT_SECRET, { algorithms: ["HS256"] }).purpose, "account_change");
+  assert.equal((await request("/api/account/me", { token: accountToken })).response.status, 401);
+  assert.equal((await request("/api/account/update", {
+    method: "POST", token: accountToken, body: { accountToken, updates: { username: "updated-user" } },
+  })).response.status, 401);
+  let updated = false;
+  let consumed = false;
+  queryHandler = authenticatedHandler(async (sql, params) => {
+    if (String(sql).includes("FROM verification_codes")) {
+      assert.deepEqual(params, [31, 1]);
+      return [[{ id: 31 }], []];
+    }
+    if (String(sql).includes("SELECT id FROM users")) return [[], []];
+    if (String(sql).includes("UPDATE users")) {
+      assert.deepEqual(params, ["updated-user", 1]);
+      updated = true;
+    } else if (String(sql).includes("UPDATE verification_codes")) {
+      assert.deepEqual(params, [31]);
+      consumed = true;
+    } else throw new Error("Unexpected account update query");
+    return [{ affectedRows: 1 }, []];
+  });
+  const result = await request("/api/account/update", {
+    method: "POST", token: tokenFor(), body: { accountToken, updates: { username: "updated-user" } },
+  });
+  assert.equal(result.response.status, 200);
+  assert.ok(updated && consumed);
 });
 
 test("admin user directory rejects normal users and accepts administrators", async () => {
@@ -192,6 +342,7 @@ test("login issues an access token and httpOnly refresh cookie", async () => {
 
   assert.equal(result.response.status, 200);
   assert.ok(result.body.accessToken);
+  assert.equal(jwt.verify(result.body.accessToken, process.env.JWT_SECRET, { algorithms: ["HS256"] }).purpose, "access");
   const cookie = result.response.headers.get("set-cookie");
   assert.match(cookie, /refreshToken=/);
   assert.match(cookie, /HttpOnly/i);
@@ -238,6 +389,14 @@ test("refresh accepts an active session and logout revokes the matching refresh 
   });
   assert.equal(refresh.response.status, 200);
   assert.ok(refresh.body.accessToken);
+  assert.equal(jwt.verify(refresh.body.accessToken, process.env.JWT_SECRET, { algorithms: ["HS256"] }).purpose, "access");
+  queryHandler = authenticatedHandler(async () => [[], []]);
+  assert.equal((await request("/api/vehicles", { token: refresh.body.accessToken })).response.status, 200);
+  queryHandler = async (sql, params) => {
+    assert.match(String(sql), /UPDATE refresh_tokens/);
+    assert.equal(params.length, 1);
+    return [{ affectedRows: 1 }, []];
+  };
 
   const logout = await request("/api/logout", {
     method: "POST",

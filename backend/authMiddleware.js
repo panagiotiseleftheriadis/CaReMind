@@ -20,8 +20,11 @@ async function authenticateToken(req, res, next) {
   }
 
   try {
-    const payload = jwt.verify(token, JWT_SECRET);
-    const userId = payload.id || payload.userId;
+    const payload = jwt.verify(token, JWT_SECRET, { algorithms: ["HS256"] });
+    if (payload.purpose !== "access") {
+      return res.status(401).json({ error: "Invalid token purpose" });
+    }
+    const userId = payload.id;
 
     if (!userId) {
       return res.status(401).json({ error: "Invalid token payload" });

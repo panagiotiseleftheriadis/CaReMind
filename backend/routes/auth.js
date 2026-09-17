@@ -174,7 +174,7 @@ router.post("/login", async (req, res) => {
       companyId: user.company_id,
       companyName: user.companyName,
     };
-    const accessToken = jwt.sign(payload, JWT_SECRET, { expiresIn: "15m" });
+    const accessToken = jwt.sign({ ...payload, purpose: "access" }, JWT_SECRET, { algorithm: "HS256", expiresIn: "15m" });
 
     // 5. Refresh Token - Μεγάλη διάρκεια (30 μέρες)
     const { token: refreshToken, hash } = generateRefreshToken();
@@ -245,7 +245,7 @@ router.post("/refresh", async (req, res) => {
       companyName: record.companyName,
     };
 
-    const newAccessToken = jwt.sign(payload, JWT_SECRET, { expiresIn: "15m" });
+    const newAccessToken = jwt.sign({ ...payload, purpose: "access" }, JWT_SECRET, { algorithm: "HS256", expiresIn: "15m" });
 
     res.json({ accessToken: newAccessToken, user: payload });
 
@@ -461,7 +461,7 @@ router.post("/verify-reset-code", async (req, res) => {
     const resetToken = jwt.sign(
       { userId: users[0].id, resetCodeId: rows[0].id, purpose: "password_reset" },
       JWT_SECRET,
-      { expiresIn: "15m" }
+      { algorithm: "HS256", expiresIn: "15m" }
     );
     res.json({ resetToken });
   } catch (err) {
@@ -479,7 +479,7 @@ router.post("/reset-password", async (req, res) => {
   }
 
   try {
-    const payload = jwt.verify(resetToken, JWT_SECRET);
+    const payload = jwt.verify(resetToken, JWT_SECRET, { algorithms: ["HS256"] });
     if (payload.purpose !== "password_reset") return res.status(401).json({ error: "Invalid token purpose" });
 
     const [rows] = await db.query(
