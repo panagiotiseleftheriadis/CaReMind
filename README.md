@@ -78,7 +78,7 @@ npm run db:setup
 npm start
 ```
 
-On macOS/Linux, use `cp .env.example .env`. Set `DATABASE_URL` in `.env` before running the migration. `npm run db:setup` applies every pending migration without dropping existing tables or data.
+On macOS/Linux, use `cp .env.example .env`. Copy only if `.env` does not already exist. Set runtime `DATABASE_URL` and direct `MIGRATION_DATABASE_URL` in `.env` before running the migration. `npm run db:setup` applies every pending migration without dropping existing tables or data. For local development only, an unset migration URL can fall back to a loopback `DATABASE_URL`; remove the example migration placeholder if using this fallback.
 
 Serve `frontend/` with any static server, for example VS Code Live Server. The deployed frontend automatically uses `https://api.car-remind.gr/api`; localhost uses `http://localhost:3000/api`.
 
@@ -102,8 +102,10 @@ The seed refuses to run in production and hashes the password with bcrypt.
 
 | Variable | Required | Purpose |
 | --- | --- | --- |
-| `DATABASE_URL` | Yes | Pooled PostgreSQL connection string from Neon or a local PostgreSQL server |
-| `DB_SSL` | Neon | Enables TLS for the database connection |
+| `DATABASE_URL` | Yes | Application/runtime PostgreSQL connection; may use Neon pooling |
+| `MIGRATION_DATABASE_URL` | Production/CI and remote migrations | Direct/non-pooled connection to the same database, used by the migration runner |
+| `TEST_DATABASE_URL` | Integration tests only | Explicit shell variable for a disposable loopback `caremind_test` database; never used by the API |
+| `DB_SSL` | Neon runtime | Enables TLS for the runtime adapter; does not configure migration TLS |
 | `DB_POOL_MAX` | Optional | Maximum connections per serverless instance; defaults to 5 |
 | `JWT_SECRET` | Yes | Access-token signing; the API refuses to start without it |
 | `RESEND_API_KEY` | For email | Verification, reset and reminder delivery |
@@ -118,17 +120,42 @@ See [`backend/.env.example`](backend/.env.example) for a complete template. Neve
 
 Migration files live in `backend/migrations/` and execute in filename order. The runner:
 
+- uses one dedicated `pg.Client` for the session advisory lock, ledger, every migration and unlock, then closes it even after failure;
+- wraps each pending migration and its ledger insert in one transaction;
 - creates the `schema_migrations` table when needed;
 - records a SHA-256 checksum for every applied migration;
 - skips migrations already applied;
 - stops if an applied migration was later modified;
 - never drops tables or seeds default credentials.
 
+Use Neon's **direct/non-pooler** URL for `MIGRATION_DATABASE_URL`, while `DATABASE_URL` may remain pooled. Production (`NODE_ENV=production`), CI and Vercel fail before connecting if the explicit migration URL is absent. Outside those contexts, only `localhost`, `127.0.0.1` or `::1` runtime URLs qualify for the local fallback. Even a local endpoint must actually be direct: hostname checks cannot identify arbitrary proxies, aliases or SSH tunnels. Known `pooler`/`pgbouncer` host labels (including Neon's `-pooler` hosts) are rejected; explicit configuration is an operator assertion that the endpoint is direct, not proof obtained from the server.
+
+Migration connections require certificate-verified TLS for remote hosts. `sslmode=require`, `verify-ca` and `verify-full` all use certificate and hostname verification; `disable` is allowed only on loopback. The runtime adapter's existing TLS behavior is unchanged. Private certificate authorities must be trusted by Node (for example through `NODE_EXTRA_CA_CERTS`); there is no insecure migration bypass. URL parameters cannot override host, database or TLS options: only `sslmode` and optional `channel_binding=prefer` are accepted. `channel_binding=require` fails explicitly because the installed pg client enables channel binding when offered but does not enforce it. Review provider URLs accordingly without weakening a required channel-binding policy. See [node-postgres TLS configuration](https://node-postgres.com/features/ssl).
+
+The runner uses the `public` schema, a 10-second connection timeout and a 60-second server statement timeout (including lock waits), with a 65-second client query bound. A timed-out run fails and closes its session; investigate long-running migrations/competing deployments before retrying. CLI errors omit connection credentials. Importing the runner does not load dotenv or instantiate the runtime pool; the CLI and existing importer load their own configuration.
+
+### Disposable PostgreSQL integration tests
+
+`npm test` remains the database-stub/unit suite. Run `npm run test:postgres` separately against a disposable PostgreSQL 17+ server. The integration suite never loads `.env` and never falls back to `DATABASE_URL` or `MIGRATION_DATABASE_URL`. It rejects missing configuration, remote hosts, hostname aliases and database names other than `caremind_test`/`caremind_test_*`. Loopback checks cannot detect a locally forwarded production connection: use only a server you explicitly created for testing.
+
+Create a disposable `caremind_test` database and a test-only login with `CREATEDB` permission, then set the URL in the same shell:
+
+```bash
+export TEST_DATABASE_URL='postgresql://caremind_test:disposable_password@127.0.0.1:5432/caremind_test?sslmode=disable'
+npm run test:postgres
+```
+
+PowerShell: `$env:TEST_DATABASE_URL='postgresql://caremind_test:disposable_password@127.0.0.1:5432/caremind_test?sslmode=disable'`, then `npm.cmd run test:postgres`.
+
+Tests create uniquely named `caremind_test_run_*` databases, exercise real migrations and drop only those generated databases in teardown. The supplied base test database is not reset or dropped. Copied temporary fixtures test checksum tampering and rollback without changing repository migrations. Two real runners verify blocking, single execution, lock cleanup and matching PostgreSQL session PID. Queries, polling and the suite have bounded timeouts. An OS/process kill can bypass teardown; inspect and remove abandoned `caremind_test_run_*` databases only on the disposable server.
+
+CI runs this command in a separate job with a health-checked PostgreSQL 17 service, Node 22 and fake local credentials; existing syntax, unit and audit jobs remain. It needs no Neon credentials and performs no deployment.
+
 Legacy installations are aligned by `002_align_legacy_schema.js`, which adds the missing authentication fields, indexes and database constraints. If legacy data violates a new constraint—for example duplicate chassis numbers for one user—the migration stops so the data can be reviewed instead of silently deleting or rewriting it.
 
 ### One-time MySQL import
 
-Existing installations can be copied safely into an empty PostgreSQL database. Keep the old MySQL credentials only for the duration of the import, configure the Neon `DATABASE_URL` as the target and run:
+Existing installations can be copied safely into an empty PostgreSQL database. Keep the old MySQL credentials only for the duration of the import, configure `DATABASE_URL` as the target and `MIGRATION_DATABASE_URL` as its direct connection to the same database, and run:
 
 ```bash
 npm run db:import:mysql
@@ -138,7 +165,9 @@ The importer applies the PostgreSQL migrations, refuses to overwrite a non-empty
 
 ## Deploy the API on Vercel with Neon
 
-Create a separate Vercel project from this repository and set its Root Directory to `backend`. Use the Other framework preset and add the production environment variables from `backend/.env.example`; at minimum the deployment requires `DATABASE_URL`, `DB_SSL=true`, `NODE_ENV=production` and `JWT_SECRET`.
+Create a separate Vercel project from this repository and set its Root Directory to `backend`. Use the Other framework preset and add the production environment variables from `backend/.env.example`; at minimum the deployment requires `DATABASE_URL`, `MIGRATION_DATABASE_URL`, `DB_SSL=true`, `NODE_ENV=production` and `JWT_SECRET`.
+
+Before the next real deployment, configure the backend Vercel project's `MIGRATION_DATABASE_URL` with the direct endpoint for the same Neon branch/database as runtime `DATABASE_URL`. Verify its TLS trust and direct-connection status. Do not set `TEST_DATABASE_URL` there. The build fails closed without the direct migration URL; setting it is a manual operator step, not an action performed by tests or CI.
 
 The `vercel-build` command applies pending migrations during deployment. Vercel automatically detects the exported Express application in `server.js` and deploys it as one Vercel Function, preserving nested REST routes such as `/api/account/me`. After the deployment is healthy:
 

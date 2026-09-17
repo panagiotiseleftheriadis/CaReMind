@@ -13,6 +13,7 @@
     "vercel-build": "npm run db:migrate",
     "frontend:serve": "node scripts/serve-frontend.js",
     "test": "node --test --test-concurrency=1",
+    "test:postgres": "node --test --test-concurrency=1 integration/postgres.js",
     "check": "node scripts/check-syntax.js"
   },
   "keywords": [

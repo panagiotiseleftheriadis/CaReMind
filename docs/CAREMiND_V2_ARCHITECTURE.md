@@ -2,6 +2,8 @@
 
 Status: proposed architecture, 2026-09-17. Planning only; no implementation, migration, provider selection or deployment is authorized by this document. File name follows the requested deliverable; product spelling remains CaReMind.
 
+P0A readiness update: the repository now has a dedicated direct migration connection (`MIGRATION_DATABASE_URL`) and a separate disposable PostgreSQL migration suite (`npm run test:postgres`), with PostgreSQL 17 CI coverage configured. The original inspection findings below describe the planning baseline. See README and AGENTS.md for current commands and connection safety requirements. This update does not implement V2 schema or product features, or establish live Neon verification.
+
 ## 1. Executive summary
 
 CaReMind is the digital ownership record for your vehicle: service history, maintenance reminders, mileage, costs, documents and important obligations in one place. Build for individuals, households using one account, freelancers and very small fleets. A household is not a new authorization boundary or multi-user organisation.
