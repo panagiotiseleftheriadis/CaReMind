@@ -7,6 +7,7 @@ const crypto = require("crypto");
 const bcrypt = require("bcrypt");
 const { JWT_SECRET, authenticateToken } = require("../authMiddleware");
 const sendMail = require("../emailService");
+const { securityTransaction, securityFailure, lockSecurityCode } = require("../security-transaction");
 
 const USERNAME_PATTERN = /^[\p{L}\p{N}._-]{3,50}$/u;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -139,13 +140,13 @@ router.post("/login", async (req, res) => {
     // migrate the stored password to bcrypt immediately.
     const stored = String(user.password || "");
     let ok = false;
+    let migratedHash;
     if (stored.startsWith("$2a$") || stored.startsWith("$2b$") || stored.startsWith("$2y$")) {
       ok = await bcrypt.compare(password, stored);
     } else {
       ok = stored === password;
       if (ok) {
-        const migratedHash = await bcrypt.hash(password, 12);
-        await db.query("UPDATE users SET password = ? WHERE id = ?", [migratedHash, user.id]);
+        migratedHash = await bcrypt.hash(password, 12);
       }
     }
 
@@ -182,10 +183,27 @@ router.post("/login", async (req, res) => {
     expiresAt.setDate(expiresAt.getDate() + 30);
 
     // Αποθήκευση Refresh Token Hash στη βάση
-    await db.query(
-      `INSERT INTO refresh_tokens (user_id, token_hash, expires_at) VALUES (?, ?, ?)`,
-      [user.id, hash, expiresAt]
-    );
+    await securityTransaction(db, async (connection) => {
+      // Serialize session creation/legacy upgrades with reset and account writes.
+      // The expensive password comparison/hash above is valid only for this row version.
+      const [current] = await connection.query("SELECT * FROM users WHERE id = ? FOR UPDATE", [user.id]);
+      if (!current.length || current[0].password !== stored) {
+        throw securityFailure(401, { error: "Λάθος στοιχεία σύνδεσης", code: "INVALID_CREDENTIALS" });
+      }
+      if (!current[0].is_active) {
+        throw securityFailure(403, { error: "Ο λογαριασμός είναι απενεργοποιημένος" });
+      }
+      if (!["admin", "owner", "guest"].includes(current[0].role) && current[0].email && String(current[0].email_verified) !== "1") {
+        throw securityFailure(403, { error: "Πρέπει να επιβεβαιώσετε το email σας.", code: "EMAIL_NOT_VERIFIED", email: current[0].email });
+      }
+      if (migratedHash) {
+        await connection.query("UPDATE users SET password = ? WHERE id = ?", [migratedHash, user.id]);
+      }
+      await connection.query(
+        `INSERT INTO refresh_tokens (user_id, token_hash, expires_at) VALUES (?, ?, ?)`,
+        [user.id, hash, expiresAt]
+      );
+    });
 
     res.cookie("refreshToken", refreshToken, getRefreshCookieOptions(req));
 
@@ -193,6 +211,7 @@ router.post("/login", async (req, res) => {
     res.json({ accessToken, user: payload });
 
   } catch (err) {
+    if (err.body) return res.status(err.status).json(err.body);
     console.error("Login error:", err);
     res.status(500).json({ error: "Σφάλμα διακομιστή κατά το login" });
   }
@@ -359,26 +378,32 @@ router.post("/verify-email", async (req, res) => {
   if (!email || !code || code.length !== 6) return res.status(400).json({ error: "Email & Code required" });
 
   try {
-    const [users] = await db.query("SELECT id, email_verified FROM users WHERE email = ? LIMIT 1", [email]);
-    if (!users.length) return res.status(404).json({ error: "User not found" });
+    const result = await securityTransaction(db, async (connection) => {
+      const [users] = await connection.query("SELECT id, email_verified FROM users WHERE email = ? LIMIT 1 FOR UPDATE", [email]);
+      if (!users.length) throw securityFailure(404, { error: "User not found" });
 
-    const user = users[0];
-    if (String(user.email_verified) === "1") return res.json({ message: "Email already verified" });
+      const user = users[0];
+      if (String(user.email_verified) === "1") return { message: "Email already verified" };
 
-    const codeHash = crypto.createHash("sha256").update(code).digest("hex");
-    const [codes] = await db.query(
-      `SELECT id FROM email_verification_codes 
-       WHERE user_id = ? AND code_hash = ? AND used_at IS NULL AND expires_at > NOW() LIMIT 1`,
-      [user.id, codeHash]
-    );
+      const codeHash = crypto.createHash("sha256").update(code).digest("hex");
+      const [codes] = await connection.query(
+        `SELECT id FROM email_verification_codes
+         WHERE user_id = ? AND code_hash = ? AND used_at IS NULL AND expires_at > NOW() LIMIT 1`,
+        [user.id, codeHash]
+      );
 
-    if (!codes.length) return res.status(400).json({ error: "Λάθος ή ληγμένος κωδικός" });
+      if (!codes.length || !await lockSecurityCode(connection, "email_verification_codes", codes[0].id, user.id)) {
+        throw securityFailure(400, { error: "Λάθος ή ληγμένος κωδικός" });
+      }
 
-    await db.query("UPDATE email_verification_codes SET used_at = NOW() WHERE id = ?", [codes[0].id]);
-    await db.query("UPDATE users SET email_verified = 1 WHERE id = ?", [user.id]);
+      await connection.query("UPDATE users SET email_verified = 1 WHERE id = ?", [user.id]);
+      await connection.query("UPDATE email_verification_codes SET used_at = NOW() WHERE id = ?", [codes[0].id]);
 
-    res.json({ message: "Email verified successfully" });
+      return { message: "Email verified successfully" };
+    });
+    res.json(result);
   } catch (err) {
+    if (err.body) return res.status(err.status).json(err.body);
     console.error("Verify error:", err);
     res.status(500).json({ error: "Server error" });
   }
@@ -483,8 +508,8 @@ router.post("/reset-password", async (req, res) => {
     if (payload.purpose !== "password_reset") return res.status(401).json({ error: "Invalid token purpose" });
 
     const [rows] = await db.query(
-      `SELECT id FROM password_reset_codes WHERE id = ? AND used_at IS NULL AND expires_at > NOW()`,
-      [payload.resetCodeId]
+      `SELECT id FROM password_reset_codes WHERE id = ? AND user_id = ? AND used_at IS NULL AND expires_at > NOW()`,
+      [payload.resetCodeId, payload.userId]
     );
 
     if (!rows.length) return res.status(401).json({ error: "Code already used or expired" });
@@ -492,15 +517,24 @@ router.post("/reset-password", async (req, res) => {
     // Hash the new password
     const hashedPassword = await bcrypt.hash(newPassword, 12);
 
-    await db.query("UPDATE users SET password = ? WHERE id = ?", [hashedPassword, payload.userId]);
-    await db.query("UPDATE password_reset_codes SET used_at = NOW() WHERE id = ?", [payload.resetCodeId]);
-    await db.query(
-      "UPDATE refresh_tokens SET revoked_at = NOW() WHERE user_id = ? AND revoked_at IS NULL",
-      [payload.userId]
-    );
+    await securityTransaction(db, async (connection) => {
+      const [users] = await connection.query("SELECT id FROM users WHERE id = ? FOR UPDATE", [payload.userId]);
+      if (!users.length || !await lockSecurityCode(connection, "password_reset_codes", payload.resetCodeId, payload.userId)) {
+        throw securityFailure(401, { error: "Code already used or expired" });
+      }
+      // Hashing and lock waits may outlive the JWT. Revalidate before mutation.
+      jwt.verify(resetToken, JWT_SECRET, { algorithms: ["HS256"] });
+      await connection.query("UPDATE users SET password = ? WHERE id = ?", [hashedPassword, payload.userId]);
+      await connection.query("UPDATE password_reset_codes SET used_at = NOW() WHERE id = ?", [payload.resetCodeId]);
+      await connection.query(
+        "UPDATE refresh_tokens SET revoked_at = NOW() WHERE user_id = ? AND revoked_at IS NULL",
+        [payload.userId]
+      );
+    });
 
     res.json({ message: "Password updated successfully" });
   } catch (err) {
+    if (err.body) return res.status(err.status).json(err.body);
     if (
       err?.name === "JsonWebTokenError" ||
       err?.name === "TokenExpiredError" ||

@@ -10,6 +10,7 @@ const { requirePositiveId } = require("../validation");
 const db = require("../db");
 const sendMail = require("../emailService");
 const { JWT_SECRET } = require("../authMiddleware");
+const { securityTransaction, securityFailure, lockSecurityCode } = require("../security-transaction");
 
 const router = express.Router();
 router.param("id", requirePositiveId);
@@ -170,7 +171,7 @@ router.post("/update", async (req, res) => {
     const [rows] = await db.query(
       `SELECT id
        FROM verification_codes
-       WHERE id = ? AND user_id = ? AND used_at IS NULL AND expires_at > NOW()
+       WHERE id = ? AND user_id = ? AND purpose = 'account_change' AND used_at IS NULL AND expires_at > NOW()
        LIMIT 1`,
       [verificationId, userId]
     );
@@ -233,21 +234,32 @@ router.post("/update", async (req, res) => {
     const vals = keys.map((k) => allowed[k]);
     vals.push(userId);
 
-    await db.query(`UPDATE users SET ${setSql} WHERE id = ?`, vals);
-    await db.query("UPDATE verification_codes SET used_at = NOW() WHERE id = ?", [
-      verificationId,
-    ]);
-
     const passwordChanged = Object.prototype.hasOwnProperty.call(allowed, "password");
-    if (passwordChanged) {
-      await db.query(
-        "UPDATE refresh_tokens SET revoked_at = NOW() WHERE user_id = ? AND revoked_at IS NULL",
-        [userId]
-      );
-    }
+    await securityTransaction(db, async (connection) => {
+      const [users] = await connection.query("SELECT id, is_active FROM users WHERE id = ? FOR UPDATE", [userId]);
+      if (!users.length) throw securityFailure(401, { error: "User not found" });
+      if (!users[0].is_active) throw securityFailure(403, { error: "User inactive" });
+      if (!await lockSecurityCode(connection, "verification_codes", verificationId, userId)) {
+        throw securityFailure(401, { error: "Ο κωδικός έχει λήξει" });
+      }
+      jwt.verify(accountToken, JWT_SECRET, { algorithms: ["HS256"] });
+      jwt.verify(req.headers.authorization.slice(7).trim(), JWT_SECRET, { algorithms: ["HS256"] });
+      await connection.query(`UPDATE users SET ${setSql} WHERE id = ?`, vals);
+      await connection.query("UPDATE verification_codes SET used_at = NOW() WHERE id = ?", [
+        verificationId,
+      ]);
+
+      if (passwordChanged) {
+        await connection.query(
+          "UPDATE refresh_tokens SET revoked_at = NOW() WHERE user_id = ? AND revoked_at IS NULL",
+          [userId]
+        );
+      }
+    });
 
     return res.json({ ok: true, requiresLogin: passwordChanged });
   } catch (err) {
+    if (err.body) return res.status(err.status).json(err.body);
     console.error("account/update error:", err);
     if (err?.name === "JsonWebTokenError" || err?.name === "TokenExpiredError") {
       return res.status(401).json({ error: "Μη έγκυρο ή ληγμένο token" });

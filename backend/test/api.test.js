@@ -61,6 +61,11 @@ function authenticatedHandler(resourceHandler, user = activeUser) {
 
 before(async () => {
   db.query = (...args) => queryHandler(...args);
+  db.getConnection = async () => ({
+    query: (...args) => queryHandler(...args),
+    beginTransaction: async () => {}, commit: async () => {},
+    rollback: async () => {}, release() {},
+  });
   await new Promise((resolve) => {
     server = app.listen(0, "127.0.0.1", () => {
       baseUrl = `http://127.0.0.1:${server.address().port}`;
@@ -193,8 +198,9 @@ test("issued password-reset JWT works only in its intended flow", async () => {
   let codeConsumed = false;
   let sessionsRevoked = false;
   queryHandler = async (sql, params) => {
+    if (String(sql).includes("SELECT id FROM users WHERE id")) return [[{ id: 1 }], []];
     if (String(sql).includes("SELECT id FROM password_reset_codes")) {
-      assert.deepEqual(params, [21]);
+      assert.deepEqual(params, [21, 1]);
       return [[{ id: 21 }], []];
     }
     if (String(sql).includes("UPDATE users SET password")) {
@@ -236,6 +242,7 @@ test("issued account-change JWT requires access authentication and matching veri
   let updated = false;
   let consumed = false;
   queryHandler = authenticatedHandler(async (sql, params) => {
+    if (String(sql).includes("SELECT id, is_active FROM users")) return [[activeUser], []];
     if (String(sql).includes("FROM verification_codes")) {
       assert.deepEqual(params, [31, 1]);
       return [[{ id: 31 }], []];
@@ -328,6 +335,9 @@ test("only the owner can promote or demote administrators", async () => {
 test("login issues an access token and httpOnly refresh cookie", async () => {
   const passwordHash = await bcrypt.hash("correct-password", 4);
   queryHandler = async (sql) => {
+    if (String(sql).includes("SELECT * FROM users WHERE id")) {
+      return [[{ ...activeUser, password: passwordHash }], []];
+    }
     if (String(sql).includes("FROM users") && String(sql).includes("users.username")) {
       return [[{ ...activeUser, password: passwordHash, companyName: null }], []];
     }

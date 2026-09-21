@@ -4,6 +4,8 @@ Status: proposed architecture, 2026-09-17. Planning only; no implementation, mig
 
 P0A readiness update: the repository now has a dedicated direct migration connection (`MIGRATION_DATABASE_URL`) and a separate disposable PostgreSQL migration suite (`npm run test:postgres`), with PostgreSQL 17 CI coverage configured. The original inspection findings below describe the planning baseline. See README and AGENTS.md for current commands and connection safety requirements. This update does not implement V2 schema or product features, or establish live Neon verification.
 
+P0B readiness update (2026-09-21): atomic security writes are implemented for password reset, account email/username/password updates and registration email verification. User-first row locking, post-lock code/JWT revalidation and a single checked-out client protect mutation, code consumption and required refresh-session revocation. Login also serializes final credential validation, legacy hash upgrades and session creation with password changes. Administrator role/status changes commit required refresh revocation atomically. Disposable PostgreSQL HTTP tests cover concurrent redemption, rollback/failure injection and cleanup. No migration, refresh rotation, access-token revocation redesign, V2 product feature or deployment is included.
+
 ## 1. Executive summary
 
 CaReMind is the digital ownership record for your vehicle: service history, maintenance reminders, mileage, costs, documents and important obligations in one place. Build for individuals, households using one account, freelancers and very small fleets. A household is not a new authorization boundary or multi-user organisation.
@@ -343,7 +345,7 @@ Definition of release readiness: required tests pass, schema/backfill rehearsed,
 | --- | --- | --- |
 | JWT purpose isolation | Already resolved; preserve | Regression tests and HS256 exact-purpose verification stay mandatory. Do not reopen legacy-token bypass. |
 | Refresh rotation | Fix when touching session subsystem, before paid broad launch | Design rotation/reuse detection across tabs and concurrent refresh; not prerequisite to static landing. |
-| Non-atomic password/code/session writes | Fix before V2 feature work | Separate small security PR: transaction/row lock and single-use replay tests; do not mix with product schema. |
+| Non-atomic password/code/session writes | P0B implemented; preserve | User-first transactions and post-lock code revalidation; real PostgreSQL single-use replay, failure rollback and login-race tests. Refresh rotation/access-token revocation remain separate. |
 | Rate limiting across functions | Fix before V2 feature work on public registration/onboarding | Establish shared enforcement compatible with deployment and proxy trust. Static landing can be reviewed independently but no expanded public mutation surface first. |
 | Database TLS and migration locking | Fix/verify before V2 feature work requiring DB changes | Validate certificates and session-persistent migration connection; a pooled URL must not be assumed safe for session advisory lock. No 003 until verified. |
 | Missing PostgreSQL testing | Fix before V2 schema feature work | Small pg/node:test harness/CI test database first; this is recommended first PR. |

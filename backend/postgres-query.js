@@ -84,4 +84,15 @@ async function runQuery(executor, sql, params = []) {
   return mysqlCompatibleResult(result);
 }
 
-module.exports = { runQuery, translateSql };
+async function getConnection(pool) {
+  const client = await pool.connect();
+  return {
+    query: (sql, params) => runQuery(client, sql, params),
+    beginTransaction: () => client.query("BEGIN"),
+    commit: () => client.query("COMMIT"),
+    rollback: () => client.query("ROLLBACK"),
+    release: (error) => client.release(error),
+  };
+}
+
+module.exports = { runQuery, translateSql, getConnection };

@@ -38,6 +38,10 @@ paths:
       operationId: login
       tags: [Authentication]
       summary: Sign in and create a refresh session
+      description: >-
+        Credentials are revalidated under the user lock before creating a refresh
+        session. A concurrent password change rejects the stale login with 401.
+        Legacy password hash upgrades and session creation commit together.
       security: []
       requestBody:
         required: true
@@ -100,6 +104,10 @@ paths:
       operationId: verifyEmail
       tags: [Authentication]
       summary: Verify a registration email code
+      description: >-
+        Email verification and code consumption commit atomically. Concurrent
+        verification of an already verified account retains the successful
+        already-verified response without applying the code again.
       security: []
       requestBody: { $ref: '#/components/requestBodies/EmailCode' }
       responses:
@@ -143,6 +151,10 @@ paths:
       description: >-
         The resetToken body field must be an HS256 JWT with purpose password_reset,
         obtained from verify-reset-code. Access and account_change JWTs are rejected.
+        Code validity is rechecked after locking. Password mutation, single-use
+        code consumption and refresh-session revocation commit atomically. After
+        one redemption commits, concurrent or repeated redemption returns 401.
+        A failed database transaction leaves the mutation and code unchanged.
       security: []
       responses:
         '200': { description: Password updated }
@@ -308,10 +320,17 @@ paths:
         HS256 JWT with purpose account_change for the same user. One shared account
         verification flow covers email, username and password updates; separate
         per-field token purposes are not issued. Other JWT purposes are rejected.
+        The user must still be active and both JWTs and the code must still be
+        valid after locking. Account mutation, single-use code consumption and
+        refresh-session revocation for password changes commit atomically. After
+        one redemption commits, concurrent or repeated redemption returns 401.
+        Failed mutations leave the code reusable until its original expiry.
       security: [{ bearerAuth: [] }]
       responses:
         '200': { description: Account updated }
         '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { description: Inactive user or account token belongs to another user }
   /account/recipients:
     get:
       operationId: listNotificationRecipients
@@ -374,12 +393,42 @@ paths:
       responses:
         '200': { description: User deleted }
         '403': { $ref: '#/components/responses/Forbidden' }
+  /users/{id}/role:
+    parameters: [{ $ref: '#/components/parameters/Id' }]
+    patch:
+      operationId: changeUserRole
+      tags: [Administration]
+      summary: Owner-only promotion or demotion of an administrator
+      description: >-
+        The owner account is protected. The target role is checked under a user
+        row lock; demotion and refresh-session revocation commit atomically.
+        A failed transaction leaves both role and sessions unchanged.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [role]
+              properties:
+                role: { type: string, enum: [user, admin] }
+      responses:
+        '200': { description: Role changed or already assigned }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { description: User not found }
   /users/{id}/toggle-active:
     parameters: [{ $ref: '#/components/parameters/Id' }]
     patch:
       operationId: toggleUserStatus
       tags: [Administration]
       summary: Toggle a non-admin account status
+      description: >-
+        Current status and role are checked under a user row lock. Deactivation
+        and refresh-session revocation commit atomically; failure leaves both
+        unchanged. Concurrent toggles serialize against the latest status.
       security: [{ bearerAuth: [] }]
       responses:
         '200': { description: Status changed }

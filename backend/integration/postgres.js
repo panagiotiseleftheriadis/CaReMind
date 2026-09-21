@@ -151,4 +151,7 @@ test("real PostgreSQL migration guarantees", { timeout: 110_000 }, async (t) => 
     }
   });
   assert.deepEqual(await hashes(), originalHashes);
+  await t.test("atomic security writes on disposable PostgreSQL", async (securityTest) => {
+    await require("./security-writes")(securityTest, { ...config, database: fresh.name }, fresh.client, waitFor);
+  });
 });

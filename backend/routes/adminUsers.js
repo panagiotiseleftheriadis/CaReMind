@@ -1,6 +1,7 @@
 const express = require("express");
 const bcrypt = require("bcrypt");
 const db = require("../db");
+const { securityTransaction, securityFailure } = require("../security-transaction");
 const { authenticateToken } = require("../authMiddleware");
 const { requirePositiveId } = require("../validation");
 
@@ -327,43 +328,47 @@ router.patch(
     }
 
     try {
-      const [rows] = await db.query(
-        "SELECT id, username, role FROM users WHERE id = ? LIMIT 1",
-        [userId]
-      );
-      if (!rows.length) {
-        return res.status(404).json({ error: "Ο χρήστης δεν βρέθηκε." });
-      }
-      if (rows[0].role === "owner") {
-        return res.status(403).json({
-          error: "Ο owner είναι προστατευμένος και ο ρόλος του δεν αλλάζει.",
-        });
-      }
-      if (rows[0].role === role) {
-        return res.json({
-          success: true,
-          role,
-          message: "Ο χρήστης έχει ήδη αυτόν τον ρόλο.",
-        });
-      }
-
-      await db.query("UPDATE users SET role = ? WHERE id = ?", [role, userId]);
-      if (role === "user") {
-        await db.query(
-          "UPDATE refresh_tokens SET revoked_at = NOW() WHERE user_id = ? AND revoked_at IS NULL",
+      const result = await securityTransaction(db, async (connection) => {
+        const [rows] = await connection.query(
+          "SELECT id, username, role FROM users WHERE id = ? LIMIT 1 FOR UPDATE",
           [userId]
         );
-      }
+        if (!rows.length) {
+          throw securityFailure(404, { error: "Ο χρήστης δεν βρέθηκε." });
+        }
+        if (rows[0].role === "owner") {
+          throw securityFailure(403, {
+            error: "Ο owner είναι προστατευμένος και ο ρόλος του δεν αλλάζει.",
+          });
+        }
+        if (rows[0].role === role) {
+          return {
+            success: true,
+            role,
+            message: "Ο χρήστης έχει ήδη αυτόν τον ρόλο.",
+          };
+        }
 
-      return res.json({
-        success: true,
-        role,
-        message:
-          role === "admin"
-            ? `Ο χρήστης ${rows[0].username} έγινε admin.`
-            : `Αφαιρέθηκαν τα δικαιώματα admin από τον χρήστη ${rows[0].username}.`,
+        await connection.query("UPDATE users SET role = ? WHERE id = ?", [role, userId]);
+        if (role === "user") {
+          await connection.query(
+            "UPDATE refresh_tokens SET revoked_at = NOW() WHERE user_id = ? AND revoked_at IS NULL",
+            [userId]
+          );
+        }
+
+        return {
+          success: true,
+          role,
+          message:
+            role === "admin"
+              ? `Ο χρήστης ${rows[0].username} έγινε admin.`
+              : `Αφαιρέθηκαν τα δικαιώματα admin από τον χρήστη ${rows[0].username}.`,
+        };
       });
+      return res.json(result);
     } catch (error) {
+      if (error.body) return res.status(error.status).json(error.body);
       return databaseError(res, error, "PATCH /api/users/:id/role failed:");
     }
   }
@@ -376,39 +381,43 @@ router.patch(
   async (req, res) => {
     const userId = Number(req.params.id);
     try {
-      const [rows] = await db.query(
-        "SELECT id, is_active, role FROM users WHERE id = ? LIMIT 1",
-        [userId]
-      );
-      if (!rows.length) {
-        return res.status(404).json({ error: "Ο χρήστης δεν βρέθηκε." });
-      }
-      if (ADMIN_ROLES.has(rows[0].role)) {
-        return res.status(403).json({
-          error: "Δεν μπορείτε να απενεργοποιήσετε διαχειριστή.",
-        });
-      }
-
-      const isActive = rows[0].is_active ? 0 : 1;
-      await db.query("UPDATE users SET is_active = ? WHERE id = ?", [
-        isActive,
-        userId,
-      ]);
-      if (!isActive) {
-        await db.query(
-          "UPDATE refresh_tokens SET revoked_at = NOW() WHERE user_id = ? AND revoked_at IS NULL",
+      const result = await securityTransaction(db, async (connection) => {
+        const [rows] = await connection.query(
+          "SELECT id, is_active, role FROM users WHERE id = ? LIMIT 1 FOR UPDATE",
           [userId]
         );
-      }
+        if (!rows.length) {
+          throw securityFailure(404, { error: "Ο χρήστης δεν βρέθηκε." });
+        }
+        if (ADMIN_ROLES.has(rows[0].role)) {
+          throw securityFailure(403, {
+            error: "Δεν μπορείτε να απενεργοποιήσετε διαχειριστή.",
+          });
+        }
 
-      return res.json({
-        success: true,
-        isActive: Boolean(isActive),
-        message: isActive
-          ? "Ο χρήστης ενεργοποιήθηκε."
-          : "Ο χρήστης απενεργοποιήθηκε και αποσυνδέθηκε.",
+        const isActive = rows[0].is_active ? 0 : 1;
+        await connection.query("UPDATE users SET is_active = ? WHERE id = ?", [
+          isActive,
+          userId,
+        ]);
+        if (!isActive) {
+          await connection.query(
+            "UPDATE refresh_tokens SET revoked_at = NOW() WHERE user_id = ? AND revoked_at IS NULL",
+            [userId]
+          );
+        }
+
+        return {
+          success: true,
+          isActive: Boolean(isActive),
+          message: isActive
+            ? "Ο χρήστης ενεργοποιήθηκε."
+            : "Ο χρήστης απενεργοποιήθηκε και αποσυνδέθηκε.",
+        };
       });
+      return res.json(result);
     } catch (error) {
+      if (error.body) return res.status(error.status).json(error.body);
       return databaseError(res, error, "PATCH /api/users/:id/toggle-active failed:");
     }
   }

@@ -1,5 +1,5 @@
 const { Pool, types } = require("pg");
-const { runQuery, translateSql } = require("./postgres-query");
+const { runQuery, translateSql, getConnection } = require("./postgres-query");
 
 // Keep DATE columns as YYYY-MM-DD strings, matching the existing frontend/API contract.
 types.setTypeParser(1082, (value) => value);
@@ -27,20 +27,9 @@ const pool = new Pool({
   allowExitOnIdle: true,
 });
 
-async function getConnection() {
-  const client = await pool.connect();
-  return {
-    query: (sql, params) => runQuery(client, sql, params),
-    beginTransaction: () => client.query("BEGIN"),
-    commit: () => client.query("COMMIT"),
-    rollback: () => client.query("ROLLBACK"),
-    release: () => client.release(),
-  };
-}
-
 module.exports = {
   query: (sql, params) => runQuery(pool, sql, params),
-  getConnection,
+  getConnection: () => getConnection(pool),
   end: () => pool.end(),
   _translateSql: translateSql,
 };
