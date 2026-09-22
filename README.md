@@ -163,9 +163,155 @@ npm run db:import:mysql
 
 The importer applies the PostgreSQL migrations, refuses to overwrite a non-empty target, copies all application tables inside a transaction and aligns every generated ID sequence. Remove the `MYSQL_SOURCE_*` values after verifying the new deployment.
 
+## Distributed security rate limits (P0C)
+
+`backend/security-rate-limit.js` owns policy, key construction and Express middleware.
+`backend/rate-limit-store.js` implements Upstash Redis through its
+[HTTPS REST API](https://upstash.com/docs/redis/features/restapi), using a single
+atomic Lua `EVAL` to check and consume the applicable counters. Counters and expiry
+live in Redis and are shared by all Function instances using the same database and
+key secret. Windows start with the first admitted request and expire using Redis
+TTL; blocked requests do not extend them. IP and identifier checks in a public
+request are atomic together. Account endpoints check IP before authentication and
+the authenticated user quota afterward (two store operations).
+
+Upstash Redis was selected for serverless HTTP access without a persistent TCP
+connection. The focused adapter uses Node's built-in `fetch`, an abort signal and
+an outer deadline; no provider SDK is needed. This avoids relying on the Upstash
+Ratelimit SDK's [default fail-open timeout](https://upstash.com/docs/redis/sdks/ratelimit-ts/features).
+`express-rate-limit` and its unused `ip-address` dependency were removed;
+`ipaddr.js` 2.3.0 is a direct dependency for canonical IP/subnet keys. There is no
+overlapping legacy security limiter.
+
+All paths below are **POST** under `/api`. Successful and invalid requests count
+equally when admitted by the limiter; there is no existence/success-dependent quota.
+
+| Endpoint | IP quota | Additional quota |
+| --- | --- | --- |
+| `/login` | 60 / 15 minutes | 10 / 15 minutes per normalized submitted username/email |
+| `/register` | 20 / hour | 5 / hour per email, shared with resend and forgot-password |
+| `/resend-verification` | 30 / hour | Same shared email-delivery quota |
+| `/forgot-password` | 30 / hour | Same shared email-delivery quota |
+| `/verify-email`, `/verify-reset-code` | Shared 120 / 15 minutes | Shared 10 / 15 minutes per email |
+| `/reset-password` | 60 / 15 minutes | IP only; redemption already requires a signed purpose-specific token |
+| `/account/send-code` | 30 / hour | 5 / hour per authenticated user |
+| `/account/verify-code`, `/account/update` | Shared 120 / 15 minutes | Shared 20 / 15 minutes per authenticated user |
+| `/refresh` | 300 / 5 minutes | IP only; opaque refresh cookie is never a limiter key |
+| `/interest` | 5 / hour | IP only |
+
+`/logout` is deliberately not rate limited. It only hashes an optional opaque
+cookie and revokes the matching database session, so a limiter adds little abuse
+resistance while making provider availability a prerequisite for a security action.
+The existing cookie clearing and refresh-session revocation behavior is unchanged.
+
+IP allowances are higher than account allowances to accommodate shared NAT/mobile
+networks. There is no blanket `/api` throttle. CRUD, health, cron and CORS preflight
+keep their existing behavior. Router matching preserves Express's case-insensitive
+and optional trailing-slash semantics; those variants cannot create new buckets.
+
+**Keys and privacy.** Keys contain a versioned application prefix, policy group,
+identity type and HMAC-SHA-256 digest. Submitted identifiers use trim/lowercase
+normalization without database lookups; IPs and authenticated user IDs are also
+HMACed with `RATE_LIMIT_KEY_SECRET`, independent of `JWT_SECRET`. No raw email,
+username, IP, password, code, cookie or JWT is stored in Redis keys or limiter logs.
+Account keys use only `req.user.id` after authentication, never body `user_id` or
+unverified token claims. Invalid/missing identifier fields still consume IP quota.
+Username and email aliases of the same login have separate identifier buckets;
+normalization can also conservatively combine case-sensitive usernames. No alias
+lookup or account-existence signal is introduced. Existing login failures remain
+unchanged; forgot-password now returns the same generic successful message for
+existing and absent emails (the previous success text differed).
+
+**Proxy/IP boundary.** Express `trust proxy` is now `false`: `req.ip` itself is the
+socket peer and arbitrary forwarding headers are not trusted. Outside Vercel,
+limiting uses the socket address. Only when the server environment has `VERCEL=1`
+does the limiter use a validated single `x-vercel-forwarded-for` IP. It does not
+accept an `X-Forwarded-For`, `Forwarded` or `X-Real-IP` fallback. Vercel documents
+its [platform IP headers and forwarding-header overwrite](https://vercel.com/docs/headers/request-headers).
+IPv4-mapped IPv6 is canonicalized to IPv4; IPv6 is grouped by /56 to resist
+interface-address rotation. Missing/malformed platform IP yields temporary 503.
+This assumes direct Vercel-managed ingress, not an externally accessible origin
+with a manually spoofable platform header. Do not manually set `VERCEL=1` on a
+standalone server. A proxy placed before Vercel may become the observed client IP
+and share a quota; a custom/Enterprise trusted proxy configuration needs a separate
+review. No arbitrary proxy deployment is automatically inferred or trusted.
+
+**Failures and response contract.** Each store operation has a 1-second deadline
+(up to two sequential operations for authenticated account changes), aborts pending
+HTTP on timeout, disables redirects and does not retry. An exceeded quota returns
+429 with `{ error: ... }`, `Cache-Control: no-store` and integer `Retry-After`
+seconds rounded up from the blocking TTL. CORS exposes `Retry-After`. Missing or
+invalid production configuration and invalid ingress identity return 503 with a
+Greek temporary-unavailability error and `Retry-After: 30`. Provider errors and
+timeouts have the same fail-closed behavior for login, registration, verification,
+password reset, email delivery, account changes and interest submission, so those
+protected operations do not run.
+
+Refresh keeps distributed enforcement during normal operation. If an operational
+distributed-store call fails or times out, refresh alone uses a bounded 300-per-
+five-minute IP limiter held in that Function instance (up to 10,000 live keys).
+This emergency fallback is best-effort session-continuity protection, not equivalent
+to shared enforcement: each warm instance has independent counters and a cold start
+begins empty. Failure or capacity exhaustion in the fallback returns 503. Missing or
+invalid production configuration and invalid client IP still fail closed rather
+than activating it. No other endpoint uses this fallback. Logout bypasses the
+limiter so provider failure cannot prevent session revocation.
+Configuration errors are logged at initialization; runtime failures emit a generic
+log at most every 30 seconds per instance, without error payloads or credentials.
+The next request can succeed after recovery; no permanent account lock is written.
+A timed-out operation might already have consumed Redis quota; retries can therefore
+be conservatively limited until its normal TTL.
+
+**Local development and tests.** With neither Redis setting configured, nonproduction
+local development uses explicitly logged, bounded process-local memory (10,000 live
+keys, expired-key cleanup, no eviction of live quotas). It is not distributed
+protection. Partial Redis configuration fails closed even locally. `NODE_ENV=test`
+outside Vercel ignores all provider credentials and uses memory. Tests can inject a
+shared fake store, clock or fake HTTP boundary; ordinary tests never call Upstash.
+Demo stays browser-only and does not acquire server quotas. The ordinary suite
+checks concurrency, shared instances, normalization, windows, route coverage,
+spoofing assumptions, failure/recovery, generic responses and the REST boundary.
+It does not establish actual Vercel rewriting or execute Lua against live Upstash.
+
+**Manual setup before a later deployment (not performed by this PR):**
+
+1. Provision a dedicated Upstash Redis database near the Function region. Use one
+   database for all production instances, with separate databases for previews and
+   staging. Size/monitor request and storage quotas; provider exhaustion denies
+   protected requests. Configure the backend project's REST URL and write-capable
+   REST token as `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`.
+2. Generate an independent random secret of at least 32 characters and configure
+   `RATE_LIMIT_KEY_SECRET` identically on all instances of that environment. Keep all
+   three variables backend-only. Rotation or changing the Redis database resets
+   outstanding quotas; coordinate changes across instances. Do not configure
+   `TEST_DATABASE_URL` on Vercel.
+3. In an isolated staging deployment, verify platform IP rewriting on both the
+   custom and deployment domains while supplying forged forwarding headers. Check
+   stable identity and shared 429 enforcement across concurrent/warm/cold instances.
+   Never perform load tests against real user accounts or production Redis.
+4. Exercise registration/resend/verification, failed and successful login,
+   forgot/reset, account send/verify/update, refresh and interest with test
+   accounts. Check 429/Retry-After, natural window recovery and separate identities.
+   Simulate unavailable configuration/provider in staging and check fail-closed 503
+   behavior on abuse-sensitive routes, refresh fallback/recovery, successful logout
+   revocation, and unaffected normal CRUD.
+5. Check browser error feedback and retry after the window, then demo entry/account/
+   logout with the backend unavailable to confirm no network fallback. No UI files
+   changed; keyboard/mobile smoke checks should confirm the existing forms still
+   display server errors and remain usable. These manual checks are not reported
+   as executed by unit tests.
+
+Remaining limitations: IP rotation across networks/botnets, login aliases, targeted
+quota exhaustion, shared-NAT collisions, traffic before the limiter (JSON parsing,
+CORS and network capacity), Redis availability/cost and fixed-window boundary
+bursts. This is not CAPTCHA, WAF/DDoS protection, email delivery reliability or a
+redesign of existing enumeration-sensitive verification/registration responses.
+Monitor real traffic before tuning quotas. No migration is needed, 001/002 are
+unchanged, and no 003, V2 product feature or deployment is part of P0C.
+
 ## Deploy the API on Vercel with Neon
 
-Create a separate Vercel project from this repository and set its Root Directory to `backend`. Use the Other framework preset and add the production environment variables from `backend/.env.example`; at minimum the deployment requires `DATABASE_URL`, `MIGRATION_DATABASE_URL`, `DB_SSL=true`, `NODE_ENV=production` and `JWT_SECRET`.
+Create a separate Vercel project from this repository and set its Root Directory to `backend`. Use the Other framework preset and add the production environment variables from `backend/.env.example`; at minimum the deployment requires `DATABASE_URL`, `MIGRATION_DATABASE_URL`, `DB_SSL=true`, `NODE_ENV=production`, `JWT_SECRET`, `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` and `RATE_LIMIT_KEY_SECRET`. The three rate-limit settings are backend-only and are also required for Vercel previews. See the setup and failure policy below before deployment.
 
 Before the next real deployment, configure the backend Vercel project's `MIGRATION_DATABASE_URL` with the direct endpoint for the same Neon branch/database as runtime `DATABASE_URL`. Verify its TLS trust and direct-connection status. Do not set `TEST_DATABASE_URL` there. The build fails closed without the direct migration URL; setting it is a manual operator step, not an action performed by tests or CI.
 
@@ -210,7 +356,7 @@ The test suite covers login, refresh, logout, expired tokens, inactive users, ro
 - Refresh tokens are random, stored only as SHA-256 hashes and sent through HttpOnly cookies.
 - Password changes revoke active refresh sessions.
 - Authenticated resources are always filtered by the verified token user, never by a body-provided user ID.
-- Login and verification endpoints are rate limited; Helmet adds browser security headers.
+- Security-sensitive POSTs use distributed Upstash Redis rate limits; Helmet adds browser security headers. Normal authenticated CRUD is not rate limited by this layer.
 - User-controlled frontend values are escaped before insertion into generated markup.
 - The cron route fails closed when `CRON_SECRET` is missing.
 

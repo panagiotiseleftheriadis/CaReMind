@@ -456,7 +456,7 @@ router.post("/forgot-password", async (req, res) => {
     `;
     await sendMail(email, subject, html);
 
-    res.json({ message: "Code sent to email" });
+    res.json({ message: "If the email exists, a reset code was sent." });
   } catch (err) {
     console.error("Forgot pass error:", err);
     res.status(500).json({ error: "Server error" });

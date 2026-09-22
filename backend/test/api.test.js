@@ -75,6 +75,7 @@ before(async () => {
 });
 
 beforeEach(() => {
+  app.locals.rateLimitStore.clear();
   queryHandler = async () => {
     throw new Error("Unexpected database query");
   };

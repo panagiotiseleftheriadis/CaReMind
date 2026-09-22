@@ -54,6 +54,8 @@ paths:
                 username: { type: string, description: Username or email }
                 password: { type: string, format: password }
       responses:
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '503': { $ref: '#/components/responses/RateLimitUnavailable' }
         '200':
           description: Authenticated
           headers:
@@ -67,8 +69,14 @@ paths:
       operationId: refreshSession
       tags: [Authentication]
       summary: Create a new access token from the HttpOnly refresh cookie
+      description: >-
+        Normally protected by the distributed IP quota. An operational limiter-store
+        failure uses a bounded, best-effort per-instance emergency quota for refresh
+        only; invalid configuration or client-IP identity still fails closed.
       security: []
       responses:
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '503': { $ref: '#/components/responses/RateLimitUnavailable' }
         '200':
           description: Refreshed
           content:
@@ -96,6 +104,8 @@ paths:
           application/json:
             schema: { $ref: '#/components/schemas/Registration' }
       responses:
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '503': { $ref: '#/components/responses/RateLimitUnavailable' }
         '200': { description: Registration accepted }
         '400': { $ref: '#/components/responses/BadRequest' }
         '409': { description: Username or email already exists }
@@ -111,6 +121,8 @@ paths:
       security: []
       requestBody: { $ref: '#/components/requestBodies/EmailCode' }
       responses:
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '503': { $ref: '#/components/responses/RateLimitUnavailable' }
         '200': { description: Email verified }
         '400': { $ref: '#/components/responses/BadRequest' }
   /resend-verification:
@@ -121,16 +133,21 @@ paths:
       security: []
       requestBody: { $ref: '#/components/requestBodies/EmailOnly' }
       responses:
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '503': { $ref: '#/components/responses/RateLimitUnavailable' }
         '200': { description: Generic delivery response }
         '400': { $ref: '#/components/responses/BadRequest' }
   /forgot-password:
     post:
       operationId: requestPasswordReset
+      description: Existing and absent emails receive the same successful message, "If the email exists, a reset code was sent."
       tags: [Authentication]
       summary: Request a password-reset code
       security: []
       requestBody: { $ref: '#/components/requestBodies/EmailOnly' }
       responses:
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '503': { $ref: '#/components/responses/RateLimitUnavailable' }
         '200': { description: Generic delivery response }
         '400': { $ref: '#/components/responses/BadRequest' }
   /verify-reset-code:
@@ -141,6 +158,8 @@ paths:
       security: []
       requestBody: { $ref: '#/components/requestBodies/EmailCode' }
       responses:
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '503': { $ref: '#/components/responses/RateLimitUnavailable' }
         '200': { description: Reset token created }
         '401': { $ref: '#/components/responses/Unauthorized' }
   /reset-password:
@@ -157,6 +176,8 @@ paths:
         A failed database transaction leaves the mutation and code unchanged.
       security: []
       responses:
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '503': { $ref: '#/components/responses/RateLimitUnavailable' }
         '200': { description: Password updated }
         '401': { $ref: '#/components/responses/Unauthorized' }
   /vehicles:
@@ -299,6 +320,8 @@ paths:
       summary: Send an account-change verification code
       security: [{ bearerAuth: [] }]
       responses:
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '503': { $ref: '#/components/responses/RateLimitUnavailable' }
         '200': { description: Code sent }
         '401': { $ref: '#/components/responses/Unauthorized' }
   /account/verify-code:
@@ -308,6 +331,8 @@ paths:
       summary: Exchange an account-change code for a short-lived token
       security: [{ bearerAuth: [] }]
       responses:
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '503': { $ref: '#/components/responses/RateLimitUnavailable' }
         '200': { description: Account token created }
         '400': { $ref: '#/components/responses/BadRequest' }
   /account/update:
@@ -327,6 +352,8 @@ paths:
         Failed mutations leave the code reusable until its original expiry.
       security: [{ bearerAuth: [] }]
       responses:
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '503': { $ref: '#/components/responses/RateLimitUnavailable' }
         '200': { description: Account updated }
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
@@ -439,6 +466,8 @@ paths:
       summary: Submit the public interest form
       security: []
       responses:
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '503': { $ref: '#/components/responses/RateLimitUnavailable' }
         '201': { description: Request stored }
         '400': { $ref: '#/components/responses/BadRequest' }
   /cron/maintenance:
@@ -477,6 +506,35 @@ components:
       required: true
       schema: { type: integer, minimum: 1 }
   responses:
+    RateLimited:
+      description: >-
+        Security request quota exceeded. Fixed windows are shared across instances
+        during normal operation. Refresh may instead be enforcing its documented
+        best-effort per-instance emergency quota. Limits and shared endpoint groups
+        are documented in README. Responses do not disclose account existence.
+        Retry after the indicated number of seconds.
+      headers:
+        Retry-After:
+          description: Seconds until the blocking quota expires (rounded up).
+          schema: { type: integer, minimum: 1 }
+        Cache-Control:
+          schema: { type: string, const: no-store }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    RateLimitUnavailable:
+      description: >-
+        The security limiter is unavailable, timed out, lacks production configuration,
+        or could not validate the platform client IP. The operation was not performed.
+        Retry later; this is not a permanent account lockout.
+      headers:
+        Retry-After:
+          schema: { type: integer, const: 30 }
+        Cache-Control:
+          schema: { type: string, const: no-store }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
     BadRequest:
       description: Invalid request data
       content:
