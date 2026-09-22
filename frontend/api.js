@@ -78,11 +78,11 @@ class API {
           this.accessToken = null;
           localStorage.removeItem("currentUser");
           
-          const isAuthPage = window.location.pathname.endsWith("index.html") || 
-                             window.location.pathname.endsWith("login.html") ||
-                             window.location.pathname.endsWith("register.html");
+          const authPath = window.location.pathname.replace(/\/+$/, "");
+          const isAuthPage = authPath === "/login" || authPath === "/login.html" ||
+                             authPath === "/register" || authPath === "/register.html";
           if (!isAuthPage) {
-             window.location.href = "index.html"; 
+             window.location.href = "/login";
           }
           throw refreshError;
         }
@@ -138,7 +138,7 @@ class API {
 
     if (isDemo) {
       window.CaReMindDemo.end();
-      window.location.replace("index.html");
+      window.location.replace("/login");
       return;
     }
 
@@ -156,7 +156,7 @@ class API {
       console.warn("Logout failed remotely", error);
     } finally {
       window.clearTimeout(logoutTimeout);
-      window.location.replace("index.html");
+      window.location.replace("/login");
     }
   }
 

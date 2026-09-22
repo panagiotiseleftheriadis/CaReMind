@@ -9,7 +9,7 @@
 /* Background */
 .login-body {
   min-height: 100vh;
-  background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+  background: linear-gradient(135deg, #071d32, #0b2948 58%, #176fbd);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -30,8 +30,8 @@
   overflow: hidden;
   color: #fff;
   background:
-    radial-gradient(circle at 50% 44%, rgba(52, 103, 116, 0.48), transparent 34%),
-    linear-gradient(145deg, #0a1b21 0%, #122d35 48%, #173b45 100%);
+    radial-gradient(circle at 50% 44%, rgba(35, 136, 216, 0.34), transparent 34%),
+    linear-gradient(145deg, #071d32 0%, #0b2948 52%, #123d67 100%);
   cursor: pointer;
   isolation: isolate;
   transition:
@@ -48,7 +48,7 @@
   left: -10%;
   width: 120%;
   height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(255, 124, 126, 0.62), transparent);
+  background: linear-gradient(90deg, transparent, rgba(101, 198, 190, 0.62), transparent);
   transform: rotate(-8deg) scaleX(0);
   animation: intro-road-line 1.05s 0.15s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
@@ -80,7 +80,7 @@
   z-index: -1;
   width: min(48vw, 620px);
   aspect-ratio: 1;
-  border: 1px solid rgba(255, 119, 119, 0.12);
+  border: 1px solid rgba(101, 198, 190, 0.14);
   border-radius: 50%;
   box-shadow:
     0 0 0 48px rgba(255, 119, 119, 0.025),
@@ -104,6 +104,52 @@
   text-align: center;
   transform: translateY(-2vh);
 }
+
+.auth-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.7rem;
+  color: #0b2948;
+  font-size: 1.55rem;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  text-decoration: none;
+}
+
+.auth-brand-mark {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  color: #fff;
+  background: #0b2948;
+  border-radius: 13px;
+}
+
+.auth-brand-mark svg {
+  width: 38px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.auth-brand-intro {
+  color: #fff;
+  font-size: clamp(2rem, 8vw, 3rem);
+}
+
+.auth-brand-intro .auth-brand-mark {
+  width: 68px;
+  height: 68px;
+  background: #176fbd;
+  border-radius: 18px;
+  box-shadow: 0 16px 38px rgba(0, 0, 0, 0.25);
+}
+
+.auth-brand-intro .auth-brand-mark svg { width: 54px; }
 
 .intro-car {
   width: min(53vw, 240px);
@@ -179,8 +225,8 @@
   width: 100%;
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, #ff6d70, #ff9a84);
-  box-shadow: 0 0 12px rgba(255, 109, 112, 0.7);
+  background: linear-gradient(90deg, #2388d8, #65c6be);
+  box-shadow: 0 0 12px rgba(35, 136, 216, 0.65);
   transform: scaleX(0);
   transform-origin: left;
   animation: intro-progress 0.86s 1.05s cubic-bezier(0.65, 0, 0.35, 1) forwards;
@@ -275,7 +321,8 @@
 
 /* Card */
 .login-form {
-  background: rgba(255, 255, 255, 0.95);
+  background: rgba(255, 255, 255, 0.97);
+  border: 1px solid rgba(219, 229, 236, 0.9);
   border-radius: 16px;
   padding: 35px 30px;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
@@ -288,13 +335,7 @@
   margin-bottom: 30px;
 }
 
-.logo-wrapper img {
-  max-width: 180px;
-  width: 100%;
-  height: auto;
-  filter: drop-shadow(0 8px 18px rgba(0, 0, 0, 0.25));
-}
-.logo-wrapper img {
+.logo-wrapper .auth-brand {
   animation: logoFade 0.7s ease;
 }
 
@@ -328,24 +369,25 @@
   display: block;
   margin-bottom: 6px;
   font-size: 14px;
-  color: #444;
+  color: #253f57;
+  font-weight: 600;
 }
 
 .form-group input {
   width: 100%;
   padding: 13px 14px;
   border-radius: 10px;
-  border: 1px solid #ddd;
+  border: 1px solid #c8d6e0;
   font-size: 15px;
   transition: all 0.3s ease;
-  background-color: #fafafa;
+  background-color: #f7fafc;
 }
 
 .form-group input:focus {
   outline: none;
-  border-color: #2c5364;
+  border-color: #176fbd;
   background-color: #fff;
-  box-shadow: 0 0 0 3px rgba(44, 83, 100, 0.15);
+  box-shadow: 0 0 0 3px rgba(23, 111, 189, 0.18);
 }
 
 /* Button */
@@ -355,22 +397,31 @@
   margin-top: 10px;
   border: none;
   border-radius: 12px;
-  background: linear-gradient(135deg, #203a43, #2c5364);
+  background: #176fbd;
   color: #fff;
   font-size: 16px;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
   transition: all 0.3s ease;
 }
 
 .btn-primary:hover {
+  background: #123d67;
   transform: translateY(-2px);
-  box-shadow: 0 10px 20px rgba(32, 58, 67, 0.4);
+  box-shadow: 0 10px 20px rgba(23, 111, 189, 0.3);
 }
 
 .btn-primary:active {
   transform: translateY(0);
-  box-shadow: 0 5px 10px rgba(32, 58, 67, 0.3);
+  box-shadow: 0 5px 10px rgba(23, 111, 189, 0.25);
+}
+
+.auth-brand:focus-visible,
+.btn-primary:focus-visible,
+.forgot-password a:focus-visible,
+.interest-link a:focus-visible {
+  outline: 3px solid rgba(23, 111, 189, 0.42);
+  outline-offset: 3px;
 }
 
 /* Interest link */
@@ -633,13 +684,13 @@
   align-items: center;
   gap: 10px;
   width: 100%;
-  border: 1px solid rgba(183, 52, 77, 0.34);
+  border: 1px solid #a9c8df;
   border-radius: 12px;
   padding: 13px 16px;
-  color: #fff;
-  background: linear-gradient(135deg, #ff7777 0%, #ec526d 58%, #d94263 100%);
+  color: #0b2948;
+  background: #eef5fa;
   box-shadow:
-    0 10px 24px rgba(217, 66, 99, 0.24),
+    0 10px 24px rgba(11, 41, 72, 0.12),
     inset 0 1px 0 rgba(255, 255, 255, 0.25);
   font: inherit;
   font-weight: 700;
@@ -662,10 +713,12 @@
 }
 
 .btn-demo:hover {
+  color: #fff;
+  background: #123d67;
   transform: translateY(-2px);
   filter: saturate(1.06);
   box-shadow:
-    0 14px 30px rgba(217, 66, 99, 0.32),
+    0 14px 30px rgba(11, 41, 72, 0.24),
     inset 0 1px 0 rgba(255, 255, 255, 0.3);
 }
 
@@ -676,12 +729,12 @@
 .btn-demo:active {
   transform: translateY(0);
   box-shadow:
-    0 7px 16px rgba(217, 66, 99, 0.23),
+    0 7px 16px rgba(11, 41, 72, 0.2),
     inset 0 1px 0 rgba(255, 255, 255, 0.22);
 }
 
 .btn-demo:focus-visible {
-  outline: 3px solid rgba(255, 119, 119, 0.28);
+  outline: 3px solid rgba(23, 111, 189, 0.35);
   outline-offset: 3px;
 }
 
@@ -695,8 +748,13 @@
   height: 9px;
   margin-left: 4px;
   border-radius: 50%;
-  background: #fff;
-  box-shadow: 0 0 0 5px rgba(255, 255, 255, 0.16);
+  background: #1c9a91;
+  box-shadow: 0 0 0 5px rgba(28, 154, 145, 0.14);
+}
+
+.btn-demo:hover .demo-status {
+  background: #65c6be;
+  box-shadow: 0 0 0 5px rgba(101, 198, 190, 0.18);
 }
 
 .demo-label {

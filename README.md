@@ -2,7 +2,7 @@
 
 Vehicle maintenance and operating-cost management for individuals and small fleets.
 
-[**Open the live demo**](https://car-remind.gr) · No registration or backend connection required
+[**Open CaReMind**](https://car-remind.gr) · Public landing, account access and browser-only Demo
 
 ![CaReMind dashboard](screenshots/dashboard.png)
 
@@ -12,11 +12,12 @@ CaReMind gives each account a private workspace for its own vehicles. Users can 
 
 Version 1 deliberately uses one owner per fleet: all vehicle, maintenance and cost records are scoped by `user_id`. `companyName` is profile information, not a shared organisation or team boundary. Invitations and multi-user companies are intentionally deferred to a future version.
 
-The portfolio demo runs entirely in the browser. It loads realistic seed data into `localStorage`, implements the same API-shaped operations used by the real interface and can be reset at any time. Demo data never reaches the production backend.
+The Demo runs entirely in the browser. It loads realistic seed data into `localStorage`, implements the same API-shaped operations used by the real interface and can be reset at any time. Demo data never reaches the production backend.
 
 ## Highlights
 
-- Browser-only portfolio demo with complete CRUD flows
+- Public product landing page with separate login and registration routes
+- Browser-only Demo with complete CRUD flows
 - Access and refresh-token authentication with email verification
 - Ownership checks for every vehicle, maintenance and cost mutation
 - Expense summaries, charts, filters and CSV export
@@ -29,7 +30,8 @@ The portfolio demo runs entirely in the browser. It loads realistic seed data in
 
 ```mermaid
 flowchart LR
-  Visitor["Portfolio visitor"] --> Demo["Browser demo store"]
+  Visitor["Public visitor"] --> Landing["Product landing page"]
+  Landing --> Demo["Browser demo store"]
   Demo --> LocalStorage["Browser localStorage"]
 
   User["Registered user"] --> Frontend["HTML / CSS / Vanilla JS"]
@@ -55,7 +57,7 @@ The frontend calls one API adapter. When demo mode is enabled, that adapter dele
 
 ## Screens
 
-| Login and demo entry | Vehicles |
+| Login | Vehicles |
 | --- | --- |
 | ![Login](screenshots/login.png) | ![Vehicles](screenshots/vehicles.png) |
 
@@ -80,7 +82,7 @@ npm start
 
 On macOS/Linux, use `cp .env.example .env`. Copy only if `.env` does not already exist. Set runtime `DATABASE_URL` and direct `MIGRATION_DATABASE_URL` in `.env` before running the migration. `npm run db:setup` applies every pending migration without dropping existing tables or data. For local development only, an unset migration URL can fall back to a loopback `DATABASE_URL`; remove the example migration placeholder if using this fallback.
 
-Serve `frontend/` with any static server, for example VS Code Live Server. The deployed frontend automatically uses `https://api.car-remind.gr/api`; localhost uses `http://localhost:3000/api`.
+For extensionless routes matching production, run `npm run frontend:serve` from `backend/`. The local entry URLs are `http://127.0.0.1:4174/` (landing), `/login` and `/register`; `.html` requests canonicalize to extensionless paths. The deployed frontend automatically uses `https://api.car-remind.gr/api`; localhost uses `http://localhost:3000/api`.
 
 ### Optional development administrator
 

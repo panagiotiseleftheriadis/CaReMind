@@ -3,267 +3,140 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Σύνδεση - CaReMind</title>
-    <meta
-      name="description"
-      content="Οργάνωσε οχήματα, συντηρήσεις και έξοδα σε μία σύγχρονη εφαρμογή διαχείρισης. Δοκίμασε τη λειτουργία demo χωρίς εγγραφή."
-    />
+    <title>CaReMind — Το ψηφιακό ιστορικό του οχήματός σου</title>
+    <meta name="description" content="Οργάνωσε service, υπενθυμίσεις, έξοδα και το ιστορικό των οχημάτων σου σε ένα ιδιωτικό, εύχρηστο ψηφιακό αρχείο." />
     <link rel="canonical" href="https://www.car-remind.gr/" />
-
+    <meta name="theme-color" content="#0b2948" />
     <meta property="og:type" content="website" />
     <meta property="og:locale" content="el_GR" />
     <meta property="og:site_name" content="CaReMind" />
     <meta property="og:url" content="https://www.car-remind.gr/" />
-    <meta property="og:title" content="CaReMind · Mind your Car." />
-    <meta
-      property="og:description"
-      content="Διαχείριση οχημάτων, συντηρήσεων και εξόδων — με έτοιμη λειτουργία demo χωρίς εγγραφή."
-    />
-    <meta
-      property="og:image"
-      content="https://www.car-remind.gr/assets/caremind-social-preview-v4.jpg"
-    />
-    <meta
-      property="og:image:secure_url"
-      content="https://www.car-remind.gr/assets/caremind-social-preview-v4.jpg"
-    />
+    <meta property="og:title" content="CaReMind — Το ψηφιακό ιστορικό του οχήματός σου" />
+    <meta property="og:description" content="Service, υπενθυμίσεις, έξοδα και ιστορικό οχήματος σε ένα μέρος." />
+    <meta property="og:image" content="https://www.car-remind.gr/assets/caremind-social-preview-v4.jpg" />
+    <meta property="og:image:secure_url" content="https://www.car-remind.gr/assets/caremind-social-preview-v4.jpg" />
     <meta property="og:image:type" content="image/jpeg" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
-    <meta
-      property="og:image:alt"
-      content="CaReMind — εφαρμογή διαχείρισης οχημάτων, συντηρήσεων και εξόδων"
-    />
-
+    <meta property="og:image:alt" content="CaReMind — ψηφιακό αρχείο οχήματος" />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="CaReMind · Mind your Car." />
-    <meta
-      name="twitter:description"
-      content="Διαχείριση οχημάτων, συντηρήσεων και εξόδων — με έτοιμη λειτουργία demo χωρίς εγγραφή."
-    />
-    <meta
-      name="twitter:image"
-      content="https://www.car-remind.gr/assets/caremind-social-preview-v4.jpg"
-    />
-    <meta
-      name="twitter:image:alt"
-      content="CaReMind — εφαρμογή διαχείρισης οχημάτων, συντηρήσεων και εξόδων"
-    />
+    <meta name="twitter:title" content="CaReMind — Το ψηφιακό ιστορικό του οχήματός σου" />
+    <meta name="twitter:description" content="Service, υπενθυμίσεις, έξοδα και ιστορικό οχήματος σε ένα μέρος." />
+    <meta name="twitter:image" content="https://www.car-remind.gr/assets/caremind-social-preview-v4.jpg" />
+    <meta name="twitter:image:alt" content="CaReMind — ψηφιακό αρχείο οχήματος" />
     <link rel="icon" type="image/png" href="/favicon.png" />
-    <link rel="stylesheet" href="ui.css" />
-    <script src="ui.js?v=20260814-3"></script>
-    <script>
-      document.documentElement.classList.add("js");
-      window.__caremindIntroFallback = window.setTimeout(function () {
-        if (!document.body) return;
-        document.body.classList.add("intro-complete");
-        document.body.classList.remove("is-intro");
-        document.querySelectorAll("[data-intro-credential]").forEach(function (field) {
-          field.disabled = false;
-        });
-        window.setTimeout(function () {
-          document.getElementById("introScreen")?.remove();
-        }, 850);
-      }, 4000);
-    </script>
-    <link rel="stylesheet" href="login.css" />
-    <style>
-      .admin-link {
-        text-align: center;
-        margin-top: 20px;
-        border-top: 1px solid #ddd;
-        padding-top: 15px;
-      }
-      .admin-link a {
-        color: #666;
-        text-decoration: none;
-        font-size: 14px;
-      }
-      .admin-link a:hover {
-        color: #007bff;
-      }
-    </style>
+    <link rel="stylesheet" href="landing.css?v=1" />
+    <script src="demo-store.js" defer></script>
+    <script src="landing.js?v=1" defer></script>
   </head>
-  <body class="login-body is-intro">
-    <div class="intro-screen" id="introScreen" aria-hidden="true">
-      <div class="intro-grid"></div>
-      <div class="intro-glow intro-glow-left"></div>
-      <div class="intro-glow intro-glow-right"></div>
-
-      <div class="intro-brand">
-        <div class="intro-car" aria-hidden="true">
-          <svg viewBox="0 0 320 112" role="presentation">
-            <path
-              class="intro-car-line"
-              pathLength="1"
-              d="M8 80h12l2-16c1-7 6-11 14-13l59-14c18-11 39-16 65-16h31c27 0 52 8 73 22l17 15 21 5c8 2 12 8 12 16v3h-17"
-            />
-            <path class="intro-car-line" pathLength="1" d="M103 82h127m-222 0h31m253 0h22" />
-            <path
-              class="intro-car-line intro-car-line-delayed"
-              pathLength="1"
-              d="M101 38c17-10 36-14 59-14h26c22 0 42 6 59 17l-72 1-72 1Z"
-            />
-            <path
-              class="intro-car-line intro-car-line-delayed"
-              pathLength="1"
-              d="M171 25l2 17m4 6v29m-72-27c45 4 99 4 160 0m-75 2h14m78 6 19 4 7 7h-21M19 58l24-5 12 6-33 8m88 17h115"
-            />
-            <path class="intro-car-line" pathLength="1" d="M39 82c0-19 13-32 32-32s32 13 32 32m127 0c0-19 13-32 32-32s32 13 32 32" />
-            <circle class="intro-wheel" pathLength="1" cx="71" cy="82" r="20" />
-            <circle class="intro-car-line intro-car-line-delayed" pathLength="1" cx="71" cy="82" r="11" />
-            <circle class="intro-wheel" pathLength="1" cx="262" cy="82" r="20" />
-            <circle class="intro-car-line intro-car-line-delayed" pathLength="1" cx="262" cy="82" r="11" />
-          </svg>
-        </div>
-        <img class="intro-logo" src="logo.svg" alt="" />
-        <p class="intro-tagline">Mind your car.</p>
-        <div class="intro-progress" aria-hidden="true"><span></span></div>
+  <body>
+    <a class="skip-link" href="#main-content">Μετάβαση στο κύριο περιεχόμενο</a>
+    <header class="site-header" id="top">
+      <div class="shell header-inner">
+        <a class="brand" href="/" aria-label="CaReMind — Αρχική">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 44 44" role="presentation"><path d="M9 27.5h3l2-7.2a4 4 0 0 1 3.8-2.9h10.5a5 5 0 0 1 3.8 1.8l3.4 4 2.5.8v3.5h-3"/><path d="M16 27.5h12.5M19 17.4l2.5-4h7.2l3.4 5.8"/><circle cx="15.5" cy="28.5" r="3.5"/><circle cx="32.5" cy="28.5" r="3.5"/></svg>
+          </span>
+          <span>CaReMind</span>
+        </a>
+        <button class="nav-toggle" id="navToggle" type="button" aria-expanded="false" aria-controls="siteNavigation" aria-label="Άνοιγμα μενού"><span></span><span></span><span></span></button>
+        <nav class="site-nav" id="siteNavigation" aria-label="Κύρια πλοήγηση">
+          <div class="nav-links"><a href="#features">Χαρακτηριστικά</a><a href="#how-it-works">Πώς λειτουργεί</a><a href="#security">Ασφάλεια</a><a href="#faq">FAQ</a></div>
+          <div class="nav-actions"><a class="text-link" href="/login">Σύνδεση</a><a class="button button-small button-primary" href="/register">Ξεκίνα δωρεάν</a></div>
+        </nav>
       </div>
+    </header>
 
-      <p class="intro-skip">Πατήστε για παράλειψη</p>
-    </div>
-
-    <div class="login-container">
-      <div class="login-form">
-        <div class="logo-wrapper">
-          <img src="logo.svg" alt="CaReMind" />
-        </div>
-
-        <form id="loginForm">
-          <div class="form-group">
-            <label for="username">Όνομα Χρήστη ή Email:</label>
-            <input
-              type="text"
-              id="username"
-              name="username"
-              autocomplete="username"
-              data-intro-credential
-              disabled
-              required
-              placeholder="Συμπληρώστε username ή email"
-            />
-          </div>
-
-          <div class="form-group">
-            <label for="password">Κωδικός Πρόσβασης:</label>
-
-            <div class="password-wrapper">
-              <input
-                type="password"
-                id="password"
-                name="password"
-                autocomplete="current-password"
-                data-intro-credential
-                disabled
-                required
-                placeholder="Συμπληρώστε κωδικό"
-              />
-              <button
-                type="button"
-                class="toggle-password"
-                data-target="password"
-                aria-label="Εμφάνιση/Απόκρυψη κωδικού"
-              >
-                <img src="eye.png" alt="Εμφάνιση κωδικού" class="eye-icon" />
-              </button>
+    <main id="main-content">
+      <section class="hero" aria-labelledby="hero-title">
+        <div class="shell hero-grid">
+          <div class="hero-copy">
+            <p class="eyebrow"><span></span> Το ψηφιακό αρχείο του αυτοκινήτου σου</p>
+            <h1 id="hero-title">Όλο το ιστορικό του οχήματός σου. <em>Σε ένα μέρος.</em></h1>
+            <p class="hero-lead">Οργάνωσε service, έξοδα και σημαντικές ημερομηνίες χωρίς χαρτιά, σκόρπιες σημειώσεις και ξεχασμένες υπενθυμίσεις.</p>
+            <div class="hero-actions">
+              <a class="button button-primary" href="/register">Ξεκίνα δωρεάν <span aria-hidden="true">→</span></a>
+              <button class="button button-secondary" type="button" data-demo-start>Δες το Demo</button>
             </div>
+            <p class="existing-account">Έχεις ήδη λογαριασμό; <a href="/login">Σύνδεση</a></p>
           </div>
-          <div class="forgot-password">
-            <a href="#" id="forgotPasswordLink">Ξεχάσατε τον κωδικό σας;</a>
+          <div class="hero-preview" aria-label="Προεπισκόπηση του πίνακα ελέγχου CaReMind">
+            <div class="preview-topbar" aria-hidden="true"><span></span><span></span><span></span><b>car-remind.gr</b></div>
+            <div class="preview-window">
+              <picture>
+                <source media="(max-width: 700px)" srcset="assets/product/mobile/dashboard.jpg" width="780" height="1688" />
+                <img src="assets/product/dashboard.jpg" alt="Πίνακας ελέγχου CaReMind με οχήματα, κόστη και επερχόμενες συντηρήσεις" width="1400" height="2163" />
+              </picture>
+            </div>
+            <aside class="next-service-card" aria-label="Παράδειγμα υπενθύμισης"><span class="service-icon" aria-hidden="true">✓</span><span><small>ΕΠΟΜΕΝΟ SERVICE</small><strong>Σε 12 ημέρες</strong></span></aside>
           </div>
-          <button type="submit" class="btn-primary">Σύνδεση</button>
-
-          <div class="demo-entry">
-            <span>ή</span>
-            <button type="button" class="btn-demo" id="demoLoginBtn">
-              <span class="demo-status" aria-hidden="true"></span>
-              <span class="demo-label">Demo Λειτουργία</span>
-              <span class="demo-arrow" aria-hidden="true">→</span>
-            </button>
-          </div>
-
-          <div class="interest-link" style="text-align: center; margin-top: 12px">
-            <p style="color: #666; font-size: 14px">
-              Δεν έχετε λογαριασμό;
-              <a href="register.html" style="color: #007bff">Εγγραφή</a>
-            </p>
-          </div>
-
-          <div id="loginError" class="login-message error">
-            Λάθος στοιχεία εισόδου. Παρακαλώ προσπαθήστε ξανά.
-          </div>
-          <div
-            class="interest-link"
-            style="text-align: center; margin-top: 15px"
-          >
-            
-          </div>
-        </form>
-      </div>
-    </div>
-
-    <script src="intro.js"></script>
-    <script src="demo-store.js"></script>
-    <script src="api.js?v=20260816-1"></script>
-    <script src="auth-guard.js?v=20260816-1"></script>
-    <script src="auth.js?v=20260816-1"></script>
-
-    <!-- Forgot password modal -->
-    <div class="modal" id="forgotModal" aria-hidden="true" inert>
-      <div class="modal-content" role="dialog" aria-modal="true">
-        <button type="button" class="modal-close" id="forgotClose" aria-label="Κλείσιμο">
-          ×
-        </button>
-
-        <h3>Επαναφορά κωδικού</h3>
-
-        <!-- Step 1: email -->
-        <div class="fp-step" id="fpStepEmail">
-          <p>Συμπληρώστε το email σας.</p>
-          <div class="form-group">
-            <input type="email" id="fpEmail" placeholder="Διεύθυνση email" />
-            <p id="fpEmailError" class="form-error"></p>
-          </div>
-          <button type="button" class="btn-primary" id="fpSendCode">Αποστολή κωδικού</button>
         </div>
+      </section>
 
-        <!-- Step 2: code -->
-        <div class="fp-step" id="fpStepCode" style="display: none">
-          <p>Σας έχει σταλθεί ένας 6-ψήφιος κωδικός στο email σας.</p>
-          <div class="form-group">
-            <label for="fpCode">Κωδικός Επιβεβαίωσης:</label>
-            <input
-              type="text"
-              id="fpCode"
-              inputmode="numeric"
-              maxlength="6"
-              
-            />
+      <section class="value-strip" aria-label="Βασικά οφέλη"><div class="shell value-grid">
+        <article><span>01</span><p>Μην ξεχνάς το επόμενο service</p></article>
+        <article><span>02</span><p>Δες πόσο πραγματικά σου κοστίζει το όχημα</p></article>
+        <article><span>03</span><p>Κράτησε οργανωμένο το ιστορικό συντήρησης</p></article>
+        <article><span>04</span><p>Όλα τα οχήματά σου σε ένα μέρος</p></article>
+      </div></section>
+
+      <section class="section product-story" id="features" aria-labelledby="features-title"><div class="shell">
+        <div class="section-heading"><p class="kicker">Η καθημερινότητα, οργανωμένη</p><h2 id="features-title">Ξέρεις τι έγινε. Βλέπεις τι έρχεται.</h2><p>Από την τελευταία αλλαγή λαδιών μέχρι το κόστος της χρονιάς, η εικόνα του οχήματός σου παραμένει καθαρή.</p></div>
+        <div class="feature-layout">
+          <div class="feature-list">
+            <article class="feature-card"><span class="feature-number">01</span><div><h3>Ιστορικό service</h3><p>Κατάγραψε εργασίες συντήρησης, ημερομηνίες, χιλιόμετρα και ολοκλήρωση.</p></div></article>
+            <article class="feature-card"><span class="feature-number">02</span><div><h3>Υπενθυμίσεις</h3><p>Παρακολούθησε τι πλησιάζει με βάση ημερομηνία ή όριο χιλιομέτρων.</p></div></article>
+            <article class="feature-card"><span class="feature-number">03</span><div><h3>Κόστη χωρίς μαντεψιές</h3><p>Φίλτρα, διαγράμματα και εξαγωγή CSV για μια πραγματική εικόνα των εξόδων.</p></div></article>
+            <article class="feature-card"><span class="feature-number">04</span><div><h3>Πολλά οχήματα</h3><p>Διαχειρίσου περισσότερα από ένα οχήματα μέσα στον προσωπικό σου λογαριασμό.</p></div></article>
           </div>
-          <button type="button" class="btn-primary" id="fpVerifyCode">Επιβεβαίωση</button>
+          <figure class="product-frame"><div class="product-frame-image"><picture><source media="(max-width: 700px)" srcset="assets/product/mobile/maintenances.jpg" width="780" height="1688" /><img src="assets/product/maintenances.jpg" alt="Οθόνη συντήρησης με επερχόμενες, εκπρόθεσμες και ολοκληρωμένες εργασίες" width="1400" height="1732" loading="lazy" decoding="async" /></picture></div><figcaption>Πραγματική οθόνη της τρέχουσας εφαρμογής</figcaption></figure>
         </div>
+      </div></section>
 
-        <!-- Step 3: new password -->
-        <div class="fp-step" id="fpStepReset" style="display: none">
-          <p>Συμπληρώστε τον νεό σας κωδικό:</p>
-          <div class="form-group">
-            <input type="password" id="fpNewPass" placeholder="Νέος κωδικός" aria-label="Νέος κωδικός" autocomplete="new-password" />
-          </div>
-          <div class="form-group">
-            <input
-              type="password"
-              id="fpNewPass2"
-              placeholder="Επιβεβαίωση κωδικού"
-              aria-label="Επιβεβαίωση νέου κωδικού"
-              autocomplete="new-password"
-            />
-          </div>
-          <button type="button" class="btn-primary" id="fpDoReset">Αλλαγή κωδικού</button>
+      <section class="section how-section" id="how-it-works" aria-labelledby="how-title"><div class="shell">
+        <div class="section-heading section-heading-light"><p class="kicker">Απλά, από την πρώτη ημέρα</p><h2 id="how-title">Τρία βήματα για να έχεις το όχημά σου τακτοποιημένο.</h2></div>
+        <ol class="steps">
+          <li><span>1</span><div><h3>Πρόσθεσε το όχημά σου</h3><p>Καταχώρισε τα βασικά στοιχεία και τα τρέχοντα χιλιόμετρα.</p></div></li>
+          <li><span>2</span><div><h3>Κατέγραψε service και έξοδα</h3><p>Χτίσε το ιστορικό σου με κάθε νέα εργασία και κόστος.</p></div></li>
+          <li><span>3</span><div><h3>Δες τι έρχεται</h3><p>Το CaReMind εμφανίζει τις επόμενες ανάγκες συντήρησης και τις υπενθυμίσεις σου.</p></div></li>
+        </ol>
+      </div></section>
+
+      <section class="section gallery-section" aria-labelledby="gallery-title"><div class="shell">
+        <div class="section-heading"><p class="kicker">Το προϊόν, όχι μια μακέτα</p><h2 id="gallery-title">Μία καθαρή εικόνα για κάθε όχημα.</h2></div>
+        <div class="product-gallery">
+          <figure class="gallery-card gallery-card-wide"><div class="gallery-image gallery-image-landscape"><picture><source media="(max-width: 700px)" srcset="assets/product/mobile/vehicles.jpg" width="780" height="1688" /><img src="assets/product/vehicles.jpg" alt="Λίστα πολλών οχημάτων στο CaReMind" width="1400" height="639" loading="lazy" decoding="async" /></picture></div><figcaption><strong>Οχήματα</strong><span>Τα βασικά στοιχεία και τα χιλιόμετρα συγκεντρωμένα.</span></figcaption></figure>
+          <figure class="gallery-card"><div class="gallery-image gallery-image-tall"><picture><source media="(max-width: 700px)" srcset="assets/product/mobile/costs.jpg" width="780" height="1688" /><img src="assets/product/costs.jpg" alt="Ανάλυση κόστους οχημάτων με φίλτρα, πίνακες και διαγράμματα" width="1400" height="2824" loading="lazy" decoding="async" /></picture></div><figcaption><strong>Κόστη</strong><span>Σύνολα, φίλτρα, γραφήματα και CSV.</span></figcaption></figure>
+          <div class="gallery-message"><p class="kicker">Ό,τι χρειάζεται. Τίποτα περιττό.</p><h3>Σχεδιασμένο για τον ιδιοκτήτη, όχι για το συνεργείο.</h3><p>Μια ήρεμη, πρακτική εφαρμογή για ιδιώτες, νοικοκυριά και επαγγελματίες με λίγα οχήματα.</p><button class="inline-demo" type="button" data-demo-start>Εξερεύνησε το Demo <span aria-hidden="true">↗</span></button></div>
         </div>
+      </div></section>
 
-        <div class="fp-message" id="fpMsg" style="display: none"></div>
-      </div>
-    </div>
+      <section class="section security-section" id="security" aria-labelledby="security-title"><div class="shell security-grid">
+        <div><p class="kicker">Ιδιωτικό από τον σχεδιασμό του</p><h2 id="security-title">Το ιστορικό του οχήματός σου ανήκει σε εσένα.</h2></div>
+        <div class="security-copy"><p>Τα δεδομένα των οχημάτων σου παραμένουν ιδιωτικά στον λογαριασμό σου. Η πρόσβαση προστατεύεται με ασφαλείς συνεδρίες και οι κωδικοί δεν αποθηκεύονται ως απλό κείμενο.</p><ul><li><span aria-hidden="true">✓</span> Πρόσβαση μόνο μετά από ταυτοποίηση</li><li><span aria-hidden="true">✓</span> Ιδιωτικά δεδομένα ανά λογαριασμό</li><li><span aria-hidden="true">✓</span> Προστατευμένη διαχείριση συνεδρίας</li></ul></div>
+      </div></section>
+
+      <section class="section faq-section" id="faq" aria-labelledby="faq-title"><div class="shell faq-grid">
+        <div class="faq-intro"><p class="kicker">Συχνές ερωτήσεις</p><h2 id="faq-title">Πριν ξεκινήσεις.</h2><p>Οι σύντομες απαντήσεις στα βασικά.</p></div>
+        <div class="faq-list">
+          <details><summary aria-expanded="false">Χρειάζεται να εγκαταστήσω εφαρμογή;<span aria-hidden="true">+</span></summary><p>Όχι. Το CaReMind λειτουργεί αυτή τη στιγμή απευθείας μέσα από τον browser σου.</p></details>
+          <details><summary aria-expanded="false">Μπορώ να έχω περισσότερα από ένα οχήματα;<span aria-hidden="true">+</span></summary><p>Ναι. Ο προσωπικός σου λογαριασμός μπορεί να περιλαμβάνει και να διαχειρίζεται πολλά οχήματα.</p></details>
+          <details><summary aria-expanded="false">Μπορώ να το δοκιμάσω χωρίς λογαριασμό;<span aria-hidden="true">+</span></summary><p>Ναι. Το Demo ανοίγει την εφαρμογή με έτοιμα δείγματα, χωρίς εγγραφή και χωρίς σύνδεση με το backend.</p></details>
+          <details><summary aria-expanded="false">Τα στοιχεία του Demo είναι πραγματικά;<span aria-hidden="true">+</span></summary><p>Όχι. Είναι ενδεικτικά δεδομένα που αποθηκεύονται μόνο στον browser σου και μπορούν να επανέλθουν στην αρχική τους κατάσταση.</p></details>
+        </div>
+      </div></section>
+
+      <section class="final-cta" aria-labelledby="cta-title"><div class="shell cta-inner">
+        <div><p class="kicker">Το επόμενο service δεν χρειάζεται άλλη σημείωση.</p><h2 id="cta-title">Οργάνωσε σήμερα το ιστορικό του οχήματός σου.</h2></div>
+        <div class="cta-actions"><a class="button button-light" href="/register">Δημιούργησε λογαριασμό</a><button class="button button-outline-light" type="button" data-demo-start>Δες το Demo</button></div>
+      </div></section>
+    </main>
+
+    <footer class="site-footer"><div class="shell footer-grid">
+      <div><a class="brand brand-footer" href="/" aria-label="CaReMind — Αρχική">CaReMind</a><p>Το ψηφιακό ιστορικό του οχήματός σου.</p></div>
+      <nav aria-label="Σύνδεσμοι λογαριασμού"><a href="/login">Σύνδεση</a><a href="/register">Εγγραφή</a><button type="button" data-demo-start>Demo</button></nav>
+      <p class="copyright">© 2026 CaReMind</p>
+    </div></footer>
+    <p class="demo-error" id="demoError" role="alert" hidden></p>
   </body>
 </html>

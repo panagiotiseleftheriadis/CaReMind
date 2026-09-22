@@ -712,7 +712,7 @@ class DashboardManager {
   handleLogout() {
     if (window.CaReMindDemo?.isActive()) {
       window.CaReMindDemo.end();
-      window.location.href = "index.html";
+      window.location.href = "/login";
       return;
     }
 
@@ -723,7 +723,7 @@ class DashboardManager {
 
     localStorage.removeItem("currentUser");
     localStorage.removeItem("authToken");
-    window.location.href = "index.html";
+    window.location.href = "/login";
   }
 
   /* ================== TOAST NOTIFICATIONS ================== */

@@ -4,8 +4,9 @@ const path = require("node:path");
 const test = require("node:test");
 const vm = require("node:vm");
 
-function createDemoApi() {
+function createDemoApi({ pathname = "/index.html", active = false, dom = false } = {}) {
   const values = new Map();
+  if (active) values.set("caremindDemoMode", "1");
   const localStorage = {
     getItem: (key) => (values.has(key) ? values.get(key) : null),
     setItem: (key, value) => values.set(key, String(value)),
@@ -14,11 +15,27 @@ function createDemoApi() {
   const window = {
     location: {
       hostname: "localhost",
-      pathname: "/index.html",
+      pathname,
       reload() {},
     },
   };
-  const document = { addEventListener() {} };
+  let domReadyHandler;
+  const appended = [];
+  const document = dom ? {
+    head: { appendChild(node) { appended.push(node); } },
+    body: { appendChild(node) { appended.push(node); } },
+    addEventListener(event, handler) { if (event === "DOMContentLoaded") domReadyHandler = handler; },
+    getElementById() { return null; },
+    createElement(tagName) {
+      return {
+        tagName,
+        id: "",
+        innerHTML: "",
+        textContent: "",
+        setAttribute() {},
+      };
+    },
+  } : { addEventListener() {} };
   const demoSource = fs.readFileSync(
     path.join(__dirname, "..", "..", "frontend", "demo-store.js"),
     "utf8"
@@ -44,8 +61,22 @@ function createDemoApi() {
   vm.runInNewContext(demoSource, context);
   vm.runInNewContext(apiSource, context);
 
-  return { api: window.CaReMindDemo, client: window.api, localStorage };
+  return { api: window.CaReMindDemo, client: window.api, localStorage, appended, runDomReady: () => domReadyHandler?.() };
 }
+
+test("active demo sessions do not install the banner on public pages", () => {
+  ["/", "/index.html", "/login", "/login.html", "/register"].forEach((pathname) => {
+    const page = createDemoApi({ pathname, active: true, dom: true });
+    page.runDomReady();
+    assert.equal(page.appended.length, 0, `${pathname} must stay free of the demo banner`);
+  });
+});
+
+test("active demo sessions keep the banner on application pages", () => {
+  const page = createDemoApi({ pathname: "/dashboard", active: true, dom: true });
+  page.runDomReady();
+  assert.equal(page.appended.some((node) => node.id === "demoModeBanner"), true);
+});
 
 test("demo session refresh sets the API token used by protected pages", async () => {
   const { api, client } = createDemoApi();

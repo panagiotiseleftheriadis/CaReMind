@@ -97,7 +97,7 @@ document.addEventListener('DOMContentLoaded', () => {
       try{
         await api.verifyEmail(email, code);
         showMsg(verifyMsg, 'Το email επιβεβαιώθηκε! Μπορείτε να συνδεθείτε.');
-        setTimeout(() => { window.location.href = 'index.html'; }, 800);
+        setTimeout(() => { window.location.href = '/login'; }, 800);
       }catch(err){
         const msg = err.message || 'Λάθος κωδικός ή έληξε. Πατήστε "Αποστολή ξανά".';
         showMsg(verifyMsg, msg, true);

@@ -3,12 +3,11 @@ const AUTH_GUARD_LOGOUT_KEY = "caremindExplicitLogout";
 
 async function checkAuth() {
   const path = window.location.pathname;
-  // Ελέγχουμε αν είμαστε σε σελίδα που δεν θέλει login (login/register)
-  const isPublicPage = path.endsWith("index.html") || 
-                       path.endsWith("login.html") ||
-                       path.endsWith("register.html") ||
-                       path === "/" ||
-                       path.endsWith("/");
+  const normalizedPath = path.replace(/\/+$/, "") || "/";
+  const isLandingPage = normalizedPath === "/" || normalizedPath === "/index.html";
+  const isLoginPage = normalizedPath === "/login" || normalizedPath === "/login.html";
+  const isRegisterPage = normalizedPath === "/register" || normalizedPath === "/register.html";
+  const isPublicPage = isLandingPage || isLoginPage || isRegisterPage;
 
   if (localStorage.getItem(AUTH_GUARD_LOGOUT_KEY) === "1") {
     if (!isPublicPage) redirectToLogin();
@@ -16,12 +15,16 @@ async function checkAuth() {
   }
 
   // ΠΕΡΙΠΤΩΣΗ 1: Είμαστε στη σελίδα Login/Register (Public)
-  if (isPublicPage) {
+  if (isLandingPage) {
+     return;
+  }
+
+  if (isLoginPage || isRegisterPage) {
      // 🔥 ΕΔΩ ΗΤΑΝ ΤΟ ΠΡΟΒΛΗΜΑ: Το είχες σε σχόλια.
      // Τώρα το ενεργοποιούμε για να σε βάζει αυτόματα αν έχεις cookie.
      try {
        await api.refreshToken();
-       window.location.replace("dashboard.html");
+       window.location.replace("/dashboard");
      } catch (e) { 
      } 
      return;
@@ -49,15 +52,9 @@ function redirectToLogin() {
   // Κρατάμε πού ήθελε να πάει ο χρήστης
   const currentPath = (window.location.pathname + window.location.search).replace(/^\//, "");
   
-  const inSubfolder = window.location.href.includes("/pages/") || 
-                      window.location.href.includes("/views/");
-                      
-  const loginPage = inSubfolder ? "../index.html" : "index.html";
-  
-  // Αποφεύγουμε λούπα αν είμαστε ήδη στο index.html
-  if (!window.location.pathname.endsWith("index.html") && !window.location.pathname.endsWith("login.html")) {
+  if (window.location.pathname !== "/login" && window.location.pathname !== "/login.html") {
       const next = encodeURIComponent(currentPath || "dashboard.html");
-      window.location.replace(`${loginPage}?next=${next}`);
+      window.location.replace(`/login?next=${next}`);
   }
 }
 

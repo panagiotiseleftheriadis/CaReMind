@@ -60,7 +60,7 @@ class AdminPanel {
       if (error?.status === 403) {
         window.location.replace("dashboard.html");
       } else {
-        window.location.replace("index.html");
+        window.location.replace("/login");
       }
       return false;
     }

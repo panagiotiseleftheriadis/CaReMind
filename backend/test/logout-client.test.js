@@ -58,7 +58,7 @@ test("logout clears the mobile session before waiting for the network", async ()
 
   finishRequest({ ok: true });
   await logoutPromise;
-  assert.equal(redirectedTo, "index.html");
+  assert.equal(redirectedTo, "/login");
 });
 
 test("account logout waits for completion and the auth guard respects explicit logout", () => {

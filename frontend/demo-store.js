@@ -386,7 +386,9 @@
   }
 
   function installBanner() {
-    if (!isActive() || document.getElementById("demoModeBanner")) return;
+    const publicPaths = new Set(["/", "/index", "/index.html", "/login", "/login.html", "/register", "/register.html"]);
+    const pathname = (window.location.pathname || "/").replace(/\/+$/, "") || "/";
+    if (publicPaths.has(pathname) || !isActive() || document.getElementById("demoModeBanner")) return;
 
     const banner = document.createElement("aside");
     banner.id = "demoModeBanner";
