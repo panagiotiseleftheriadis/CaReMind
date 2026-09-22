@@ -52,7 +52,7 @@ test('forgot password has identical generic success and quota for existing and a
     const existing = await post('/forgot-password', { email: 'existing@example.com' });
     assert.deepEqual(existing, missing);
     assert.equal(existing.status, 200);
-    assert.equal(existing.body.message, 'If the email exists, a reset code was sent.');
+    assert.equal(existing.body.message, 'If the email exists, the request was processed.');
   }
   const missing = await post('/forgot-password', { email: 'missing@example.com' });
   const existing = await post('/forgot-password', { email: 'existing@example.com' });

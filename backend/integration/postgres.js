@@ -8,6 +8,7 @@ const crypto = require("node:crypto");
 const { Client } = require("pg");
 const { migrate } = require("../scripts/migrate");
 const { testDatabaseConfig } = require("../scripts/migration-config");
+const { REMINDER_CANDIDATE_SQL } = require("../routes/cron");
 
 // Validate before constructing any client. Only the shell's explicit test URL is read.
 const config = testDatabaseConfig();
@@ -153,5 +154,54 @@ test("real PostgreSQL migration guarantees", { timeout: 110_000 }, async (t) => 
   assert.deepEqual(await hashes(), originalHashes);
   await t.test("atomic security writes on disposable PostgreSQL", async (securityTest) => {
     await require("./security-writes")(securityTest, { ...config, database: fresh.name }, fresh.client, waitFor);
+  });
+  await t.test("P0D reminder candidates enforce date, status, active-user and ownership rules", async () => {
+    await fresh.client.query("BEGIN");
+    try {
+      // The current schema makes notification_days NOT NULL. Relax it only inside
+      // this rolled-back fixture to prove the query also rejects a legacy null.
+      await fresh.client.query("ALTER TABLE maintenances ALTER COLUMN notification_days DROP NOT NULL");
+      const active = (await fresh.client.query(
+        "INSERT INTO users(username,password,email,is_active) VALUES ('p0d-active','test','p0d-active@example.test',1) RETURNING id"
+      )).rows[0].id;
+      const inactive = (await fresh.client.query(
+        "INSERT INTO users(username,password,email,is_active) VALUES ('p0d-inactive','test','p0d-inactive@example.test',0) RETURNING id"
+      )).rows[0].id;
+      const activeVehicle = (await fresh.client.query(
+        "INSERT INTO vehicles(user_id,vehicle_type,chassis_number,model) VALUES ($1,'car','P0D-ACTIVE','Active') RETURNING id",
+        [active]
+      )).rows[0].id;
+      const inactiveVehicle = (await fresh.client.query(
+        "INSERT INTO vehicles(user_id,vehicle_type,chassis_number,model) VALUES ($1,'car','P0D-INACTIVE','Inactive') RETURNING id",
+        [inactive]
+      )).rows[0].id;
+
+      async function maintenance(userId, vehicleId, nextDateSql, notificationDays, status, label) {
+        return (await fresh.client.query(
+          `INSERT INTO maintenances(user_id,vehicle_id,maintenance_type,next_date,notification_days,status,notes)
+           VALUES ($1,$2,'service',${nextDateSql},$3,$4,$5) RETURNING id`,
+          [userId, vehicleId, notificationDays, status, label]
+        )).rows[0].id;
+      }
+
+      const selectedSevenDay = await maintenance(active, activeVehicle, "CURRENT_DATE + 7", 7, "pending", "selected-seven-day");
+      const selectedZeroDay = await maintenance(active, activeVehicle, "CURRENT_DATE", 0, "pending", "selected-zero-day");
+      const inactiveUser = await maintenance(inactive, inactiveVehicle, "CURRENT_DATE + 7", 7, "pending", "inactive-user");
+      const completed = await maintenance(active, activeVehicle, "CURRENT_DATE + 7", 7, "completed", "completed");
+      const nullDate = await maintenance(active, activeVehicle, "NULL", 7, "pending", "null-date");
+      const nullOffset = await maintenance(active, activeVehicle, "CURRENT_DATE + 7", null, "pending", "null-offset");
+      const mismatchedOwner = await maintenance(active, inactiveVehicle, "CURRENT_DATE + 7", 7, "pending", "mismatched-owner");
+
+      const result = await fresh.client.query(REMINDER_CANDIDATE_SQL);
+      assert.deepEqual(
+        result.rows.map((row) => Number(row.maintenance_id)).sort((a, b) => a - b),
+        [Number(selectedSevenDay), Number(selectedZeroDay)].sort((a, b) => a - b)
+      );
+      for (const excluded of [inactiveUser, completed, nullDate, nullOffset, mismatchedOwner]) {
+        assert.ok(!result.rows.some((row) => Number(row.maintenance_id) === Number(excluded)));
+      }
+    } finally {
+      await fresh.client.query("ROLLBACK");
+    }
   });
 });

@@ -105,7 +105,12 @@ paths:
             schema: { $ref: '#/components/schemas/Registration' }
       responses:
         '429': { $ref: '#/components/responses/RateLimited' }
-        '503': { $ref: '#/components/responses/RateLimitUnavailable' }
+        '503':
+          description: >-
+            Security rate limiting is temporarily unavailable, or the account was
+            created but its verification email could not be submitted. The latter
+            returns code VERIFICATION_EMAIL_UNAVAILABLE and the submitted email so
+            the client can offer resend verification.
         '200': { description: Registration accepted }
         '400': { $ref: '#/components/responses/BadRequest' }
         '409': { description: Username or email already exists }
@@ -135,12 +140,17 @@ paths:
       responses:
         '429': { $ref: '#/components/responses/RateLimited' }
         '503': { $ref: '#/components/responses/RateLimitUnavailable' }
-        '200': { description: Generic delivery response }
+        '200':
+          description: >-
+            Enumeration-neutral processing response. It does not confirm account
+            existence or email submission.
         '400': { $ref: '#/components/responses/BadRequest' }
   /forgot-password:
     post:
       operationId: requestPasswordReset
-      description: Existing and absent emails receive the same successful message, "If the email exists, a reset code was sent."
+      description: >-
+        Existing and absent emails receive the same generic processing response;
+        it does not confirm account existence or email submission.
       tags: [Authentication]
       summary: Request a password-reset code
       security: []
@@ -148,7 +158,10 @@ paths:
       responses:
         '429': { $ref: '#/components/responses/RateLimited' }
         '503': { $ref: '#/components/responses/RateLimitUnavailable' }
-        '200': { description: Generic delivery response }
+        '200':
+          description: >-
+            Enumeration-neutral processing response. It does not confirm account
+            existence or email submission.
         '400': { $ref: '#/components/responses/BadRequest' }
   /verify-reset-code:
     post:
@@ -321,7 +334,11 @@ paths:
       security: [{ bearerAuth: [] }]
       responses:
         '429': { $ref: '#/components/responses/RateLimited' }
-        '503': { $ref: '#/components/responses/RateLimitUnavailable' }
+        '503':
+          description: >-
+            Security rate limiting is temporarily unavailable, or the verification
+            email could not be submitted. Email submission failure returns code
+            VERIFICATION_EMAIL_UNAVAILABLE.
         '200': { description: Code sent }
         '401': { $ref: '#/components/responses/Unauthorized' }
   /account/verify-code:
@@ -482,9 +499,26 @@ paths:
           required: true
           schema: { type: string }
       responses:
-        '200': { description: Reminder run completed }
+        '200':
+          description: >-
+            Reminder run completed. Submitted means accepted by the email provider,
+            not inbox delivery. Partial recipient failure returns 200 with ok=false.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, candidateReminders, recipientsAttempted, submitted, failed, skippedNoRecipients, recipientLookupFailures]
+                properties:
+                  ok: { type: boolean }
+                  candidateReminders: { type: integer, minimum: 0 }
+                  recipientsAttempted: { type: integer, minimum: 0 }
+                  submitted: { type: integer, minimum: 0 }
+                  failed: { type: integer, minimum: 0 }
+                  skippedNoRecipients: { type: integer, minimum: 0 }
+                  recipientLookupFailures: { type: integer, minimum: 0 }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '503': { description: Cron service is not configured }
+        '500': { description: Reminder candidate query or run setup failed }
 components:
   securitySchemes:
     bearerAuth:

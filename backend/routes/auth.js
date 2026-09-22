@@ -72,6 +72,32 @@ function escapeHtml(value) {
   })[character]);
 }
 
+async function removeUndeliveredCode(table, id) {
+  const allowedTables = new Set(["email_verification_codes", "password_reset_codes"]);
+  if (!allowedTables.has(table) || !id) return;
+  try {
+    await db.query(`DELETE FROM ${table} WHERE id = ?`, [id]);
+  } catch (error) {
+    console.error("Failed to remove an undelivered security code", {
+      table,
+      error: String(error?.name || "DatabaseError"),
+    });
+  }
+}
+
+async function sendPersistedCodeEmail(table, codeId, to, subject, html) {
+  try {
+    return await sendMail(to, subject, html);
+  } catch (error) {
+    await removeUndeliveredCode(table, codeId);
+    throw error;
+  }
+}
+
+function logEmailSubmissionFailure(context, error) {
+  console.error(context, sendMail.emailFailureLogDetails(error));
+}
+
 async function getOrCreateCompanyId(companyNameRaw, executor = db) {
   const name = String(companyNameRaw || "").trim();
   if (!name) return null;
@@ -88,7 +114,7 @@ async function createAndSendVerificationCode(user) {
   const code = generate6DigitCode();
   const codeHash = crypto.createHash("sha256").update(code).digest("hex");
 
-  await db.query(
+  const [insertResult] = await db.query(
     `INSERT INTO email_verification_codes (user_id, code_hash, expires_at)
      VALUES (?, ?, NOW() + INTERVAL '5 minutes')`,
     [user.id, codeHash]
@@ -104,7 +130,13 @@ async function createAndSendVerificationCode(user) {
       <p>Λήγει σε 5 λεπτά.</p>
     </div>
   `;
-  await sendMail(user.email, subject, html);
+  await sendPersistedCodeEmail(
+    "email_verification_codes",
+    insertResult.insertId,
+    user.email,
+    subject,
+    html
+  );
 }
 
 // =============================================================================
@@ -327,6 +359,7 @@ router.post("/register", async (req, res) => {
   }
 
   let connection;
+  let accountCreated = false;
   try {
     // Check duplicates
     const [dups] = await db.query(
@@ -357,14 +390,23 @@ router.post("/register", async (req, res) => {
     );
 
     await connection.commit();
+    accountCreated = true;
 
     await createAndSendVerificationCode({ id: result.insertId, username, email });
 
     res.json({ message: "Εγγραφή επιτυχής. Στάλθηκε κωδικός στο email.", email });
   } catch (err) {
-    if (connection) await connection.rollback().catch(() => {});
+    if (connection && !accountCreated) await connection.rollback().catch(() => {});
+    if (accountCreated && sendMail.isEmailSubmissionError(err)) {
+      logEmailSubmissionFailure("Registration verification email submission failed", err);
+      return res.status(503).json({
+        error: "Ο λογαριασμός δημιουργήθηκε, αλλά δεν ήταν δυνατή η υποβολή του email επιβεβαίωσης. Ζητήστε νέο κωδικό.",
+        code: "VERIFICATION_EMAIL_UNAVAILABLE",
+        email,
+      });
+    }
     console.error("Register error:", err);
-    res.status(500).json({ error: "Σφάλμα εγγραφής" });
+    return res.status(500).json({ error: "Σφάλμα εγγραφής" });
   } finally {
     connection?.release();
   }
@@ -419,8 +461,12 @@ router.post("/resend-verification", async (req, res) => {
     if (rows.length && String(rows[0].email_verified) !== "1") {
       await createAndSendVerificationCode(rows[0]);
     }
-    res.json({ message: "Αν το email υπάρχει, στάλθηκε νέος κωδικός." });
+    res.json({ message: "Αν το email είναι επιλέξιμο, το αίτημα επεξεργάστηκε." });
   } catch (err) {
+    if (sendMail.isEmailSubmissionError(err)) {
+      logEmailSubmissionFailure("Verification email resubmission failed", err);
+      return res.json({ message: "Αν το email είναι επιλέξιμο, το αίτημα επεξεργάστηκε." });
+    }
     res.status(500).json({ error: "Server error" });
   }
 });
@@ -433,14 +479,14 @@ router.post("/forgot-password", async (req, res) => {
   try {
     const [rows] = await db.query("SELECT id, username FROM users WHERE email = ?", [email]);
     if (!rows.length) {
-      return res.json({ message: "If the email exists, a reset code was sent." });
+      return res.json({ message: "If the email exists, the request was processed." });
     }
 
     const user = rows[0];
     const code = generate6DigitCode();
     const codeHash = crypto.createHash("sha256").update(code).digest("hex");
 
-    await db.query(
+    const [insertResult] = await db.query(
       `INSERT INTO password_reset_codes (user_id, code_hash, expires_at)
        VALUES (?, ?, NOW() + INTERVAL '10 minutes')`,
       [user.id, codeHash]
@@ -454,12 +500,22 @@ router.post("/forgot-password", async (req, res) => {
         <p>Λήγει σε 10 λεπτά.</p>
       </div>
     `;
-    await sendMail(email, subject, html);
+    await sendPersistedCodeEmail(
+      "password_reset_codes",
+      insertResult.insertId,
+      email,
+      subject,
+      html
+    );
 
-    res.json({ message: "If the email exists, a reset code was sent." });
+    res.json({ message: "If the email exists, the request was processed." });
   } catch (err) {
+    if (sendMail.isEmailSubmissionError(err)) {
+      logEmailSubmissionFailure("Password reset email submission failed", err);
+      return res.json({ message: "If the email exists, the request was processed." });
+    }
     console.error("Forgot pass error:", err);
-    res.status(500).json({ error: "Server error" });
+    return res.status(500).json({ error: "Server error" });
   }
 });
 

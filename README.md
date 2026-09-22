@@ -339,6 +339,14 @@ All routes use the `/api` prefix. The complete machine-readable contract is avai
 | Administration | User CRUD under `/users` (admin role required) |
 | Automation | `GET /cron/maintenance` with `X-Cron-Secret` |
 
+### Email and maintenance reminder operation
+
+Resend submission is successful only when its SDK returns no provider error. Returned provider errors and thrown/network failures are handled inside the email service; responses and logs do not include recipients, verification/reset codes, tokens or provider secrets. Newly stored security codes are removed when their email cannot be submitted. Registration keeps the newly created unverified account and returns `VERIFICATION_EMAIL_UNAVAILABLE`, directing the user to request a new code. Forgot-password and resend-verification responses remain account-enumeration neutral and do not claim that a message was sent.
+
+The reminder endpoint selects only active users' noncompleted maintenance with a non-null due date and notification offset whose exact `next_date - notification_days` is today. A zero-day offset therefore sends on the due date. Each reminder targets the normalized primary account email plus active extra email recipients, with duplicates removed within that reminder. Submission runs with at most four concurrent provider calls; one recipient failure does not stop unrelated recipients. The response reports `candidateReminders`, `recipientsAttempted`, `submitted`, `failed`, `skippedNoRecipients` and `recipientLookupFailures`. `submitted` means accepted by the provider, not delivered to an inbox.
+
+No scheduler is configured in this repository. Configure an external scheduler manually to call `GET /api/cron/maintenance` with the exact `X-Cron-Secret` header. The endpoint fails closed when `CRON_SECRET` is missing. Current exact-date reminders have no durable delivery ledger: repeating the endpoint can submit duplicates, while missing a day's invocation can miss reminders. Do not configure automatic retries that assume idempotency; durable deduplication, retry and catch-up belong to the future notification-delivery phase.
+
 ## Test and quality checks
 
 ```bash
@@ -359,6 +367,7 @@ The test suite covers login, refresh, logout, expired tokens, inactive users, ro
 - Security-sensitive POSTs use distributed Upstash Redis rate limits; Helmet adds browser security headers. Normal authenticated CRUD is not rate limited by this layer.
 - User-controlled frontend values are escaped before insertion into generated markup.
 - The cron route fails closed when `CRON_SECRET` is missing.
+- Reminder selection verifies user/vehicle ownership joins and excludes inactive users and completed maintenance.
 
 ## Technical decisions and challenges
 

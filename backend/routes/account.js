@@ -26,6 +26,16 @@ function generate6DigitCode() {
   return String(n).padStart(6, "0");
 }
 
+function escapeHtml(value) {
+  return String(value ?? "").replace(/[&<>'"]/g, (character) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    "'": "&#39;",
+    '"': "&quot;",
+  })[character]);
+}
+
 // GET /api/account/me
 router.get("/me", async (req, res) => {
   try {
@@ -53,6 +63,7 @@ router.get("/me", async (req, res) => {
 // POST /api/account/send-code
 // Sends a 6-digit code to the user's current email.
 router.post("/send-code", async (req, res) => {
+  let verificationCodeId = null;
   try {
     const userId = req.user.id;
     const [rows] = await db.query(
@@ -76,17 +87,18 @@ router.post("/send-code", async (req, res) => {
     const codeHash = hashCode(code);
 
     // 10 minutes validity
-    await db.query(
+    const [insertResult] = await db.query(
       `INSERT INTO verification_codes (user_id, code_hash, purpose, expires_at)
        VALUES (?, ?, 'account_change', NOW() + INTERVAL '10 minutes')`,
       [userId, codeHash]
     );
+    verificationCodeId = insertResult.insertId;
 
     const subject = "CaReMind - Κωδικός επιβεβαίωσης";
     const html = `
       <div style="font-family: Arial, sans-serif; line-height:1.6">
         <h2 style="margin:0 0 12px 0">Επιβεβαίωση αλλαγής στοιχείων</h2>
-        <p>Γεια σας <b>${rows[0].username || ""}</b>,</p>
+        <p>Γεια σας <b>${escapeHtml(rows[0].username || "")}</b>,</p>
         <p>Ο κωδικός επιβεβαίωσης σας είναι:</p>
         <div style="font-size:28px; letter-spacing:6px; font-weight:700; padding:12px 16px; background:#f3f6f8; display:inline-block; border-radius:10px;">${code}</div>
         <p style="margin-top:14px">Ο κωδικός λήγει σε <b>10 λεπτά</b>.</p>
@@ -98,6 +110,25 @@ router.post("/send-code", async (req, res) => {
 
     return res.json({ ok: true, message: "Code sent" });
   } catch (err) {
+    if (sendMail.isEmailSubmissionError(err)) {
+      if (verificationCodeId) {
+        try {
+          await db.query("DELETE FROM verification_codes WHERE id = ?", [verificationCodeId]);
+        } catch (cleanupError) {
+          console.error("Failed to remove an undelivered account-change code", {
+            error: String(cleanupError?.name || "DatabaseError"),
+          });
+        }
+      }
+      console.error(
+        "Account-change email submission failed",
+        sendMail.emailFailureLogDetails(err)
+      );
+      return res.status(503).json({
+        error: "Δεν ήταν δυνατή η υποβολή του email επιβεβαίωσης. Δοκιμάστε ξανά αργότερα.",
+        code: "VERIFICATION_EMAIL_UNAVAILABLE",
+      });
+    }
     console.error("account/send-code error:", err);
     return res.status(500).json({ error: "Σφάλμα διακομιστή" });
   }

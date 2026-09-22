@@ -5,6 +5,29 @@ const sendMail = require("../emailService");
 const db = require("../db");
 
 const router = express.Router();
+const EMAIL_CONCURRENCY = 4;
+const REMINDER_CANDIDATE_SQL = `
+      SELECT
+        m.id AS maintenance_id,
+        m.user_id,
+        m.vehicle_id,
+        m.maintenance_type,
+        m.next_date,
+        m.notification_days,
+        u.email,
+        u.user_number,
+        v.model,
+        v.chassis_number
+      FROM maintenances m
+      JOIN users u ON u.id = m.user_id
+      JOIN vehicles v ON v.id = m.vehicle_id AND v.user_id = m.user_id
+      WHERE
+        u.is_active = 1
+        AND m.status <> 'completed'
+        AND m.next_date IS NOT NULL
+        AND m.notification_days IS NOT NULL
+        AND m.next_date - (m.notification_days * INTERVAL '1 day') = CURRENT_DATE;
+    `;
 
 function escapeHtml(value) {
   return String(value ?? "").replace(/[&<>'"]/g, (character) => ({
@@ -14,6 +37,22 @@ function escapeHtml(value) {
     "'": "&#39;",
     '"': "&quot;",
   })[character]);
+}
+
+async function mapWithConcurrency(items, limit, worker) {
+  const results = new Array(items.length);
+  let nextIndex = 0;
+
+  async function run() {
+    while (nextIndex < items.length) {
+      const index = nextIndex++;
+      results[index] = await worker(items[index], index);
+    }
+  }
+
+  const workerCount = Math.min(Math.max(1, limit), items.length);
+  await Promise.all(Array.from({ length: workerCount }, run));
+  return results;
 }
 
 router.get("/maintenance", async (req, res) => {
@@ -33,29 +72,11 @@ router.get("/maintenance", async (req, res) => {
   }
 
   try {
-    const [rows] = await db.query(`
-      SELECT 
-        m.id AS maintenance_id,
-        m.user_id,
-        m.vehicle_id,
-        m.maintenance_type,
-        m.next_date,
-        m.notification_days,
-        u.email,
-        u.user_number,
-        v.model,
-        v.chassis_number
-      FROM maintenances m
-      JOIN users u ON u.id = m.user_id
-      JOIN vehicles v ON v.id = m.vehicle_id
-      WHERE 
-        m.next_date IS NOT NULL
-        AND m.notification_days IS NOT NULL
-        AND m.next_date - (m.notification_days * INTERVAL '1 day') = CURRENT_DATE;
-    `);
+    const [rows] = await db.query(REMINDER_CANDIDATE_SQL);
 
-    let sent = 0;
-    let skipped = 0;
+    const deliveryJobs = [];
+    let skippedNoRecipients = 0;
+    let recipientLookupFailures = 0;
 
     if (rows.length > 0) {
       for (const item of rows) {
@@ -63,8 +84,8 @@ router.get("/maintenance", async (req, res) => {
         const primaryEmail = String(item.email || "")
           .trim()
           .toLowerCase();
-        let recipients = [];
-        if (primaryEmail) recipients.push(primaryEmail);
+        const recipients = new Set();
+        if (primaryEmail) recipients.add(primaryEmail);
 
         try {
           const [extra] = await db.query(
@@ -76,14 +97,19 @@ router.get("/maintenance", async (req, res) => {
             const e = String(r.value || "")
               .trim()
               .toLowerCase();
-            if (e && !recipients.includes(e)) recipients.push(e);
+            if (e) recipients.add(e);
           }
-        } catch (_) {
-          // If table doesn't exist or query fails, we still send to primary
+        } catch (error) {
+          recipientLookupFailures++;
+          console.warn("Reminder recipient lookup failed", {
+            maintenanceId: item.maintenance_id,
+            userId: item.user_id,
+            error: String(error?.name || "DatabaseError"),
+          });
         }
 
-        if (recipients.length === 0) {
-          skipped++;
+        if (recipients.size === 0) {
+          skippedNoRecipients++;
           continue;
         }
 
@@ -189,21 +215,47 @@ router.get("/maintenance", async (req, res) => {
 `;
 
         for (const to of recipients) {
-          await sendMail(to, subject, messageHtml, []);
-          await new Promise((r) => setTimeout(r, 500));
-          sent++;
+          deliveryJobs.push({ to, subject, messageHtml });
         }
       }
-    } else {
     }
 
-    return res.json({ ok: true, total: rows.length, sent, skipped });
+    const deliveryResults = await mapWithConcurrency(
+      deliveryJobs,
+      EMAIL_CONCURRENCY,
+      async ({ to, subject, messageHtml }) => {
+        try {
+          await sendMail(to, subject, messageHtml, []);
+          return true;
+        } catch (error) {
+          console.error("Reminder email submission failed", {
+            ...sendMail.emailFailureLogDetails(error),
+          });
+          return false;
+        }
+      }
+    );
+    const submitted = deliveryResults.filter(Boolean).length;
+    const failed = deliveryResults.length - submitted;
+
+    return res.json({
+      ok: failed === 0,
+      candidateReminders: rows.length,
+      recipientsAttempted: deliveryResults.length,
+      submitted,
+      failed,
+      skippedNoRecipients,
+      recipientLookupFailures,
+    });
   } catch (err) {
-    console.error("❌ Σφάλμα:", err);
-    return res
-      .status(500)
-      .json({ ok: false, error: String(err?.message || err) });
+    console.error("Maintenance reminder run failed", {
+      error: String(err?.name || "Error"),
+    });
+    return res.status(500).json({ ok: false, error: "Reminder run failed" });
   }
 });
 
 module.exports = router;
+module.exports.mapWithConcurrency = mapWithConcurrency;
+module.exports.EMAIL_CONCURRENCY = EMAIL_CONCURRENCY;
+module.exports.REMINDER_CANDIDATE_SQL = REMINDER_CANDIDATE_SQL;
