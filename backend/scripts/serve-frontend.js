@@ -17,10 +17,11 @@ const mimeTypes = {
 
 http
   .createServer((req, res) => {
-    const pathname = decodeURIComponent(new URL(req.url, "http://localhost").pathname);
+    const requestUrl = new URL(req.url, "http://localhost");
+    const pathname = decodeURIComponent(requestUrl.pathname);
     if (pathname === "/index.html" || (pathname.endsWith(".html") && pathname !== "/")) {
       const destination = pathname === "/index.html" ? "/" : pathname.slice(0, -5);
-      res.writeHead(308, { Location: destination });
+      res.writeHead(308, { Location: `${destination}${requestUrl.search}` });
       return res.end();
     }
 

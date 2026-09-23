@@ -185,7 +185,7 @@ function getSafeNextDestination(rawValue) {
   }
 
   const normalized = value.replace(/^\/+/, "");
-  const match = normalized.match(/^(dashboard|vehicles|maintenance|costs|account|admin|onboarding)(?:\.html)?((?:\?[^#]*)?(?:#.*)?)$/);
+  const match = normalized.match(/^(dashboard|vehicles|vehicle|maintenance|costs|account|admin|onboarding)(?:\.html)?((?:\?[^#]*)?(?:#.*)?)$/);
   return match ? `/${match[1]}${match[2] || ""}` : null;
 }
 
@@ -257,6 +257,7 @@ document.addEventListener("DOMContentLoaded", function () {
   const protectedPages = [
     "dashboard.html",
     "vehicles.html",
+    "vehicle.html",
     "maintenance.html",
   ];
   const currentPage = window.location.pathname.split("/").pop();

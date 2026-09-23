@@ -283,10 +283,18 @@
 
   function resourceRequest(state, collectionName, endpoint, method, body) {
     const collection = state[collectionName];
-    const idMatch = endpoint.match(/\/(\d+)$/);
+    const [path, rawQuery = ""] = endpoint.split("?", 2);
+    const idMatch = path.match(/\/(\d+)$/);
     const id = idMatch ? Number(idMatch[1]) : null;
 
-    if (method === "GET" && id === null) return clone(collection);
+    if (method === "GET" && id === null) {
+      const vehiclePart = rawQuery.split("&").find((part) => part.startsWith("vehicle_id="));
+      const vehicleId = vehiclePart ? decodeURIComponent(vehiclePart.slice(11)) : null;
+      if (vehicleId == null) return clone(collection);
+      if (!/^\d+$/.test(vehicleId) || Number(vehicleId) < 1) throw demoError("Μη έγκυρο αναγνωριστικό οχήματος.", "INVALID_VEHICLE_ID");
+      if (!state.vehicles.some((vehicle) => Number(vehicle.id) === Number(vehicleId))) throw demoError("Το όχημα δεν βρέθηκε.", "VEHICLE_NOT_FOUND", 404);
+      return clone(collection.filter((item) => Number(item.vehicleId) === Number(vehicleId)));
+    }
 
     if (method === "POST" && id === null) {
       const created = {
@@ -360,7 +368,7 @@
     if (Object.hasOwn(body, "chassisNumber") && (typeof body.chassisNumber !== "string" || !body.chassisNumber.trim() || body.chassisNumber.trim().length > 50)) throw demoError("Μη έγκυρος αριθμός πλαισίου.", "INVALID_VEHICLE_FIELD");
     if (Object.hasOwn(body, "currentMileage") && body.currentMileage != null && (!Number.isInteger(Number(body.currentMileage)) || Number(body.currentMileage) < 0)) throw demoError("Μη έγκυρα χιλιόμετρα.", "INVALID_VEHICLE_FIELD");
     if (Object.hasOwn(body, "year") && body.year != null && (!Number.isInteger(Number(body.year)) || Number(body.year) < 1886 || Number(body.year) > new Date().getFullYear() + 1)) throw demoError("Μη έγκυρο έτος.", "INVALID_VEHICLE_FIELD");
-    if (Object.hasOwn(body, "purchaseAmount") && body.purchaseAmount != null && (!Number.isFinite(Number(body.purchaseAmount)) || Number(body.purchaseAmount) < 0)) throw demoError("Μη έγκυρο ποσό αγοράς.", "INVALID_VEHICLE_FIELD");
+    if (Object.hasOwn(body, "purchaseAmount") && body.purchaseAmount != null && (!Number.isFinite(Number(body.purchaseAmount)) || Number(body.purchaseAmount) < 0 || Number(body.purchaseAmount) > 9999999999.99)) throw demoError("Μη έγκυρο ποσό αγοράς.", "INVALID_VEHICLE_FIELD");
     for (const key of ["model", "make", "registrationPlate", "registrationCountry", "vin", "fuelType", "currency", "purchaseDate", "year", "currentMileage", "purchaseAmount"]) {
       if (body[key] === "") throw demoError("Τα κενά πεδία πρέπει να καθαρίζονται με null.", "INVALID_VEHICLE_FIELD");
     }
@@ -371,7 +379,10 @@
     if (body.registrationCountry != null && !/^[A-Za-z]{2}$/.test(body.registrationCountry.trim())) throw demoError("Μη έγκυρη χώρα ταξινόμησης.", "INVALID_VEHICLE_FIELD");
     if (body.currency != null && !/^[A-Za-z]{3}$/.test(body.currency.trim())) throw demoError("Μη έγκυρο νόμισμα.", "INVALID_VEHICLE_FIELD");
     if (body.fuelType != null && !["gasoline", "diesel", "hybrid", "plug_in_hybrid", "electric", "lpg", "cng", "hydrogen", "other"].includes(body.fuelType)) throw demoError("Μη έγκυρος τύπος καυσίμου.", "INVALID_VEHICLE_FIELD");
-    if (body.purchaseDate != null && !/^\d{4}-\d{2}-\d{2}$/.test(body.purchaseDate)) throw demoError("Μη έγκυρη ημερομηνία αγοράς.", "INVALID_VEHICLE_FIELD");
+    if (body.purchaseDate != null) {
+      const date = new Date(`${body.purchaseDate}T00:00:00.000Z`);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(body.purchaseDate) || Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== body.purchaseDate) throw demoError("Μη έγκυρη ημερομηνία αγοράς.", "INVALID_VEHICLE_FIELD");
+    }
   }
 
   function vehicleRequest(state, endpoint, method, body) {
@@ -388,14 +399,24 @@
     }
     if (path === "/vehicles" && method === "POST") {
       if (!body.vehicleType || !body.chassisNumber) throw demoError("Απαιτούνται τύπος οχήματος και αριθμός πλαισίου.", "INVALID_VEHICLE_FIELD");
+      validateDemoVehiclePatch(body);
       if (state.vehicles.some((vehicle) => vehicle.chassisNumber === String(body.chassisNumber).trim())) throw demoError("Υπάρχει ήδη όχημα με αυτόν τον αριθμό πλαισίου.", "DUPLICATE_CHASSIS_NUMBER", 409);
       const created = demoVehicleDefaults({
+        ...body,
         id: nextId(state.vehicles),
-        vehicleType: body.vehicleType,
+        vehicleType: body.vehicleType.trim(),
         chassisNumber: String(body.chassisNumber).trim(),
-        model: body.model || null,
-        year: body.year === "" || body.year == null ? null : Number(body.year),
-        currentMileage: body.currentMileage === "" || body.currentMileage == null ? null : Number(body.currentMileage),
+        make: body.make ? body.make.trim() : null,
+        model: body.model ? body.model.trim() : null,
+        registrationPlate: body.registrationPlate ? body.registrationPlate.trim() : null,
+        registrationCountry: body.registrationCountry ? body.registrationCountry.trim().toUpperCase() : null,
+        vin: body.vin ? body.vin.trim().toUpperCase() : null,
+        fuelType: body.fuelType || null,
+        year: body.year == null ? null : Number(body.year),
+        currentMileage: body.currentMileage == null ? null : Number(body.currentMileage),
+        purchaseDate: body.purchaseDate || null,
+        purchaseAmount: body.purchaseAmount == null ? null : Number(body.purchaseAmount),
+        currency: body.currency ? body.currency.trim().toUpperCase() : null,
         companyId: state.user.companyId,
         created_at: new Date().toISOString(),
       });
@@ -574,6 +595,7 @@
         color: #fff; background: rgba(23, 55, 94, .96); box-shadow: 0 10px 28px rgba(15, 36, 64, .24);
         font: 13px/1.4 Arial, sans-serif;
       }
+      #demoModeBanner[hidden] { display: none !important; }
       #demoModeBanner button {
         flex: 0 0 auto; border: 1px solid rgba(255,255,255,.55); border-radius: 8px;
         padding: 7px 10px; color: #fff; background: transparent; cursor: pointer; font-weight: 700;
@@ -582,7 +604,20 @@
       #demoModeBanner .demo-banner-actions { display:flex; gap:7px; flex:0 0 auto; }
       #startDemoTourBtn { background: #f16f69 !important; border-color:#f16f69 !important; }
       #startDemoTourBtn:hover { background: #d65250 !important; }
+      :root.caremind-demo-active {
+        --demo-banner-clearance: calc(var(--demo-banner-height, 0px) + 36px);
+        scroll-padding-bottom: var(--demo-banner-clearance);
+      }
+      body.caremind-demo-active {
+        padding-bottom: var(--demo-banner-clearance);
+      }
+      body.caremind-demo-active :where(a, button, input, select, textarea, [tabindex]):focus-visible {
+        scroll-margin-bottom: var(--demo-banner-clearance);
+      }
       @media (max-width: 620px) {
+        :root.caremind-demo-active {
+          --demo-banner-clearance: calc(var(--demo-banner-height, 0px) + 24px + env(safe-area-inset-bottom, 0px));
+        }
         #demoModeBanner { left: 12px; right: 12px; bottom: 12px; align-items: flex-start; flex-wrap:wrap; }
         #demoModeBanner .demo-banner-actions { width:100%; }
         #demoModeBanner .demo-banner-actions button { flex:1; }
@@ -591,6 +626,15 @@
 
     document.head.appendChild(style);
     document.body.appendChild(banner);
+    document.documentElement.classList.add("caremind-demo-active");
+    document.body.classList.add("caremind-demo-active");
+    const syncBannerHeight = () => {
+      const height = Math.ceil(banner.getBoundingClientRect().height);
+      if (height > 0) document.documentElement.style.setProperty("--demo-banner-height", `${height}px`);
+    };
+    syncBannerHeight();
+    window.addEventListener("resize", syncBannerHeight);
+    if (typeof ResizeObserver === "function") new ResizeObserver(syncBannerHeight).observe(banner);
     document.getElementById("resetDemoDataBtn")?.addEventListener("click", () => {
       reset();
       window.location.reload();

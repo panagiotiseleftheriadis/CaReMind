@@ -451,6 +451,7 @@ class DashboardManager {
       
       allActivities.push({
         type: "maintenance",
+        vehicleId: vehicle?.id,
         message: `Συντήρηση ${this.getMaintenanceTypeLabel(
           item.maintenanceType
         )} ${vehicle ? `για ${vehicle.vehicleType} ${vehicle.model || ""}` : ""}`.trim(),
@@ -466,6 +467,7 @@ class DashboardManager {
 
       allActivities.push({
         type: "cost",
+        vehicleId: vehicle?.id,
         message: `Κόστος €${(Number(cost.amount) || 0).toFixed(2)} ${vehicle ? `για ${
           vehicle.vehicleType
         } ${vehicle.model || ""}` : ""}`.trim(),
@@ -480,6 +482,7 @@ class DashboardManager {
 
       allActivities.push({
         type: "vehicle",
+        vehicleId: vehicle.id,
         message: `Προστέθηκε νέο όχημα: ${vehicle.vehicleType} ${
           vehicle.model || ""
         }`.trim(),
@@ -517,16 +520,19 @@ class DashboardManager {
          const dateStr = dateObj.toLocaleDateString("el-GR", { day: 'numeric', month: 'short', year: 'numeric' });
          const timeStr = dateObj.toLocaleTimeString("el-GR", { hour: '2-digit', minute: '2-digit' });
 
+         const tag = activity.vehicleId ? "a" : "div";
+         const href = activity.vehicleId ? ` href="/vehicle?id=${Number(activity.vehicleId)}"` : "";
          return `
-        <div class="activity-item">
+        <${tag} class="activity-item${activity.vehicleId ? " activity-link" : ""}"${href}>
+          <span class="activity-type ${activity.type}">
+            ${this.getActivityTypeLabel(activity.type)}
+          </span>
           <div class="activity-content">
             <div class="activity-message">${safeDashboardHtml(activity.message)}</div>
             <div class="activity-time">${dateStr}, ${timeStr}</div>
           </div>
-          <span class="activity-type ${activity.type}">
-            ${this.getActivityTypeLabel(activity.type)}
-          </span>
-        </div>
+          ${activity.vehicleId ? '<span class="activity-chevron" aria-hidden="true">→</span>' : ""}
+        </${tag}>
       `;
       })
       .join("");

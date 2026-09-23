@@ -18,6 +18,13 @@ function isValidDate(value) {
 router.get("/", async (req, res) => {
   try {
     const userId = req.user.id;
+    const vehicleId = req.query.vehicle_id;
+    if (vehicleId !== undefined && (typeof vehicleId !== "string" || !isPositiveId(vehicleId))) {
+      return res.status(400).json({ error: "Μη έγκυρο αναγνωριστικό οχήματος" });
+    }
+    if (vehicleId !== undefined && !(await userOwnsVehicle(db, userId, vehicleId))) {
+      return res.status(404).json({ error: "Το όχημα δεν βρέθηκε" });
+    }
     const [rows] = await db.query(
       `SELECT
          id,
@@ -29,9 +36,9 @@ router.get("/", async (req, res) => {
          receipt_number AS receiptNumber,
          created_at  -- ✅ ΠΡΟΣΘΗΚΗ ΕΔΩ
        FROM costs
-       WHERE user_id = ?
+       WHERE user_id = ?${vehicleId === undefined ? "" : " AND vehicle_id = ?"}
        ORDER BY cost_date DESC, id DESC`,
-      [userId]
+      vehicleId === undefined ? [userId] : [userId, vehicleId]
     );
     res.json(rows);
   } catch (err) {

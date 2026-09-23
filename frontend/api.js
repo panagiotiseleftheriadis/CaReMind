@@ -250,12 +250,12 @@ class API {
   async restoreVehicle(id) { return this.request(`/vehicles/${id}/restore`, { method: "POST" }); }
   async deleteVehicle(id) { return this.request(`/vehicles/${id}`, { method: "DELETE" }); }
   
-  async getMaintenances() { return this.request("/maintenances", { method: "GET" }); }
+  async getMaintenances(vehicleId) { return this.request(`/maintenances${vehicleId == null ? "" : `?vehicle_id=${encodeURIComponent(vehicleId)}`}`, { method: "GET" }); }
   async addMaintenance(d) { return this.request("/maintenances", { method: "POST", body: d }); }
   async updateMaintenance(id, d) { return this.request(`/maintenances/${id}`, { method: "PUT", body: d }); }
   async deleteMaintenance(id) { return this.request(`/maintenances/${id}`, { method: "DELETE" }); }
 
-  async getCosts() { return this.request("/costs", { method: "GET" }); }
+  async getCosts(vehicleId) { return this.request(`/costs${vehicleId == null ? "" : `?vehicle_id=${encodeURIComponent(vehicleId)}`}`, { method: "GET" }); }
   async addCost(d) { return this.request("/costs", { method: "POST", body: d }); }
   async updateCost(id, d) { return this.request(`/costs/${id}`, { method: "PUT", body: d }); }
   async deleteCost(id) { return this.request(`/costs/${id}`, { method: "DELETE" }); }

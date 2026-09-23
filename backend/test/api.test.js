@@ -9,7 +9,7 @@ process.env.CORS_ORIGINS = "http://localhost:4173";
 
 const db = require("../db");
 const app = require("../server");
-const { normalizePatch } = require("../routes/vehicles");
+const { normalizeCreate, normalizePatch } = require("../routes/vehicles");
 const { isVehicleArchiveEnabled } = require("../vehicle-archive-capability");
 
 const activeUser = {
@@ -623,6 +623,52 @@ test("a user cannot attach costs or maintenance to another user's vehicle", asyn
     body: { vehicleId: 999, maintenanceType: "service" },
   });
   assert.equal(maintenance.response.status, 404);
+});
+
+test("vehicle creation accepts validated P3a identity and purchase fields", async () => {
+  const values = normalizeCreate({
+    vehicleType: "car", chassisNumber: " VIN-NEW ", make: "Toyota", model: "Corolla",
+    registrationPlate: "ABC-123", registrationCountry: "gr", vin: "vin123",
+    fuelType: "hybrid", year: 2025, currentMileage: 100, purchaseDate: "2026-01-15",
+    purchaseAmount: 24500.5, currency: "eur",
+  });
+  assert.deepEqual(Object.fromEntries(values.map(({ column, value }) => [column, value])), {
+    vehicle_type: "car", chassis_number: "VIN-NEW", model: "Corolla", make: "Toyota",
+    registration_plate: "ABC-123", registration_country: "GR", vin: "VIN123",
+    fuel_type: "hybrid", year: 2025, current_mileage: 100, purchase_date: "2026-01-15",
+    purchase_amount: 24500.5, currency: "EUR",
+  });
+  assert.throws(() => normalizeCreate({ vehicleType: "car", chassisNumber: "VIN", fuelType: "steam" }), (error) => error.body.code === "INVALID_VEHICLE_FIELD");
+  assert.throws(() => normalizeCreate({ vehicleType: "car", chassisNumber: "VIN", ownerId: 2 }), (error) => error.body.code === "UNSUPPORTED_VEHICLE_FIELD");
+});
+
+test("maintenance and cost vehicle filters validate ownership and scope the query", async () => {
+  const scoped = [];
+  queryHandler = authenticatedHandler(async (sql, params) => {
+    const normalized = String(sql).replace(/\s+/g, " ");
+    if (normalized.includes("SELECT id FROM vehicles")) return [[{ id: 8 }], []];
+    if (normalized.includes("FROM maintenances") || normalized.includes("FROM costs")) {
+      scoped.push({ normalized, params });
+      return [[], []];
+    }
+    throw new Error(`Unexpected filtered history query: ${sql}`);
+  });
+  assert.equal((await request("/api/maintenances?vehicle_id=8", { token: tokenFor() })).response.status, 200);
+  assert.equal((await request("/api/costs?vehicle_id=8", { token: tokenFor() })).response.status, 200);
+  assert.equal(scoped.length, 2);
+  for (const query of scoped) {
+    assert.match(query.normalized, /WHERE user_id = \? AND vehicle_id = \?/);
+    assert.deepEqual(query.params, [1, "8"]);
+  }
+  assert.equal((await request("/api/maintenances?vehicle_id=invalid", { token: tokenFor() })).response.status, 400);
+  assert.equal((await request("/api/costs?vehicle_id=0", { token: tokenFor() })).response.status, 400);
+
+  queryHandler = authenticatedHandler(async (sql) => {
+    if (String(sql).includes("SELECT id FROM vehicles")) return [[], []];
+    throw new Error("A cross-user filter must stop at ownership verification");
+  });
+  assert.equal((await request("/api/maintenances?vehicle_id=999", { token: tokenFor() })).response.status, 404);
+  assert.equal((await request("/api/costs?vehicle_id=999", { token: tokenFor() })).response.status, 404);
 });
 
 test("vehicle detail and archive-state lists remain owner scoped", async () => {

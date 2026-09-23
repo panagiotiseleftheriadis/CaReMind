@@ -13,6 +13,7 @@ function createDemoApi({ pathname = "/index.html", active = false, dom = false, 
     removeItem: (key) => values.delete(key),
   };
   const window = {
+    addEventListener() {},
     location: {
       hostname: "localhost",
       pathname,
@@ -23,7 +24,8 @@ function createDemoApi({ pathname = "/index.html", active = false, dom = false, 
   const appended = [];
   const document = dom ? {
     head: { appendChild(node) { appended.push(node); } },
-    body: { appendChild(node) { appended.push(node); } },
+    body: { classList: { add() {} }, appendChild(node) { appended.push(node); } },
+    documentElement: { classList: { add() {} }, style: { setProperty() {} } },
     addEventListener(event, handler) { if (event === "DOMContentLoaded") domReadyHandler = handler; },
     getElementById() { return null; },
     createElement(tagName) {
@@ -33,6 +35,7 @@ function createDemoApi({ pathname = "/index.html", active = false, dom = false, 
         innerHTML: "",
         textContent: "",
         setAttribute() {},
+        getBoundingClientRect() { return { height: 72 }; },
       };
     },
   } : { addEventListener() {} };

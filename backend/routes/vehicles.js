@@ -131,6 +131,19 @@ function normalizePatch(body) {
   return updates;
 }
 
+function normalizeCreate(body) {
+  if (!body || typeof body !== "object" || Array.isArray(body)) throw routeError(400, "INVALID_VEHICLE_CREATE", "Μη έγκυρα στοιχεία οχήματος");
+  const normalized = { ...body };
+  for (const field of PATCH_FIELDS) {
+    if (!["vehicleType", "chassisNumber"].includes(field) && normalized[field] === "") normalized[field] = null;
+  }
+  const updates = normalizePatch(normalized);
+  if (!updates.some((item) => item.column === "vehicle_type") || !updates.some((item) => item.column === "chassis_number")) {
+    throw routeError(400, "INVALID_VEHICLE_FIELD", "Τύπος οχήματος και αριθμός πλαισίου είναι υποχρεωτικά");
+  }
+  return updates;
+}
+
 async function selectVehicle(executor, userId, vehicleId) {
   const [rows] = await executor.query(
     `SELECT ${VEHICLE_PROJECTION}
@@ -177,16 +190,15 @@ router.get("/", async (req, res) => {
 router.post("/", async (req, res) => {
   try {
     const userId = req.user.id;
-    const { vehicleType, chassisNumber, model, year, currentMileage } = req.body || {};
-    const validationError = validateVehicleInput({ vehicleType, chassisNumber, model, year, currentMileage });
-    if (validationError) return res.status(400).json({ error: validationError });
-    const normalizedChassis = String(chassisNumber).trim();
+    const values = normalizeCreate(req.body);
+    const normalizedChassis = values.find((item) => item.column === "chassis_number").value;
     const [duplicates] = await db.query("SELECT id FROM vehicles WHERE user_id = ? AND chassis_number = ? LIMIT 1", [userId, normalizedChassis]);
     if (duplicates.length) return res.status(409).json({ error: "Υπάρχει ήδη όχημα με αυτόν τον αριθμό πλαισίου", code: "DUPLICATE_CHASSIS_NUMBER" });
+    const columns = values.map((item) => item.column);
     const [result] = await db.query(
-      `INSERT INTO vehicles (user_id, vehicle_type, chassis_number, model, year, current_mileage)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [userId, vehicleType, normalizedChassis, model || null, year === "" || year == null ? null : Number(year), currentMileage === "" || currentMileage == null ? null : Number(currentMileage)]
+      `INSERT INTO vehicles (user_id, ${columns.join(", ")})
+       VALUES (?, ${columns.map(() => "?").join(", ")})`,
+      [userId, ...values.map((item) => item.value)]
     );
     return res.status(201).json(await selectVehicle(db, userId, result.insertId));
   } catch (error) {
@@ -284,4 +296,5 @@ router.delete("/:id", async (req, res) => {
 
 module.exports = router;
 module.exports.normalizePatch = normalizePatch;
+module.exports.normalizeCreate = normalizeCreate;
 module.exports.VEHICLE_PROJECTION = VEHICLE_PROJECTION;

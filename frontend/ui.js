@@ -13,6 +13,24 @@
     })[character]);
   }
 
+  function vehicleDisplayName(make, model) {
+    const normalizedMake = String(make ?? "").trim();
+    const normalizedModel = String(model ?? "").trim();
+    if (!normalizedMake) return normalizedModel;
+    if (!normalizedModel) return normalizedMake;
+
+    const foldedMake = normalizedMake.toLocaleLowerCase();
+    const foldedModel = normalizedModel.toLocaleLowerCase();
+    const exactMakePrefix = foldedModel === foldedMake || foldedModel.startsWith(`${foldedMake} `);
+    const leadingMakePart = foldedMake.split("-")[0].trim();
+    const exactHyphenatedPrefix = leadingMakePart && foldedMake.startsWith(`${leadingMakePart}-`) &&
+      (foldedModel === leadingMakePart || foldedModel.startsWith(`${leadingMakePart} `));
+
+    return exactMakePrefix || exactHyphenatedPrefix
+      ? normalizedModel
+      : `${normalizedMake} ${normalizedModel}`;
+  }
+
   function toast(message, type = "info", duration = 4500) {
     let region = document.getElementById("appToastRegion");
     if (!region) {
@@ -76,14 +94,37 @@
           </div>
         </div>`;
 
+      const background = [...document.body.children].filter((element) => element !== overlay);
+      const previousOverflow = document.body.style.overflow;
+      const inertState = background.map((element) => [element, element.hasAttribute("inert")]);
       const finish = (answer) => {
         overlay.remove();
+        syncModalEnvironment();
         document.removeEventListener("keydown", onKeyDown);
+        document.body.style.overflow = previousOverflow;
+        inertState.forEach(([element, wasInert]) => {
+          if (!wasInert) element.removeAttribute("inert");
+        });
         previouslyFocused?.focus?.();
         resolve(answer);
       };
       const onKeyDown = (event) => {
-        if (event.key === "Escape") finish(false);
+        if (event.key === "Escape") {
+          event.preventDefault();
+          finish(false);
+          return;
+        }
+        if (event.key !== "Tab") return;
+        const focusable = [...overlay.querySelectorAll(focusableSelector)];
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault();
+          last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault();
+          first.focus();
+        }
       };
 
       previouslyFocused = document.activeElement;
@@ -94,6 +135,9 @@
       });
       document.addEventListener("keydown", onKeyDown);
       document.body.appendChild(overlay);
+      syncModalEnvironment();
+      inertState.forEach(([element]) => element.setAttribute("inert", ""));
+      document.body.style.overflow = "hidden";
       overlay.querySelector(".app-confirm-cancel").focus();
     });
   }
@@ -101,6 +145,17 @@
   function isVisible(modal) {
     const style = window.getComputedStyle(modal);
     return style.display !== "none" && style.visibility !== "hidden";
+  }
+
+  function syncModalEnvironment() {
+    const modalOpen = [...document.querySelectorAll(".modal")].some(isVisible) ||
+      Boolean(document.querySelector(".app-confirm-overlay"));
+    document.body.classList.toggle("caremind-modal-open", modalOpen);
+    const demoBanner = document.getElementById("demoModeBanner");
+    if (demoBanner) {
+      demoBanner.hidden = modalOpen;
+      demoBanner.setAttribute("aria-hidden", String(modalOpen));
+    }
   }
 
   function prepareModal(modal) {
@@ -124,6 +179,7 @@
           target?.focus?.();
         }, 0);
       }
+      syncModalEnvironment();
     };
 
     syncModalState();
@@ -239,7 +295,7 @@
     });
   }
 
-  window.CaReMindUI = { escapeHtml, toast, confirm: confirmAction, setBusy };
+  window.CaReMindUI = { escapeHtml, vehicleDisplayName, toast, confirm: confirmAction, setBusy };
   window.addEventListener("caremind:session-changed", syncAdminOnlyVisibility);
   document.addEventListener("DOMContentLoaded", initializeAccessibility);
 })();

@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex, follow" />
+  <title>Όχημα | CaReMind</title>
+  <link rel="icon" type="image/png" href="/favicon.png" />
+  <script src="demo-store.js"></script>
+  <script src="auth-guard.js?v=20260923-1"></script>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="vehicles.css" />
+  <link rel="stylesheet" href="vehicle.css" />
+  <link rel="stylesheet" href="ui.css" />
+  <script src="ui.js?v=20260923-2"></script>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Μετάβαση στο κύριο περιεχόμενο</a>
+  <div class="container">
+    <header><div class="header-vehicle"><div class="vehicles-header-main"><h1>Οχήματα</h1><button class="nav-toggle" type="button" aria-label="Άνοιγμα μενού"><span></span><span></span><span></span></button></div><div class="header-content-vehicle"><nav aria-label="Κύρια πλοήγηση"><a href="/dashboard">Πίνακας</a><a href="/vehicles" class="active" aria-current="page">Οχήματα</a><a href="/maintenance">Συντήρηση</a><a href="/costs">Κόστη</a><a href="/account">Λογαριασμός</a><a href="/admin" data-admin-only hidden>Admin</a></nav></div></div></header>
+    <main id="main-content" class="vehicle-detail-page">
+      <div id="vehicleLoading" class="vehicle-page-state" role="status"><span class="app-loading-spinner" aria-hidden="true"></span><p>Φόρτωση οχήματος…</p></div>
+      <section id="vehicleError" class="vehicle-page-state vehicle-page-error" hidden><p class="vehicle-state-code">Δεν είναι διαθέσιμο</p><h2>Δεν μπορέσαμε να ανοίξουμε αυτό το όχημα.</h2><p id="vehicleErrorMessage">Έλεγξε τον σύνδεσμο ή επέστρεψε στη λίστα οχημάτων.</p><div class="vehicle-page-state-actions"><a class="btn-primary" href="/vehicles">Πίσω στα οχήματα</a><button type="button" class="btn-secondary" id="retryVehicle">Νέα προσπάθεια</button></div></section>
+      <div id="vehicleContent" hidden>
+        <a href="/vehicles" class="vehicle-back">← Πίσω στα οχήματα</a>
+        <section class="vehicle-identity" aria-labelledby="vehicleTitle"><div class="vehicle-identity-header"><h2 id="vehicleTitle"></h2><span id="vehicleStateBadge" class="vehicle-detail-state"></span></div><p id="vehicleSubtitle" class="vehicle-subtitle"></p><div class="vehicle-identity-metrics"><div><span>Χιλιόμετρα</span><strong id="vehicleMileage"></strong></div><div><span>Έτος</span><strong id="vehicleYear"></strong></div></div></section>
+        <div id="archivedNotice" class="archived-notice" hidden><strong>Αρχειοθετημένο όχημα</strong><span>Τα στοιχεία και το ιστορικό του παραμένουν διαθέσιμα. Μπορείς να το επαναφέρεις όταν χρειαστεί.</span></div>
+        <section class="vehicle-management" aria-labelledby="actionsTitle"><div><p>Διαχείριση</p><h2 id="actionsTitle">Ενέργειες οχήματος</h2></div><div class="vehicle-management-actions"><button type="button" class="btn-primary" id="editVehicleButton">Επεξεργασία στοιχείων</button><button type="button" class="btn-primary" id="archiveVehicleButton">Αρχειοθέτηση οχήματος</button><button type="button" class="btn-primary restore-action" id="restoreVehicleButton" hidden>Επαναφορά οχήματος</button></div><p class="actions-note">Η αρχειοθέτηση είναι αναστρέψιμη και δεν διαγράφει service ή κόστη.</p></section>
+        <section class="vehicle-overview" aria-labelledby="overviewTitle"><div class="section-heading"><p>Καταγραφή</p><h2 id="overviewTitle">Επισκόπηση</h2></div><div id="overviewGroups" class="overview-groups"></div></section>
+        <div class="vehicle-history-grid">
+          <section class="vehicle-history" aria-labelledby="maintenanceHistoryTitle"><div class="history-heading"><div><p>Ιστορικό</p><h2 id="maintenanceHistoryTitle">Πρόσφατη συντήρηση</h2></div><a id="allMaintenanceLink" href="/maintenance">Όλες οι συντηρήσεις →</a></div><div id="vehicleMaintenanceHistory" class="history-list" role="status">Φόρτωση…</div></section>
+          <section class="vehicle-history" aria-labelledby="costHistoryTitle"><div class="history-heading"><div><p>Δαπάνες</p><h2 id="costHistoryTitle">Πρόσφατα κόστη</h2></div><a id="allCostsLink" href="/costs">Όλα τα κόστη →</a></div><div id="vehicleCostHistory" class="history-list" role="status">Φόρτωση…</div></section>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <div id="editVehicleModal" class="modal" style="display:none" aria-labelledby="editVehicleTitle"><div class="modal-content vehicle-edit-dialog"><button type="button" class="close" id="closeVehicleEdit" aria-label="Κλείσιμο">×</button><p class="vehicle-form-kicker">Στοιχεία οχήματος</p><h2 id="editVehicleTitle">Επεξεργασία</h2><form id="editVehicleForm">
+    <fieldset><legend>Ταυτότητα</legend><div class="form-grid"><label>Μάρκα<input id="editMake" maxlength="100" /></label><label>Μοντέλο<input id="editModel" maxlength="100" /></label><label>Τύπος οχήματος *<input id="editVehicleType" maxlength="100" required /></label><label>Πινακίδα<input id="editRegistrationPlate" maxlength="32" /></label><label>Χώρα ταξινόμησης<input id="editRegistrationCountry" maxlength="2" placeholder="GR" /></label><label>Αριθμός πλαισίου *<input id="editChassisNumber" maxlength="50" required /></label><label>VIN<input id="editVin" maxlength="50" /></label></div></fieldset>
+    <fieldset><legend>Στοιχεία οχήματος</legend><div class="form-grid"><label>Έτος<input type="number" id="editYear" min="1886" /></label><label>Καύσιμο<select id="editFuelType"><option value="">Δεν έχει καταχωρηθεί</option><option value="gasoline">Βενζίνη</option><option value="diesel">Πετρέλαιο</option><option value="hybrid">Υβριδικό</option><option value="plug_in_hybrid">Plug-in υβριδικό</option><option value="electric">Ηλεκτρικό</option><option value="lpg">Υγραέριο (LPG)</option><option value="cng">Φυσικό αέριο (CNG)</option><option value="hydrogen">Υδρογόνο</option><option value="other">Άλλο</option></select></label><label>Τρέχοντα χιλιόμετρα<input type="number" id="editCurrentMileage" min="0" step="1" /></label></div></fieldset>
+    <fieldset><legend>Αγορά</legend><div class="form-grid"><label>Ημερομηνία αγοράς<input type="date" id="editPurchaseDate" /></label><label>Ποσό αγοράς<input type="number" id="editPurchaseAmount" min="0" step="0.01" /></label><label>Νόμισμα<input id="editCurrency" maxlength="3" placeholder="EUR" /></label></div></fieldset>
+    <p id="editVehicleError" class="form-error" role="alert" hidden></p><div class="form-actions"><button type="button" class="btn-secondary" id="cancelVehicleEdit">Ακύρωση</button><button type="submit" class="btn-primary">Αποθήκευση αλλαγών</button></div>
+  </form></div></div>
+  <script src="api.js?v=20260923-1"></script><script src="maintenance-labels.js"></script><script src="vehicle.js?v=20260923-3"></script>
+</body>
+</html>

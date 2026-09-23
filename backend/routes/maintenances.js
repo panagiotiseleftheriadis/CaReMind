@@ -27,6 +27,13 @@ function validOptionalMileage(value) {
 router.get("/", async (req, res) => {
   try {
     const userId = req.user.id;
+    const vehicleId = req.query.vehicle_id;
+    if (vehicleId !== undefined && (typeof vehicleId !== "string" || !isPositiveId(vehicleId))) {
+      return res.status(400).json({ error: "Μη έγκυρο αναγνωριστικό οχήματος" });
+    }
+    if (vehicleId !== undefined && !(await userOwnsVehicle(db, userId, vehicleId))) {
+      return res.status(404).json({ error: "Το όχημα δεν βρέθηκε" });
+    }
     const [rows] = await db.query(
       `SELECT
          id,
@@ -41,9 +48,9 @@ router.get("/", async (req, res) => {
          notes,
          created_at    -- ✅ ΠΡΟΣΘΗΚΗ ΕΔΩ
        FROM maintenances
-       WHERE user_id = ?
+       WHERE user_id = ?${vehicleId === undefined ? "" : " AND vehicle_id = ?"}
        ORDER BY id DESC`,
-      [userId]
+      vehicleId === undefined ? [userId] : [userId, vehicleId]
     );
     res.json(rows);
   } catch (err) {

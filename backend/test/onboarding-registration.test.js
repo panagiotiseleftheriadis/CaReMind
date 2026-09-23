@@ -37,7 +37,7 @@ test("verification navigates through authenticated login to onboarding", () => {
   const login = read("auth.js");
   assert.match(registration, /verifyEmail\(email, code\)/);
   assert.match(registration, /\/login\?verified=1&next=%2Fonboarding/);
-  assert.match(login, /dashboard\|vehicles\|maintenance\|costs\|account\|admin\|onboarding/);
+  assert.match(login, /dashboard\|vehicles\|vehicle\|maintenance\|costs\|account\|admin\|onboarding/);
   assert.match(login, /safeNext \|\| "\/dashboard"/);
 });
 
@@ -63,8 +63,8 @@ test("onboarding is a single protected handoff into the existing vehicle flow", 
   assert.match(html, /id="skipOnboarding" href="\/dashboard"/);
   assert.doesNotMatch(html, /<form/);
   assert.doesNotMatch(guard, /isOnboardingPage/);
-  assert.match(vehicles, /params\.get\("add"\) !== "1"/);
-  assert.match(vehicles, /showAddVehicleForm\(\)/);
+  assert.match(vehicles, /new URLSearchParams\(window\.location\.search\)\.get\("add"\) === "1"/);
+  assert.match(vehicles, /this\.openAdd\(\)/);
   assert.match(vehicles, /replaceState\(\{\}, "", "\/vehicles"\)/);
 });
 
