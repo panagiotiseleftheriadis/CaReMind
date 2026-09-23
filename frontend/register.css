@@ -1,137 +1,241 @@
-.reg-title{
-  text-align:center;
-  margin: 8px 0 16px 0;
+:root {
+  --register-navy: #0b2948;
+  --register-blue: #176fbd;
+  --register-mint: #65c6be;
+  --register-ink: #142638;
+  --register-muted: #607386;
+  --register-border: #d8e2eb;
 }
 
-.reg-hint{
-  color:#666;
-  font-size:14px;
-  margin: 0 0 16px 0;
-  text-align:center;
+.register-body {
+  align-items: flex-start;
+  padding: clamp(20px, 5vw, 56px) 0;
+  background:
+    radial-gradient(circle at 12% 10%, rgba(101, 198, 190, 0.18), transparent 28rem),
+    radial-gradient(circle at 88% 88%, rgba(35, 136, 216, 0.24), transparent 30rem),
+    linear-gradient(145deg, #061a2d 0%, #0b2948 55%, #124b7e 100%);
 }
 
-.reg-message{
-  margin-top:12px;
-  padding:10px 12px;
-  border-radius:10px;
-  background:#f3f6f8;
-  color:#333;
-  font-size:14px;
+.register-body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.1;
+  background-image: linear-gradient(rgba(255,255,255,.14) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.14) 1px, transparent 1px);
+  background-size: 72px 72px;
+  mask-image: radial-gradient(circle at center, #000, transparent 82%);
 }
 
-.reg-message.error{
-  background:#fff0f0;
-  color:#b00020;
+.register-skip-link {
+  position: fixed;
+  z-index: 10;
+  top: 8px;
+  left: 8px;
+  padding: 10px 14px;
+  color: #fff;
+  background: var(--register-navy);
+  border-radius: 8px;
+  transform: translateY(-150%);
 }
 
-.reg-footer{
-  margin-top:14px;
-  text-align:center;
-}
+.register-skip-link:focus { transform: translateY(0); }
 
-.reg-footer a{
-  color:#007bff;
-  text-decoration:none;
-  font-size:14px;
-}
-
-.verify-actions{
-  margin-top:10px;
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  gap:12px;
-}
-
-.btn-link{
-  background:none;
-  border:none;
-  padding:0;
-  color:#007bff;
-  cursor:pointer;
-  font-size:14px;
-  text-decoration:none;
-}
-
-.btn-link:hover{
-  text-decoration:underline;
-}
-.password-group {
+.register-shell {
   position: relative;
+  z-index: 1;
+  width: min(100% - 32px, 560px);
+  margin: auto;
 }
 
-.password-group input {
-  padding-right: 46px; /* χώρο για το εικονίδιο */
+.register-card {
+  padding: clamp(24px, 6vw, 44px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 26px;
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 28px 70px rgba(2, 15, 28, 0.32);
 }
 
+.register-brand { margin-bottom: 30px; }
+.register-heading { margin-bottom: 28px; }
+.register-heading h1 {
+  margin: 5px 0 8px;
+  color: var(--register-ink);
+  font-size: clamp(1.8rem, 7vw, 2.35rem);
+  line-height: 1.08;
+  letter-spacing: -0.04em;
+}
+.register-heading > p:last-child { color: var(--register-muted); line-height: 1.55; }
+.register-step {
+  color: var(--register-blue);
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.register-card .form-group { margin-bottom: 19px; }
+.register-card label,
+.account-type-fieldset legend {
+  display: block;
+  margin-bottom: 7px;
+  color: var(--register-ink);
+  font-size: 0.91rem;
+  font-weight: 700;
+}
+.register-card input[type="text"],
+.register-card input[type="email"],
+.register-card input[type="password"],
+.register-card input[type="tel"] {
+  width: 100%;
+  min-height: 50px;
+  padding: 12px 14px;
+  color: var(--register-ink);
+  border: 1px solid var(--register-border);
+  border-radius: 11px;
+  background: #fbfdff;
+  font-size: 1rem;
+  transition: border-color .18s ease, box-shadow .18s ease, background .18s ease;
+}
+.register-card input:hover { border-color: #a9bccd; }
+.register-card input:focus-visible {
+  outline: 3px solid rgba(23, 111, 189, 0.2);
+  outline-offset: 1px;
+  border-color: var(--register-blue);
+  background: #fff;
+}
+
+.field-hint,
+.business-note,
+.resend-status {
+  margin-top: 6px;
+  color: var(--register-muted);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.account-type-fieldset {
+  min-width: 0;
+  margin: 4px 0 20px;
+  padding: 0;
+  border: 0;
+}
+.account-type-options { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.account-type-option {
+  display: flex !important;
+  align-items: flex-start;
+  gap: 10px;
+  min-height: 82px;
+  margin: 0 !important;
+  padding: 13px;
+  border: 1px solid var(--register-border);
+  border-radius: 12px;
+  cursor: pointer;
+}
+.account-type-option:has(input:checked) {
+  border-color: var(--register-blue);
+  background: #edf6fd;
+  box-shadow: inset 0 0 0 1px var(--register-blue);
+}
+.account-type-option input { flex: 0 0 auto; width: 18px; height: 18px; margin-top: 2px; accent-color: var(--register-blue); }
+.account-type-option strong,
+.account-type-option small { display: block; }
+.account-type-option strong { font-size: 0.9rem; line-height: 1.25; }
+.account-type-option small { margin-top: 4px; color: var(--register-muted); font-size: 0.72rem; font-weight: 500; line-height: 1.35; }
+
+.business-fields {
+  margin: -2px 0 22px;
+  padding: 17px 17px 1px;
+  border-left: 3px solid var(--register-mint);
+  border-radius: 0 12px 12px 0;
+  background: #f1faf9;
+}
+.business-fields[hidden],
+#signupBlock[hidden],
+#verifyBlock[hidden] { display: none !important; }
+.business-note { margin: 0 0 15px; color: #3f6664; }
+.optional-label { color: var(--register-muted); font-size: 0.72rem; font-weight: 500; }
+
+.password-field { position: relative; }
+.password-field input { padding-right: 52px !important; }
 .toggle-pass {
   position: absolute;
-  right: 10px;
   top: 50%;
-  transform: translateY(-50%);
+  right: 5px;
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  padding: 0;
   border: 0;
+  border-radius: 9px;
   background: transparent;
   cursor: pointer;
-  padding: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  transform: translateY(-50%);
 }
+.toggle-pass:hover { background: #edf3f7; }
+.toggle-pass:focus-visible,
+.btn-link:focus-visible,
+.account-type-option:focus-within {
+  outline: 3px solid rgba(23, 111, 189, 0.25);
+  outline-offset: 2px;
+}
+.toggle-icon { display: block; width: 21px; height: 21px; }
+.pass-msg { min-height: 18px; margin: -12px 0 10px; color: #b62938; font-size: 0.8rem; }
 
-.toggle-icon {
-  width: 22px;
-  height: 22px;
-  display: block;
-}
-/* default: άστο όπως είναι, δεν πειράζουμε */
-
-/* όταν δεν ταιριάζουν */
-.input-error {
-  border: 2px solid #e53935 !important;
-  outline: none;
-}
-
-/* όταν ταιριάζουν */
-.input-success {
-  border: 2px solid #43a047 !important;
-  outline: none;
-}
-
-.pass-msg {
-  margin-top: 6px;
-  font-size: 13px;
-  color: #e53935;
-}
-/* Styling για το Dropdown - ΔΙΟΡΘΩΜΕΝΟ */
-.form-group select {
-  width: 100%;
-  padding: 14px 16px;
-  
-  /* ΑΛΛΑΓΗ 1: Λευκό φόντο για να είναι ίδιο με τα text inputs */
-  background-color: #fff; 
-  
-  /* ΑΛΛΑΓΗ 2: Γκρι περίγραμμα (border) για να φαίνεται πάντα */
-  border: 1px solid #ccc; 
-  
+.register-submit { width: 100%; min-height: 50px; margin-top: 3px; }
+.register-submit:disabled { cursor: wait; opacity: .7; }
+.reg-message {
+  margin-top: 14px;
+  padding: 12px 14px;
   border-radius: 10px;
-  font-size: 16px;
-  color: #333; 
-  outline: none;
-  cursor: pointer;
-  
-  /* Κώδικας για να εξαφανίσουμε το default βελάκι και να βάλουμε το δικό μας */
-  -webkit-appearance: none;
-  -moz-appearance: none;
-  appearance: none;
-  background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23666%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
-  background-repeat: no-repeat;
-  background-position: right 15px top 50%;
-  background-size: 12px auto;
+  color: #205c46;
+  background: #eaf8f1;
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+.reg-message.error { color: #8d2630; background: #fff0f1; }
+.reg-footer { margin-top: 20px; color: var(--register-muted); text-align: center; font-size: 0.9rem; }
+.reg-footer a,
+.btn-link { color: var(--register-blue); font-weight: 700; text-decoration: none; }
+.reg-footer a:hover,
+.btn-link:hover { text-decoration: underline; }
+
+.verification-heading { text-align: center; }
+.mail-mark {
+  display: grid;
+  width: 58px;
+  height: 58px;
+  margin: 15px auto 18px;
+  place-items: center;
+  color: #fff;
+  background: var(--register-blue);
+  border-radius: 18px;
+  box-shadow: 0 12px 24px rgba(23, 111, 189, .22);
+  font-size: 1.55rem;
+}
+.verification-heading strong { color: var(--register-ink); overflow-wrap: anywhere; }
+.verification-code {
+  text-align: center;
+  font-size: 1.35rem !important;
+  font-weight: 800;
+  letter-spacing: .34em;
+  font-variant-numeric: tabular-nums;
+}
+.verify-actions { display: flex; min-height: 44px; align-items: center; justify-content: center; gap: 10px; margin-top: 10px; }
+.btn-link { min-height: 44px; padding: 8px; border: 0; background: transparent; cursor: pointer; font-size: .87rem; }
+.btn-link:disabled { color: #8c9aaa; cursor: wait; text-decoration: none; }
+.register-trust { margin: 16px auto 0; color: rgba(255,255,255,.7); text-align: center; font-size: .75rem; }
+
+@media (max-width: 520px) {
+  .register-body { padding: 12px 0 24px; }
+  .register-shell { width: min(100% - 20px, 560px); }
+  .register-card { padding: 24px 18px; border-radius: 19px; }
+  .register-brand { margin-bottom: 24px; }
+  .account-type-options { grid-template-columns: 1fr; }
+  .account-type-option { min-height: 68px; }
 }
 
-/* Όταν κάνεις κλικ πάνω του */
-.form-group select:focus {
-  /* Προαιρετικά: Μπορείς να βάλεις το χρώμα που έχουν και τα άλλα inputs όταν τα πατάς */
-  border: 1px solid #000; 
-  background-color: #fff;
+@media (prefers-reduced-motion: reduce) {
+  .register-card input { transition: none; }
 }

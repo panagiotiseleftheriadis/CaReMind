@@ -4,7 +4,7 @@ const path = require("node:path");
 const test = require("node:test");
 const vm = require("node:vm");
 
-function createDemoApi({ pathname = "/index.html", active = false, dom = false } = {}) {
+function createDemoApi({ pathname = "/index.html", active = false, dom = false, fetchImpl } = {}) {
   const values = new Map();
   if (active) values.set("caremindDemoMode", "1");
   const localStorage = {
@@ -56,6 +56,7 @@ function createDemoApi({ pathname = "/index.html", active = false, dom = false }
     Number,
     String,
     Error,
+    fetch: fetchImpl || (async () => { throw new Error("unexpected network request"); }),
   };
 
   vm.runInNewContext(demoSource, context);
@@ -87,6 +88,101 @@ test("demo session refresh sets the API token used by protected pages", async ()
   assert.equal(response.accessToken, "demo-access-token");
   assert.equal(client.getToken(), "demo-access-token");
   assert.equal(client.getHeaders().Authorization, "Bearer demo-access-token");
+});
+
+test("real login ends Demo before using the backend route", async () => {
+  let fetchCalls = 0;
+  const page = createDemoApi({
+    active: true,
+    fetchImpl: async (url, options) => {
+      fetchCalls += 1;
+      assert.equal(page.api.isActive(), false, "Demo must end before fetch");
+      assert.equal(options.headers.Authorization, undefined, "Demo token must not reach the backend");
+      assert.equal(url, "http://localhost:3000/api/login");
+      assert.equal(options.method, "POST");
+      return {
+        ok: true,
+        status: 200,
+        async text() {
+          return JSON.stringify({ accessToken: "real-access-token", user: { id: 7 } });
+        },
+      };
+    },
+  });
+
+  await page.client.refreshToken();
+  assert.equal(page.client.getToken(), "demo-access-token");
+  const response = await page.client.login("real-user", "real-password");
+
+  assert.equal(fetchCalls, 1);
+  assert.equal(response.accessToken, "real-access-token");
+  assert.equal(page.client.getToken(), "real-access-token");
+  assert.equal(page.localStorage.getItem("caremindDemoMode"), null);
+});
+
+test("failed real login leaves Demo inactive", async () => {
+  const page = createDemoApi({
+    active: true,
+    fetchImpl: async () => ({
+      ok: false,
+      status: 401,
+      async text() { return JSON.stringify({ message: "Invalid credentials" }); },
+    }),
+  });
+
+  await assert.rejects(page.client.login("real-user", "wrong-password"), /Invalid credentials/);
+  assert.equal(page.api.isActive(), false);
+});
+
+test("registration, verification and recovery actions leave Demo for real backend routes", async () => {
+  const calls = [];
+  const page = createDemoApi({
+    fetchImpl: async (url, options) => {
+      assert.equal(page.api.isActive(), false, "Demo must end before fetch");
+      calls.push({ url, body: JSON.parse(options.body) });
+      return {
+        ok: true,
+        status: 200,
+        async text() {
+          return url.endsWith("/verify-reset-code")
+            ? JSON.stringify({ resetToken: "real-reset-token" })
+            : JSON.stringify({ ok: true });
+        },
+      };
+    },
+  });
+
+  const actions = [
+    ["/register", () => page.client.register({ email: "user@example.test" })],
+    ["/verify-email", () => page.client.verifyEmail("user@example.test", "123456")],
+    ["/resend-verification", () => page.client.resendVerification("user@example.test")],
+    ["/forgot-password", () => page.client.forgotPassword("user@example.test")],
+    ["/verify-reset-code", () => page.client.verifyResetCode("user@example.test", "654321")],
+    ["/reset-password", () => page.client.resetPassword("real-reset-token", "new-password")],
+  ];
+
+  for (const [, action] of actions) {
+    page.api.start({ reset: false });
+    await action();
+    assert.equal(page.api.isActive(), false);
+  }
+
+  assert.deepEqual(calls.map(({ url }) => url), actions.map(([endpoint]) => `http://localhost:3000/api${endpoint}`));
+});
+
+test("unsupported Demo endpoints still fail closed without a network request", async () => {
+  let fetchCalls = 0;
+  const { api, client } = createDemoApi({
+    active: true,
+    fetchImpl: async () => {
+      fetchCalls += 1;
+      throw new Error("network must remain isolated from Demo");
+    },
+  });
+
+  await assert.rejects(client.request("/unsupported-demo-endpoint"), /endpoint/);
+  assert.equal(api.isActive(), true);
+  assert.equal(fetchCalls, 0);
 });
 
 test("portfolio demo starts without backend and persists a complete vehicle flow", async () => {

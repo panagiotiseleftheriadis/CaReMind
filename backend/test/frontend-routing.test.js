@@ -146,6 +146,7 @@ test("bundled local server mirrors extensionless page routing without loops", as
     assert.equal((await fetch(`${base}/`)).status, 200);
     assert.equal((await fetch(`${base}/login`)).status, 200);
     assert.equal((await fetch(`${base}/register`)).status, 200);
+    assert.equal((await fetch(`${base}/onboarding`)).status, 200);
     const canonical = await fetch(`${base}/login.html`, { redirect: "manual" });
     assert.equal(canonical.status, 308);
     assert.equal(canonical.headers.get("location"), "/login");
@@ -186,6 +187,12 @@ test("auth guard leaves the landing public and redirects protected routes to log
   context.api.refreshToken = async () => { throw new Error("expired"); };
   await vm.runInContext("checkAuth()", context);
   assert.equal(redirectedTo, "/login?next=costs%3Fperiod%3Dyear");
+
+  redirectedTo = null;
+  context.window.location.pathname = "/onboarding";
+  context.window.location.search = "";
+  await vm.runInContext("checkAuth()", context);
+  assert.equal(redirectedTo, "/login?next=%2Fonboarding");
 });
 
 test("login accepts only known local protected destinations", async () => {
@@ -213,6 +220,8 @@ test("login accepts only known local protected destinations", async () => {
   assert.equal(vm.runInContext("getSafeNextDestination('//evil.example')", context), null);
   assert.equal(vm.runInContext("getSafeNextDestination('javascript:alert(1)')", context), null);
   assert.equal(vm.runInContext("getSafeNextDestination('register')", context), null);
+  assert.equal(vm.runInContext("getSafeNextDestination('/onboarding')", context), "/onboarding");
+  assert.equal(vm.runInContext("getSafeNextDestination('onboarding')", context), "/onboarding");
 
   await vm.runInContext("auth.login('owner', 'correct-password')", context);
   assert.equal(context.window.location.href, "/vehicles?vehicleId=7");

@@ -14,6 +14,17 @@ class VehiclesManager {
     this.loadVehicles();
     this.setupEventListeners();
     this.setupModalEvents();
+    this.openRequestedAction();
+  }
+
+  openRequestedAction() {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("add") !== "1") return;
+
+    showAddVehicleForm();
+    if (window.history?.replaceState) {
+      window.history.replaceState({}, "", "/vehicles");
+    }
   }
 
   setupModalEvents() {

@@ -437,6 +437,58 @@ test("register, verification and reset endpoints validate unsafe requests", asyn
   assert.equal(reset.response.status, 401);
 });
 
+test("registration reports duplicate username and email with stable codes", async () => {
+  queryHandler = async (sql, params) => {
+    assert.match(String(sql), /SELECT id, username, email FROM users/);
+    return [[{ id: 9, username: params[0], email: "different@example.test" }], []];
+  };
+  const usernameTaken = await request("/api/register", {
+    method: "POST",
+    body: { username: "existing-user", email: "new@example.test", password: "valid-password-123" },
+  });
+  assert.equal(usernameTaken.response.status, 409);
+  assert.equal(usernameTaken.body.code, "USERNAME_TAKEN");
+
+  queryHandler = async (sql, params) => {
+    assert.match(String(sql), /SELECT id, username, email FROM users/);
+    return [[{ id: 10, username: "different-user", email: params[1] }], []];
+  };
+  const emailTaken = await request("/api/register", {
+    method: "POST",
+    body: { username: "new-user", email: "existing@example.test", password: "valid-password-123" },
+  });
+  assert.equal(emailTaken.response.status, 409);
+  assert.equal(emailTaken.body.code, "EMAIL_TAKEN");
+});
+
+test("email verification handles invalid or expired codes and already verified accounts", async () => {
+  queryHandler = async (sql) => {
+    if (String(sql).includes("SELECT id, email_verified FROM users")) {
+      return [[{ id: 12, email_verified: 0 }], []];
+    }
+    if (String(sql).includes("FROM email_verification_codes")) return [[], []];
+    throw new Error("Unexpected verification query");
+  };
+  const expired = await request("/api/verify-email", {
+    method: "POST",
+    body: { email: "pending@example.test", code: "123456" },
+  });
+  assert.equal(expired.response.status, 400);
+
+  queryHandler = async (sql) => {
+    if (String(sql).includes("SELECT id, email_verified FROM users")) {
+      return [[{ id: 13, email_verified: 1 }], []];
+    }
+    throw new Error("Already verified must not inspect a code");
+  };
+  const alreadyVerified = await request("/api/verify-email", {
+    method: "POST",
+    body: { email: "verified@example.test", code: "654321" },
+  });
+  assert.equal(alreadyVerified.response.status, 200);
+  assert.equal(alreadyVerified.body.message, "Email already verified");
+});
+
 test("vehicle CRUD remains scoped to the authenticated user", async () => {
   queryHandler = authenticatedHandler(async (sql, params) => {
     const normalized = String(sql);

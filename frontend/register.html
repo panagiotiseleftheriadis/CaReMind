@@ -1,105 +1,137 @@
 <!DOCTYPE html>
 <html lang="el">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Εγγραφή - CaReMind</title>
-  <meta name="description" content="Δημιούργησε τον λογαριασμό σου στο CaReMind." />
-  <meta name="robots" content="noindex, follow" />
-  <link rel="canonical" href="https://www.car-remind.gr/register" />
-  <link rel="icon" type="image/png" href="/favicon.png" />
-  <link rel="stylesheet" href="login.css" />
-  <link rel="stylesheet" href="register.css" />
-  <link rel="stylesheet" href="ui.css" />
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Εγγραφή | CaReMind</title>
+    <meta name="description" content="Δημιούργησε τον λογαριασμό σου στο CaReMind." />
+    <meta name="robots" content="noindex, follow" />
+    <meta name="theme-color" content="#0b2948" />
+    <link rel="canonical" href="https://www.car-remind.gr/register" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="stylesheet" href="login.css" />
+    <link rel="stylesheet" href="register.css" />
+    <link rel="stylesheet" href="ui.css" />
     <script src="ui.js?v=20260814-3"></script>
-</head>
-<body class="login-body">
-  <div class="login-container">
-    <div class="login-form">
+  </head>
+  <body class="login-body register-body">
+    <a class="register-skip-link" href="#registerMain">Μετάβαση στο περιεχόμενο</a>
+    <main class="register-shell" id="registerMain">
+      <section class="register-card" aria-labelledby="registerTitle">
+        <a class="auth-brand register-brand" href="/" aria-label="CaReMind — Αρχική">
+          <span class="auth-brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 44 44" role="presentation"><path d="M9 27.5h3l2-7.2a4 4 0 0 1 3.8-2.9h10.5a5 5 0 0 1 3.8 1.8l3.4 4 2.5.8v3.5h-3"/><path d="M16 27.5h12.5M19 17.4l2.5-4h7.2l3.4 5.8"/><circle cx="15.5" cy="28.5" r="3.5"/><circle cx="32.5" cy="28.5" r="3.5"/></svg>
+          </span>
+          <span>CaReMind</span>
+        </a>
 
-      <!-- SIGNUP -->
-      <div id="signupBlock">
-        <h3 class="reg-title">Δημιουργία Λογαριασμού</h3>
-        <form id="registerForm">
-          <div class="form-group">
-            <input type="text" id="newUsername" required placeholder="Όνομα Χρήστη" />
+        <div id="signupBlock">
+          <div class="register-heading">
+            <p class="register-step">Βήμα 1 από 2</p>
+            <h1 id="registerTitle">Δημιούργησε λογαριασμό</h1>
+            <p>Ξεκίνα το ψηφιακό αρχείο του οχήματός σου σε λίγα λεπτά.</p>
           </div>
 
-          <div class="form-group">
-            <input type="email" id="userEmail" required placeholder="Email" />
-          </div>
+          <form id="registerForm" novalidate>
+            <div class="form-group">
+              <label for="userEmail">Email</label>
+              <input type="email" id="userEmail" name="email" autocomplete="email" maxlength="254" required aria-describedby="emailHint" placeholder="name@example.com" />
+              <p class="field-hint" id="emailHint">Εδώ θα στείλουμε τον κωδικό επιβεβαίωσης.</p>
+            </div>
 
-          <div class="form-group">
-            <select id="accountType" required onchange="toggleCompanyField()">
-              <option value="individual">Ιδιώτης</option>
-              <option value="company">Εταιρία</option>
-            </select>
-          </div>
+            <div class="form-group">
+              <label for="newUsername">Όνομα χρήστη</label>
+              <input type="text" id="newUsername" name="username" autocomplete="username" minlength="3" maxlength="50" pattern="[\p{L}\p{N}._-]{3,50}" required aria-describedby="usernameHint" placeholder="π.χ. panos.car" />
+              <p class="field-hint" id="usernameHint">3–50 χαρακτήρες: γράμματα, αριθμοί, τελεία, παύλα ή κάτω παύλα.</p>
+            </div>
 
-          <div class="form-group" id="companyFieldWrapper" style="display: none;">
-            <input type="text" id="companyName" placeholder="Όνομα Εταιρίας" />
-          </div>
-          <div class="form-group">
-            <input type="text" id="userNumber" placeholder="Αριθμός Κινητού" />
-          </div>
+            <fieldset class="account-type-fieldset">
+              <legend>Τύπος λογαριασμού</legend>
+              <div class="account-type-options">
+                <label class="account-type-option">
+                  <input type="radio" name="account_type" value="individual" checked />
+                  <span><strong>Ιδιώτης</strong><small>Για τα προσωπικά σου οχήματα</small></span>
+                </label>
+                <label class="account-type-option">
+                  <input type="radio" name="account_type" value="business" />
+                  <span><strong>Επαγγελματίας / Επιχείρηση</strong><small>Για οχήματα που διαχειρίζεσαι εσύ</small></span>
+                </label>
+              </div>
+            </fieldset>
 
-          <div class="form-group password-group">
-  <input type="password" id="newPassword" minlength="8" maxlength="128" autocomplete="new-password" required placeholder="Κωδικός (τουλάχιστον 8 χαρακτήρες)" />
-  <button type="button" class="toggle-pass" data-target="newPassword" aria-label="Εμφάνιση κωδικού">
-    <img class="toggle-icon" src="eye.png" alt="" />
-  </button>
-</div>
+            <div id="businessFields" class="business-fields" hidden>
+              <p class="business-note">Ο λογαριασμός παραμένει προσωπικός και δεν προσθέτει κοινή πρόσβαση ομάδας.</p>
+              <div class="form-group">
+                <label for="companyName">Επωνυμία <span class="optional-label">προαιρετικό</span></label>
+                <input type="text" id="companyName" name="companyName" autocomplete="organization" maxlength="100" placeholder="Επωνυμία επιχείρησης" />
+              </div>
+              <div class="form-group">
+                <label for="userNumber">Τηλέφωνο <span class="optional-label">προαιρετικό</span></label>
+                <input type="tel" id="userNumber" name="phone" autocomplete="tel" maxlength="50" placeholder="π.χ. 69XXXXXXXX" />
+              </div>
+            </div>
 
-<div class="form-group password-group">
-  <input type="password" id="regPassword" minlength="8" maxlength="128" autocomplete="new-password" required placeholder="Επιβεβαίωση Κωδικού" />
-  <button type="button" class="toggle-pass" data-target="regPassword" aria-label="Εμφάνιση κωδικού">
-    <img class="toggle-icon" src="eye.png" alt="" />
-  </button>
-</div>
-<p id="passMatchMsg" class="pass-msg" style="display:none;"></p>
+            <div class="form-group">
+              <label for="newPassword">Κωδικός πρόσβασης</label>
+              <div class="password-field">
+                <input type="password" id="newPassword" name="password" minlength="8" maxlength="128" autocomplete="new-password" required aria-describedby="passwordHint passMatchMsg" placeholder="8–128 χαρακτήρες" />
+                <button type="button" class="toggle-pass" data-target="newPassword" aria-label="Εμφάνιση κωδικού" aria-pressed="false">
+                  <img class="toggle-icon" src="eye.png" alt="" />
+                </button>
+              </div>
+              <p class="field-hint" id="passwordHint">Χρησιμοποίησε έναν μοναδικό κωδικό 8–128 χαρακτήρων.</p>
+            </div>
 
-          
+            <div class="form-group">
+              <label for="regPassword">Επιβεβαίωση κωδικού</label>
+              <div class="password-field">
+                <input type="password" id="regPassword" name="passwordConfirmation" minlength="8" maxlength="128" autocomplete="new-password" required aria-describedby="passMatchMsg" placeholder="Γράψε ξανά τον κωδικό" />
+                <button type="button" class="toggle-pass" data-target="regPassword" aria-label="Εμφάνιση επιβεβαίωσης κωδικού" aria-pressed="false">
+                  <img class="toggle-icon" src="eye.png" alt="" />
+                </button>
+              </div>
+            </div>
+            <p id="passMatchMsg" class="pass-msg" aria-live="polite"></p>
 
-          <button type="submit" class="btn-primary">Δημιουργία λογαριασμού</button>
+            <button type="submit" class="btn-primary register-submit">Δημιουργία λογαριασμού</button>
+            <p class="reg-message" id="registerMsg" role="status" aria-live="polite" hidden></p>
+          </form>
 
-          <p class="reg-message" id="registerMsg" style="display:none"></p>
-        </form>
-
-        <div class="reg-footer">
-          <a href="/login">Έχω ήδη λογαριασμό</a>
+          <p class="reg-footer">Έχεις ήδη λογαριασμό; <a href="/login">Σύνδεση</a></p>
         </div>
-      </div>
 
-      <!-- VERIFY -->
-      <div id="verifyBlock" style="display:none">
-        <h2 class="reg-title">Επιβεβαίωση Email</h2>
-        <p class="reg-hint">Στείλαμε έναν 6-ψήφιο κωδικό στο email σας. Ο κωδικός λήγει σε 5 λεπτά.</p>
-
-        <form id="verifyForm">
-          <div class="form-group">
-            <label for="verEmail">Email</label>
-            <input type="email" id="verEmail" required placeholder="name@example.com" />
+        <div id="verifyBlock" hidden>
+          <div class="register-heading verification-heading">
+            <p class="register-step">Βήμα 2 από 2</p>
+            <span class="mail-mark" aria-hidden="true">✉</span>
+            <h1>Επιβεβαίωσε το email σου</h1>
+            <p>Στείλαμε έναν 6ψήφιο κωδικό στο <strong id="verificationDestination"></strong>. Λήγει σε 5 λεπτά.</p>
           </div>
 
-          <div class="form-group">
-            <label for="verCode">Κωδικός</label>
-            <input type="text" id="verCode" inputmode="numeric" maxlength="6" required placeholder="000000" />
-          </div>
-
-          <button type="submit" class="btn-primary">Επιβεβαίωση</button>
-
-          <div class="verify-actions">
-            <button type="button" class="btn-link" id="resendBtn">Αποστολή ξανά</button>
-            <a class="btn-link" href="/login">Πίσω στο login</a>
-          </div>
-
-          <p class="reg-message" id="verifyMsg" style="display:none"></p>
-        </form>
-      </div>
-    </div>
-  </div>
+          <form id="verifyForm" novalidate>
+            <div class="form-group verification-email-field">
+              <label for="verEmail">Email</label>
+              <input type="email" id="verEmail" name="email" autocomplete="email" required placeholder="name@example.com" />
+            </div>
+            <div class="form-group">
+              <label for="verCode">Κωδικός επιβεβαίωσης</label>
+              <input class="verification-code" type="text" id="verCode" name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required aria-describedby="verifyHint" placeholder="000000" />
+              <p class="field-hint" id="verifyHint">Δεν έφτασε; Έλεγξε και τον φάκελο ανεπιθύμητης αλληλογραφίας.</p>
+            </div>
+            <button type="submit" class="btn-primary register-submit">Επιβεβαίωση email</button>
+            <div class="verify-actions">
+              <button type="button" class="btn-link" id="resendBtn">Νέα αποστολή</button>
+              <span id="resendStatus" class="resend-status" aria-live="polite"></span>
+            </div>
+            <p class="reg-message" id="verifyMsg" role="status" aria-live="polite" hidden></p>
+          </form>
+          <p class="reg-footer"><a href="/login">Πίσω στη σύνδεση</a></p>
+        </div>
+      </section>
+      <p class="register-trust">Τα στοιχεία σου χρησιμοποιούνται μόνο για τη λειτουργία του λογαριασμού σου.</p>
+    </main>
 
     <script src="api.js?v=20260816-1"></script>
-  <script src="register.js"></script>
-</body>
+    <script src="register.js?v=2"></script>
+  </body>
 </html>

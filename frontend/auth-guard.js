@@ -50,7 +50,10 @@ async function checkAuth() {
 
 function redirectToLogin() {
   // Κρατάμε πού ήθελε να πάει ο χρήστης
-  const currentPath = (window.location.pathname + window.location.search).replace(/^\//, "");
+  const requestedPath = window.location.pathname + window.location.search;
+  const currentPath = window.location.pathname.replace(/\/+$/, "") === "/onboarding"
+    ? requestedPath
+    : requestedPath.replace(/^\//, "");
   
   if (window.location.pathname !== "/login" && window.location.pathname !== "/login.html") {
       const next = encodeURIComponent(currentPath || "dashboard.html");

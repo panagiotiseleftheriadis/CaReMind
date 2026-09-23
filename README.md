@@ -17,6 +17,7 @@ The Demo runs entirely in the browser. It loads realistic seed data into `localS
 ## Highlights
 
 - Public product landing page with separate login and registration routes
+- Guided post-verification welcome with a direct handoff to the existing first-vehicle form
 - Browser-only Demo with complete CRUD flows
 - Access and refresh-token authentication with email verification
 - Ownership checks for every vehicle, maintenance and cost mutation
@@ -82,7 +83,7 @@ npm start
 
 On macOS/Linux, use `cp .env.example .env`. Copy only if `.env` does not already exist. Set runtime `DATABASE_URL` and direct `MIGRATION_DATABASE_URL` in `.env` before running the migration. `npm run db:setup` applies every pending migration without dropping existing tables or data. For local development only, an unset migration URL can fall back to a loopback `DATABASE_URL`; remove the example migration placeholder if using this fallback.
 
-For extensionless routes matching production, run `npm run frontend:serve` from `backend/`. The local entry URLs are `http://127.0.0.1:4174/` (landing), `/login` and `/register`; `.html` requests canonicalize to extensionless paths. The deployed frontend automatically uses `https://api.car-remind.gr/api`; localhost uses `http://localhost:3000/api`.
+For extensionless routes matching production, run `npm run frontend:serve` from `backend/`. The local entry URLs are `http://127.0.0.1:4174/` (landing), `/login`, `/register` and the authenticated `/onboarding`; `.html` requests canonicalize to extensionless paths. The deployed frontend automatically uses `https://api.car-remind.gr/api`; localhost uses `http://localhost:3000/api`.
 
 ### Optional development administrator
 

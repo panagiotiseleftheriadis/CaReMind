@@ -659,6 +659,18 @@
   text-align: center;
 }
 
+.login-message.success {
+  display: block;
+  margin: 0 0 18px;
+  color: #205c46;
+  border: 1px solid #bfe4d2;
+  background: #eaf8f1;
+}
+
+.login-message[hidden] {
+  display: none;
+}
+
 .demo-entry > span {
   display: flex;
   align-items: center;

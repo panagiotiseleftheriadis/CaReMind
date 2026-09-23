@@ -12,6 +12,8 @@ P0D readiness update (2026-09-22): the existing Resend abstraction now rejects b
 
 P1 completion update (2026-09-22): `/` is now a public product landing page and the preserved login/password-recovery experience lives at `/login`. Protected-page and explicit-logout redirects target `/login`, safe `next` navigation is restricted to known local application pages, and signed-in users may still view the landing page. Existing browser-only Demo entry is available from both public surfaces and still resets into the shared dashboard/tour flow. Vercel and the bundled local server support canonical extensionless routes. No backend API, schema, migration, billing, subscription, onboarding or domain work is included.
 
+P2 completion update (2026-09-22): registration now presents the backend-required email, username and password fields first, defaults to the existing individual account type, and reveals optional business metadata only for the backend-compatible `business` value. Email verification remains mandatory and non-authenticating; success routes through the safe login `next` allowlist to a protected, session-local `/onboarding` welcome page. Its primary action opens the existing vehicle dialog through the exact local `/vehicles?add=1` signal, preserving required chassis/type fields, while skip opens the dashboard. Demo onboarding uses the same page and browser-only store. No API contract, migration, vehicle schema, trial, billing, subscription or P3 work is included.
+
 ## 1. Executive summary
 
 CaReMind is the digital ownership record for your vehicle: service history, maintenance reminders, mileage, costs, documents and important obligations in one place. Build for individuals, households using one account, freelancers and very small fleets. A household is not a new authorization boundary or multi-user organisation.
@@ -385,6 +387,7 @@ Every row inherits the release definition above: scoped diff, ownership/server v
 
 ### P2 — Registration/onboarding
 
+- Status: completed 2026-09-22 as a UI-first flow with no backend contract or schema change.
 - Objective/result: clearer account creation/verification and first-vehicle next step; avoid company-required UX for individuals.
 - F: register.html/js/css, auth.js, proposed onboarding.html/js, api.js. B: routes/auth.js/account.js only as required; existing account_type retained. Migrations: none for UI-first onboarding. Optional-VIN creation deferred until 012. API/OpenAPI: existing registration fields preserved; new profile fields only if needed and documented. Demo: sample onboarding without registration/email.
 - Tests: verified/unverified states, resend failures, duplicates, no accidental trial start. Security: shared rate limits, generic responses and email reliability gate. Compatibility: old register clients still work. Dependencies: P1/P0. Done: registration proceeds to an appropriate existing add-vehicle flow without invented identifiers or trial promises.

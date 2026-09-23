@@ -1,258 +1,214 @@
-// register.js
+// Registration and email verification stay public; verification does not create a session.
+(function () {
+  "use strict";
 
-function qs(id){return document.getElementById(id);}
+  const RESEND_COOLDOWN_SECONDS = 30;
+  const qs = (id) => document.getElementById(id);
 
-function showMsg(el, text, isError=false){
-  if(!el) return;
-  el.textContent=text;
-  el.style.display='block';
-  el.classList.toggle('error', !!isError);
-}
-
-function hideMsg(el){
-  if(!el) return;
-  el.style.display='none';
-  el.textContent='';
-  el.classList.remove('error');
-}
-
-function getParams(){
-  return new URLSearchParams(window.location.search);
-}
-
-function goToVerify(email){
-  const e = encodeURIComponent(email||'');
-  window.location.href = `register.html?verify=1&email=${e}`;
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-  const params = getParams();
-  const verifyMode = params.get('verify') === '1';
-  const emailFromUrl = params.get('email') ? decodeURIComponent(params.get('email')) : '';
-
-  const signupBlock = qs('signupBlock');
-  const verifyBlock = qs('verifyBlock');
-
-  if(verifyMode){
-    signupBlock.style.display='none';
-    verifyBlock.style.display='block';
-    if(emailFromUrl) qs('verEmail').value = emailFromUrl;
+  function showMessage(element, text, isError = false) {
+    if (!element) return;
+    element.textContent = text;
+    element.hidden = false;
+    element.classList.toggle("error", isError);
+    element.classList.toggle("success", !isError);
   }
 
-  // SIGNUP
-  const registerForm = qs('registerForm');
-  const registerMsg = qs('registerMsg');
-  if(registerForm){
-    registerForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      hideMsg(registerMsg);
-
-      const payload = {
-        username: qs('newUsername').value.trim(),
-        email: qs('userEmail').value.trim(),
-        // ΝΕΟ: Στέλνουμε τον τύπο
-        account_type: qs('accountType').value, 
-        // Αν είναι ιδιώτης, στέλνουμε κενό string, αλλιώς το όνομα
-        companyName: qs('accountType').value === 'company' ? qs('companyName').value.trim() : '',
-        phone: qs('userNumber') ? qs('userNumber').value.trim() : '',
-        password: qs('newPassword').value,
-      };
-
-      // Extra safety: μην επιτρέπεις submit αν οι κωδικοί δεν ταιριάζουν
-      const confirm = qs('regPassword') ? qs('regPassword').value : '';
-      if (payload.password.length < 8 || payload.password.length > 128) {
-        showMsg(registerMsg, 'Ο κωδικός πρέπει να έχει 8-128 χαρακτήρες.', true);
-        return;
-      }
-      if (payload.password !== confirm) {
-        showMsg(registerMsg, 'Οι κωδικοί δεν ταιριάζουν.', true);
-        return;
-      }
-
-
-      try{
-        await api.register(payload);
-        showMsg(registerMsg, 'Η εγγραφή ολοκληρώθηκε! Ελέγξτε το email σας για τον 6-ψήφιο κωδικό.');
-        setTimeout(() => goToVerify(payload.email), 600);
-      }catch(err){
-        const msg = err.message || 'Κάτι πήγε στραβά. Δοκιμάστε ξανά.';
-        showMsg(registerMsg, msg, true);
-      }
-    });
+  function hideMessage(element) {
+    if (!element) return;
+    element.hidden = true;
+    element.textContent = "";
+    element.classList.remove("error", "success");
   }
 
-  // VERIFY
-  const verifyForm = qs('verifyForm');
-  const verifyMsg = qs('verifyMsg');
-  const resendBtn = qs('resendBtn');
-
-  if(verifyForm){
-    verifyForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      hideMsg(verifyMsg);
-
-      const email = qs('verEmail').value.trim();
-      const code = qs('verCode').value.trim();
-
-      try{
-        await api.verifyEmail(email, code);
-        showMsg(verifyMsg, 'Το email επιβεβαιώθηκε! Μπορείτε να συνδεθείτε.');
-        setTimeout(() => { window.location.href = '/login'; }, 800);
-      }catch(err){
-        const msg = err.message || 'Λάθος κωδικός ή έληξε. Πατήστε "Αποστολή ξανά".';
-        showMsg(verifyMsg, msg, true);
-      }
-    });
-  }
-
-  if(resendBtn){
-    resendBtn.addEventListener('click', async () => {
-      hideMsg(verifyMsg);
-      const email = qs('verEmail').value.trim();
-      if(!email){
-        showMsg(verifyMsg, 'Συμπληρώστε email.', true);
-        return;
-      }
-      resendBtn.disabled = true;
-      try{
-        await api.resendVerification(email);
-        showMsg(verifyMsg, 'Στάλθηκε νέος κωδικός. Ελέγξτε τα εισερχόμενα / spam.');
-      }catch(err){
-        showMsg(verifyMsg, err.message || 'Αποτυχία αποστολής. Δοκιμάστε ξανά.', true);
-      }finally{
-        setTimeout(() => { resendBtn.disabled = false; }, 2000);
-      }
-    });
-  }
-});
-document.querySelectorAll(".toggle-pass").forEach((btn) => {
-  btn.addEventListener("click", () => {
-    const inputId = btn.dataset.target;
-    const input = document.getElementById(inputId);
-    if (!input) return;
-
-    const icon = btn.querySelector(".toggle-icon");
-    const isHidden = input.type === "password";
-
-    input.type = isHidden ? "text" : "password";
-
-    // αλλάζουμε εικόνα
-    if (icon) {
-      icon.src = isHidden ? "visible.png" : "eye.png";
+  function readableRegistrationError(error) {
+    if (error?.code === "USERNAME_TAKEN") return "Αυτό το όνομα χρήστη χρησιμοποιείται ήδη. Δοκίμασε ένα διαφορετικό.";
+    if (error?.code === "EMAIL_TAKEN") return "Υπάρχει ήδη λογαριασμός με αυτό το email. Μπορείς να συνδεθείς ή να ανακτήσεις τον κωδικό σου.";
+    if (error?.code === "VERIFICATION_EMAIL_UNAVAILABLE") {
+      return "Ο λογαριασμός δημιουργήθηκε, αλλά δεν μπορέσαμε να στείλουμε το email. Συνέχισε στην επιβεβαίωση και ζήτησε νέο κωδικό.";
     }
-
-    // accessibility
-    btn.setAttribute("aria-label", isHidden ? "Απόκρυψη κωδικού" : "Εμφάνιση κωδικού");
-  });
-});
-document.addEventListener("DOMContentLoaded", () => {
-  const pass1 = document.getElementById("newPassword");
-  const pass2 = document.getElementById("regPassword");
-  const msg = document.getElementById("passMatchMsg");
-
-  // Αν κάτι λείπει από το HTML, μην σκάει όλο το register
-  if (!pass1 || !pass2) {
-    console.warn("Password inputs not found. Check IDs: newPassword / regPassword");
-    return;
+    if (error?.status === 429) return "Έγιναν πολλές προσπάθειες. Περίμενε λίγο και δοκίμασε ξανά.";
+    if (error?.status === 503) return "Η υπηρεσία εγγραφής δεν είναι προσωρινά διαθέσιμη. Δοκίμασε ξανά σε λίγο.";
+    if (error?.status === 400) return "Έλεγξε το email, το όνομα χρήστη και τον κωδικό σου.";
+    return "Δεν μπορέσαμε να ολοκληρώσουμε την εγγραφή. Έλεγξε τη σύνδεσή σου και δοκίμασε ξανά.";
   }
 
-  // Αν δεν υπάρχει το message element, το δημιουργούμε δυναμικά κάτω από το confirm
-  let messageEl = msg;
-  if (!messageEl) {
-    messageEl = document.createElement("p");
-    messageEl.id = "passMatchMsg";
-    messageEl.className = "pass-msg";
-    messageEl.style.display = "none";
-    pass2.closest(".form-group")?.insertAdjacentElement("afterend", messageEl);
+  function readableVerificationError(error) {
+    if (error?.status === 400) return "Ο κωδικός δεν είναι σωστός ή έχει λήξει. Ζήτησε νέο κωδικό και δοκίμασε ξανά.";
+    if (error?.status === 404) return "Δεν μπορέσαμε να επιβεβαιώσουμε αυτά τα στοιχεία. Έλεγξε το email και τον κωδικό.";
+    if (error?.status === 429) return "Έγιναν πολλές προσπάθειες. Περίμενε λίγο πριν δοκιμάσεις ξανά.";
+    if (error?.status === 503) return "Η επιβεβαίωση δεν είναι προσωρινά διαθέσιμη. Δοκίμασε ξανά σε λίγο.";
+    return "Δεν μπορέσαμε να επιβεβαιώσουμε το email. Έλεγξε τη σύνδεσή σου και δοκίμασε ξανά.";
   }
 
-  function clearStates() {
-    pass1.classList.remove("input-error", "input-success");
-    pass2.classList.remove("input-error", "input-success");
-    messageEl.style.display = "none";
-    messageEl.textContent = "";
+  function maskEmail(email) {
+    const [local, domain] = String(email || "").split("@");
+    if (!local || !domain) return "το email σου";
+    const visible = local.slice(0, Math.min(2, local.length));
+    return `${visible}${"•".repeat(Math.max(3, Math.min(6, local.length - visible.length)))}@${domain}`;
   }
 
-  function setError(text) {
-    pass1.classList.remove("input-success");
-    pass2.classList.remove("input-success");
-
-    pass1.classList.add("input-error");
-    pass2.classList.add("input-error");
-
-    messageEl.textContent = text;
-    messageEl.style.display = "block";
+  function setVerificationMode(email) {
+    qs("signupBlock").hidden = true;
+    qs("verifyBlock").hidden = false;
+    qs("verEmail").value = email;
+    qs("verificationDestination").textContent = maskEmail(email);
+    window.setTimeout(() => qs("verCode")?.focus(), 0);
   }
 
-  function setSuccess() {
-    pass1.classList.remove("input-error");
-    pass2.classList.remove("input-error");
+  function goToVerification(email) {
+    const url = new URL("/register", window.location.origin);
+    url.searchParams.set("verify", "1");
+    url.searchParams.set("email", email);
+    window.location.assign(`${url.pathname}${url.search}`);
+  }
 
-    pass1.classList.add("input-success");
-    pass2.classList.add("input-success");
+  function setSubmitBusy(button, busy, busyText) {
+    if (!button) return;
+    if (!button.dataset.label) button.dataset.label = button.textContent;
+    button.disabled = busy;
+    button.textContent = busy ? busyText : button.dataset.label;
+  }
 
-    messageEl.style.display = "none";
-    messageEl.textContent = "";
+  function updateBusinessFields() {
+    const selected = document.querySelector('input[name="account_type"]:checked')?.value || "individual";
+    qs("businessFields").hidden = selected !== "business";
   }
 
   function validatePasswords() {
-    const p1 = pass1.value || "";
-    const p2 = pass2.value || "";
-
-    if (!p1 && !p2) {
-      clearStates();
-      return false;
-    }
-
-    if (p1 && !p2) {
-      pass1.classList.remove("input-error", "input-success");
-      pass2.classList.remove("input-error", "input-success");
-      messageEl.style.display = "none";
-      messageEl.textContent = "";
-      return false;
-    }
-
-    if (p1 !== p2) {
-      setError("Οι κωδικοί δεν ταιριάζουν.");
-      return false;
-    }
-
-    setSuccess();
-    return true;
+    const password = qs("newPassword").value;
+    const confirmation = qs("regPassword").value;
+    const message = qs("passMatchMsg");
+    const mismatch = Boolean(confirmation && password !== confirmation);
+    qs("regPassword").setCustomValidity(mismatch ? "Οι κωδικοί δεν ταιριάζουν." : "");
+    message.textContent = mismatch ? "Οι κωδικοί δεν ταιριάζουν." : "";
+    return !mismatch;
   }
 
-  pass1.addEventListener("input", validatePasswords);
-  pass2.addEventListener("input", validatePasswords);
-
-  // Βρες το form με πιο ασφαλή τρόπο
-  const form = pass1.closest("form") || document.querySelector("form");
-  if (form) {
-    form.addEventListener("submit", (e) => {
-      // Αν ο χρήστης έχει γράψει confirm και δεν ταιριάζει, μπλοκάρουμε
-      const p1 = pass1.value || "";
-      const p2 = pass2.value || "";
-
-      if (p2 && p1 !== p2) {
-        e.preventDefault();
-        setError("Οι κωδικοί δεν ταιριάζουν.");
-      }
+  function setupPasswordToggles() {
+    document.querySelectorAll(".toggle-pass").forEach((button) => {
+      button.addEventListener("click", () => {
+        const input = qs(button.dataset.target);
+        if (!input) return;
+        const showing = input.type === "text";
+        input.type = showing ? "password" : "text";
+        button.setAttribute("aria-pressed", String(!showing));
+        button.setAttribute("aria-label", showing ? "Εμφάνιση κωδικού" : "Απόκρυψη κωδικού");
+        const icon = button.querySelector("img");
+        if (icon) icon.src = showing ? "eye.png" : "visible.png";
+      });
     });
   }
-});
-// Συνάρτηση για εμφάνιση/απόκρυψη πεδίου εταιρίας
-function toggleCompanyField() {
-  const type = document.getElementById("accountType").value;
-  const wrapper = document.getElementById("companyFieldWrapper");
-  const input = document.getElementById("companyName");
-  
-  if (type === "company") {
-    wrapper.style.display = "block";
-    input.setAttribute("required", "true"); // Το κάνουμε υποχρεωτικό αν είναι εταιρία
-  } else {
-    wrapper.style.display = "none";
-    input.value = ""; // Καθαρίζουμε αν το γύρισε σε ιδιώτη
-    input.removeAttribute("required");
+
+  function startResendCooldown(button, status) {
+    let remaining = RESEND_COOLDOWN_SECONDS;
+    button.disabled = true;
+    status.textContent = `Ξανά σε ${remaining}″`;
+    const timer = window.setInterval(() => {
+      remaining -= 1;
+      if (remaining <= 0) {
+        window.clearInterval(timer);
+        button.disabled = false;
+        status.textContent = "";
+        return;
+      }
+      status.textContent = `Ξανά σε ${remaining}″`;
+    }, 1000);
   }
-}
-// Καλό είναι να το τρέξουμε μία φορά στην αρχή για να είμαστε σίγουροι
-window.onload = toggleCompanyField;
+
+  document.addEventListener("DOMContentLoaded", () => {
+    const params = new URLSearchParams(window.location.search);
+    const emailFromUrl = String(params.get("email") || "").trim().toLowerCase();
+    if (params.get("verify") === "1") setVerificationMode(emailFromUrl);
+
+    document.querySelectorAll('input[name="account_type"]').forEach((radio) => radio.addEventListener("change", updateBusinessFields));
+    updateBusinessFields();
+    setupPasswordToggles();
+    qs("newPassword").addEventListener("input", validatePasswords);
+    qs("regPassword").addEventListener("input", validatePasswords);
+
+    const registerForm = qs("registerForm");
+    registerForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      hideMessage(qs("registerMsg"));
+      validatePasswords();
+      if (!registerForm.reportValidity()) return;
+
+      const accountType = document.querySelector('input[name="account_type"]:checked')?.value || "individual";
+      const payload = {
+        email: qs("userEmail").value.trim().toLowerCase(),
+        username: qs("newUsername").value.trim(),
+        password: qs("newPassword").value,
+        account_type: accountType,
+        companyName: accountType === "business" ? qs("companyName").value.trim() : "",
+        phone: accountType === "business" ? qs("userNumber").value.trim() : "",
+      };
+      const submit = registerForm.querySelector('[type="submit"]');
+      setSubmitBusy(submit, true, "Δημιουργία…");
+      try {
+        await window.api.register(payload);
+        goToVerification(payload.email);
+      } catch (error) {
+        if (error?.code === "VERIFICATION_EMAIL_UNAVAILABLE") {
+          try { sessionStorage.setItem("caremindRegistrationNotice", "email-unavailable"); } catch (_error) {}
+          goToVerification(error.email || payload.email);
+          return;
+        }
+        showMessage(qs("registerMsg"), readableRegistrationError(error), true);
+      } finally {
+        setSubmitBusy(submit, false);
+      }
+    });
+
+    const verifyForm = qs("verifyForm");
+    verifyForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      hideMessage(qs("verifyMsg"));
+      if (!verifyForm.reportValidity()) return;
+      const email = qs("verEmail").value.trim().toLowerCase();
+      const code = qs("verCode").value.trim();
+      const submit = verifyForm.querySelector('[type="submit"]');
+      setSubmitBusy(submit, true, "Επιβεβαίωση…");
+      try {
+        const result = await window.api.verifyEmail(email, code);
+        try {
+          sessionStorage.setItem("caremindVerifiedEmail", email);
+          sessionStorage.setItem("caremindVerificationResult", result?.message === "Email already verified" ? "already" : "verified");
+        } catch (_error) {}
+        window.location.assign("/login?verified=1&next=%2Fonboarding");
+      } catch (error) {
+        showMessage(qs("verifyMsg"), readableVerificationError(error), true);
+      } finally {
+        setSubmitBusy(submit, false);
+      }
+    });
+
+    const resendButton = qs("resendBtn");
+    resendButton.addEventListener("click", async () => {
+      hideMessage(qs("verifyMsg"));
+      const email = qs("verEmail").value.trim().toLowerCase();
+      if (!email || !qs("verEmail").checkValidity()) {
+        qs("verEmail").reportValidity();
+        return;
+      }
+      resendButton.disabled = true;
+      try {
+        await window.api.resendVerification(email);
+        showMessage(qs("verifyMsg"), "Αν το email είναι διαθέσιμο για επιβεβαίωση, το αίτημα επεξεργάστηκε. Έλεγξε τα εισερχόμενα και τα ανεπιθύμητα.");
+        startResendCooldown(resendButton, qs("resendStatus"));
+      } catch (error) {
+        resendButton.disabled = false;
+        const message = error?.status === 429
+          ? "Έγιναν πολλές προσπάθειες. Περίμενε λίγο πριν ζητήσεις νέο κωδικό."
+          : "Δεν μπορέσαμε να επεξεργαστούμε το αίτημα. Έλεγξε τη σύνδεσή σου και δοκίμασε ξανά.";
+        showMessage(qs("verifyMsg"), message, true);
+      }
+    });
+
+    try {
+      if (sessionStorage.getItem("caremindRegistrationNotice") === "email-unavailable" && !qs("verifyBlock").hidden) {
+        sessionStorage.removeItem("caremindRegistrationNotice");
+        showMessage(qs("verifyMsg"), "Ο λογαριασμός δημιουργήθηκε, αλλά η πρώτη αποστολή δεν ολοκληρώθηκε. Πάτησε «Νέα αποστολή» για νέο κωδικό.", true);
+      }
+    } catch (_error) {}
+  });
+})();

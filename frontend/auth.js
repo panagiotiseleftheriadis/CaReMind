@@ -63,6 +63,28 @@ class AuthService {
     // και να κάνουμε redirect στο dashboard αυτόματα.
     const currentPath = window.location.pathname.replace(/\/+$/, "") || "/";
     const isLoginPage = currentPath === "/login" || currentPath === "/login.html";
+    if (isLoginPage) {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("verified") === "1") {
+        const notice = document.getElementById("loginNotice");
+        let verifiedEmail = "";
+        let verificationResult = "verified";
+        try {
+          verifiedEmail = sessionStorage.getItem("caremindVerifiedEmail") || "";
+          verificationResult = sessionStorage.getItem("caremindVerificationResult") || "verified";
+          sessionStorage.removeItem("caremindVerifiedEmail");
+          sessionStorage.removeItem("caremindVerificationResult");
+        } catch (_error) {}
+        if (notice) {
+          notice.textContent = verificationResult === "already"
+            ? "Το email είναι ήδη επιβεβαιωμένο. Συνδέσου για να συνεχίσεις."
+            : "Το email επιβεβαιώθηκε. Συνδέσου για να ολοκληρώσεις την έναρξη.";
+          notice.hidden = false;
+        }
+        const usernameInput = document.getElementById("username");
+        if (usernameInput && verifiedEmail) usernameInput.value = verifiedEmail;
+      }
+    }
     if (isLoginPage && localStorage.getItem(EXPLICIT_LOGOUT_KEY) !== "1") {
         api.refreshToken().then(data => {
             if (data && data.accessToken) {
@@ -163,7 +185,7 @@ function getSafeNextDestination(rawValue) {
   }
 
   const normalized = value.replace(/^\/+/, "");
-  const match = normalized.match(/^(dashboard|vehicles|maintenance|costs|account|admin)(?:\.html)?((?:\?[^#]*)?(?:#.*)?)$/);
+  const match = normalized.match(/^(dashboard|vehicles|maintenance|costs|account|admin|onboarding)(?:\.html)?((?:\?[^#]*)?(?:#.*)?)$/);
   return match ? `/${match[1]}${match[2] || ""}` : null;
 }
 

@@ -113,7 +113,15 @@ class API {
 
   /* ------------ AUTH Methods ------------ */
 
+  endDemoBeforeRealAccountRequest() {
+    if (window.CaReMindDemo?.isActive?.()) {
+      window.CaReMindDemo.end();
+      this.removeToken();
+    }
+  }
+
   async login(username, password) {
+    this.endDemoBeforeRealAccountRequest();
     const response = await this.request("/login", {
       method: "POST",
       body: { username, password },
@@ -196,12 +204,30 @@ class API {
   async updateUserRole(id, role) { return this.request(`/users/${id}/role`, { method: "PATCH", body: { role } }); }
   async deleteUser(id) { return this.request(`/users/${id}`, { method: "DELETE" }); }
 
-  async register(data) { return this.request("/register", { method: "POST", body: data }); }
-  async verifyEmail(email, code) { return this.request("/verify-email", { method: "POST", body: { email, code } }); }
-  async resendVerification(email) { return this.request("/resend-verification", { method: "POST", body: { email } }); }
-  async forgotPassword(email) { return this.request("/forgot-password", { method: "POST", body: { email } }); }
-  async verifyResetCode(email, code) { return this.request("/verify-reset-code", { method: "POST", body: { email, code } }); }
-  async resetPassword(token, pass) { return this.request("/reset-password", { method: "POST", body: { resetToken: token, newPassword: pass } }); }
+  async register(data) {
+    this.endDemoBeforeRealAccountRequest();
+    return this.request("/register", { method: "POST", body: data });
+  }
+  async verifyEmail(email, code) {
+    this.endDemoBeforeRealAccountRequest();
+    return this.request("/verify-email", { method: "POST", body: { email, code } });
+  }
+  async resendVerification(email) {
+    this.endDemoBeforeRealAccountRequest();
+    return this.request("/resend-verification", { method: "POST", body: { email } });
+  }
+  async forgotPassword(email) {
+    this.endDemoBeforeRealAccountRequest();
+    return this.request("/forgot-password", { method: "POST", body: { email } });
+  }
+  async verifyResetCode(email, code) {
+    this.endDemoBeforeRealAccountRequest();
+    return this.request("/verify-reset-code", { method: "POST", body: { email, code } });
+  }
+  async resetPassword(token, pass) {
+    this.endDemoBeforeRealAccountRequest();
+    return this.request("/reset-password", { method: "POST", body: { resetToken: token, newPassword: pass } });
+  }
   
   async getAccountMe() { return this.request("/account/me", { method: "GET" }); }
   async sendAccountChangeCode() { return this.request("/account/send-code", { method: "POST" }); }
