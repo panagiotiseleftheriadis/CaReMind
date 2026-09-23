@@ -238,9 +238,16 @@ class API {
   async deleteRecipient(id) { return this.request(`/account/recipients/${id}`, { method: "DELETE" }); }
   
   // Οχήματα, Κόστη, Συντηρήσεις κλπ...
-  async getVehicles() { return this.request("/vehicles", { method: "GET" }); }
+  async getVehicles(state) {
+    const suffix = state ? `?state=${encodeURIComponent(state)}` : "";
+    return this.request(`/vehicles${suffix}`, { method: "GET" });
+  }
+  async getVehicle(id) { return this.request(`/vehicles/${id}`, { method: "GET" }); }
   async addVehicle(d) { return this.request("/vehicles", { method: "POST", body: d }); }
   async updateVehicle(id, d) { return this.request(`/vehicles/${id}`, { method: "PUT", body: d }); }
+  async patchVehicle(id, d) { return this.request(`/vehicles/${id}`, { method: "PATCH", body: d }); }
+  async archiveVehicle(id) { return this.request(`/vehicles/${id}/archive`, { method: "POST" }); }
+  async restoreVehicle(id) { return this.request(`/vehicles/${id}/restore`, { method: "POST" }); }
   async deleteVehicle(id) { return this.request(`/vehicles/${id}`, { method: "DELETE" }); }
   
   async getMaintenances() { return this.request("/maintenances", { method: "GET" }); }

@@ -115,6 +115,7 @@ The seed refuses to run in production and hashes the password with bcrypt.
 | `CRON_SECRET` | For reminders | Protects the maintenance cron endpoint |
 | `COOKIE_DOMAIN` | Production | Refresh-cookie domain |
 | `CORS_ORIGINS` | Optional | Additional comma-separated frontend origins |
+| `VEHICLE_ARCHIVE_ENABLED` | Optional, default off | P3a compatibility gate for archive/restore, active-list default and legacy DELETE protection |
 | `PORT`, `NODE_ENV` | Optional | Runtime configuration |
 
 See [`backend/.env.example`](backend/.env.example) for a complete template. Never commit `.env`.
@@ -334,7 +335,7 @@ All routes use the `/api` prefix. The complete machine-readable contract is avai
 | Area | Endpoints |
 | --- | --- |
 | Authentication | `POST /login`, `/refresh`, `/logout`, `/register`, `/verify-email`, `/resend-verification`, `/forgot-password`, `/verify-reset-code`, `/reset-password` |
-| Vehicles | `GET/POST /vehicles`, `PUT/DELETE /vehicles/{id}` |
+| Vehicles | `GET/POST /vehicles`, `GET/PUT/PATCH/DELETE /vehicles/{id}`, `POST /vehicles/{id}/archive`, `POST /vehicles/{id}/restore` |
 | Maintenance | `GET/POST /maintenances`, `PUT/DELETE /maintenances/{id}` |
 | Costs | `GET/POST /costs`, `PUT/DELETE /costs/{id}` |
 | Account | `GET /account/me`, account change-code flow, notification recipients |
@@ -346,7 +347,13 @@ All routes use the `/api` prefix. The complete machine-readable contract is avai
 
 Resend submission is successful only when its SDK returns no provider error. Returned provider errors and thrown/network failures are handled inside the email service; responses and logs do not include recipients, verification/reset codes, tokens or provider secrets. Newly stored security codes are removed when their email cannot be submitted. Registration keeps the newly created unverified account and returns `VERIFICATION_EMAIL_UNAVAILABLE`, directing the user to request a new code. Forgot-password and resend-verification responses remain account-enumeration neutral and do not claim that a message was sent.
 
-The reminder endpoint selects only active users' noncompleted maintenance with a non-null due date and notification offset whose exact `next_date - notification_days` is today. A zero-day offset therefore sends on the due date. Each reminder targets the normalized primary account email plus active extra email recipients, with duplicates removed within that reminder. Submission runs with at most four concurrent provider calls; one recipient failure does not stop unrelated recipients. The response reports `candidateReminders`, `recipientsAttempted`, `submitted`, `failed`, `skippedNoRecipients` and `recipientLookupFailures`. `submitted` means accepted by the provider, not delivered to an inbox.
+The reminder endpoint selects only active users' noncompleted maintenance on active (non-archived) vehicles with a non-null due date and notification offset whose exact `next_date - notification_days` is today. A zero-day offset therefore sends on the due date. Each reminder targets the normalized primary account email plus active extra email recipients, with duplicates removed within that reminder. Submission runs with at most four concurrent provider calls; one recipient failure does not stop unrelated recipients. The response reports `candidateReminders`, `recipientsAttempted`, `submitted`, `failed`, `skippedNoRecipients` and `recipientLookupFailures`. `submitted` means accepted by the provider, not delivered to an inbox.
+
+### P3a vehicle archive foundation
+
+Migration `003_vehicle_identity_archive.js` additively introduces nullable vehicle identity/purchase metadata, `archived_at`, and positive `revision`. It does not relax the required legacy chassis number and does not infer VIN, plate, make, country, fuel or purchase data. Vehicle detail and allowlisted PATCH are available without activating archive as the foundation for P3b.
+
+`VEHICLE_ARCHIVE_ENABLED` is false unless set exactly to `true`. While false, an omitted vehicle-list state retains the legacy `all` behavior and legacy `DELETE /vehicles/{id}` remains a physical cascade delete. Archive/restore return `VEHICLE_ARCHIVE_DISABLED`. After a separately coordinated activation, the omitted list default becomes `active`, archive/restore become available, and legacy vehicle DELETE returns `VEHICLE_ARCHIVE_REQUIRED` instead of destroying history. Explicit `state=active|archived|all` filters and archive-aware reminder exclusion are always available. Full administrator account deletion remains separate and continues to delete the complete owned graph. P3b Vehicle Detail/archive UI activation is still pending.
 
 No scheduler is configured in this repository. Configure an external scheduler manually to call `GET /api/cron/maintenance` with the exact `X-Cron-Secret` header. The endpoint fails closed when `CRON_SECRET` is missing. Current exact-date reminders have no durable delivery ledger: repeating the endpoint can submit duplicates, while missing a day's invocation can miss reminders. Do not configure automatic retries that assume idempotency; durable deduplication, retry and catch-up belong to the future notification-delivery phase.
 
@@ -370,7 +377,7 @@ The test suite covers login, refresh, logout, expired tokens, inactive users, ro
 - Security-sensitive POSTs use distributed Upstash Redis rate limits; Helmet adds browser security headers. Normal authenticated CRUD is not rate limited by this layer.
 - User-controlled frontend values are escaped before insertion into generated markup.
 - The cron route fails closed when `CRON_SECRET` is missing.
-- Reminder selection verifies user/vehicle ownership joins and excludes inactive users and completed maintenance.
+- Reminder selection verifies user/vehicle ownership joins and excludes inactive users, archived vehicles and completed maintenance.
 
 ## Technical decisions and challenges
 

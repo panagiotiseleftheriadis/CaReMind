@@ -3,6 +3,7 @@ const express = require("express");
 const router = express.Router();
 const db = require("../db");
 const { isPositiveId, requirePositiveId } = require("../validation");
+const { userOwnsVehicle } = require("../vehicle-ownership");
 
 router.param("id", requirePositiveId);
 
@@ -11,14 +12,6 @@ function isValidDate(value) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return false;
   const parsed = new Date(`${raw}T00:00:00.000Z`);
   return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === raw;
-}
-
-async function userOwnsVehicle(userId, vehicleId) {
-  const [rows] = await db.query(
-    "SELECT id FROM vehicles WHERE id = ? AND user_id = ? LIMIT 1",
-    [vehicleId, userId]
-  );
-  return rows.length > 0;
 }
 
 // GET /api/costs
@@ -60,7 +53,7 @@ router.post("/", async (req, res) => {
         .status(400)
         .json({ error: "Απαιτούνται όχημα, κατηγορία, ποσό και ημερομηνία" });
     }
-    if (!(await userOwnsVehicle(userId, vehicleId))) {
+    if (!(await userOwnsVehicle(db, userId, vehicleId))) {
       return res.status(404).json({ error: "Το όχημα δεν βρέθηκε" });
     }
     if (String(category).length > 100) {
@@ -126,7 +119,7 @@ router.put("/:id", async (req, res) => {
     ) {
       return res.status(400).json({ error: "Μη έγκυρα στοιχεία κόστους" });
     }
-    if (!(await userOwnsVehicle(userId, vehicleId))) {
+    if (!(await userOwnsVehicle(db, userId, vehicleId))) {
       return res.status(404).json({ error: "Το όχημα δεν βρέθηκε" });
     }
     if (

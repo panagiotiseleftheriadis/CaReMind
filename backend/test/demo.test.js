@@ -255,3 +255,48 @@ test("deleting a demo vehicle also removes its related maintenance and costs", a
   assert.equal((await api.request("/maintenances")).some((item) => item.vehicleId === vehicle.id), false);
   assert.equal((await api.request("/costs")).some((item) => item.vehicleId === vehicle.id), false);
 });
+
+test("Demo vehicle PATCH and archive/restore mirror gated revision and history semantics", async () => {
+  const { api } = createDemoApi();
+  api.start();
+  const vehicle = await api.request("/vehicles", {
+    method: "POST",
+    body: { vehicleType: "car", chassisNumber: "ARCHIVE-DEMO", currentMileage: 10 },
+  });
+  const maintenance = await api.request("/maintenances", {
+    method: "POST",
+    body: { vehicleId: vehicle.id, maintenanceType: "service", nextDate: new Date().toISOString().slice(0, 10), status: "pending" },
+  });
+  const cost = await api.request("/costs", {
+    method: "POST",
+    body: { vehicleId: vehicle.id, category: "service", amount: 10 },
+  });
+
+  const patched = await api.request(`/vehicles/${vehicle.id}`, { method: "PATCH", body: { make: "Toyota", registrationCountry: "gr" } });
+  assert.equal(patched.revision, 2);
+  assert.equal(patched.registrationCountry, "GR");
+  await assert.rejects(api.request(`/vehicles/${vehicle.id}`, { method: "PATCH", body: { user_id: 5 } }), (error) => error.code === "UNSUPPORTED_VEHICLE_FIELD");
+  await assert.rejects(api.request(`/vehicles/${vehicle.id}/archive`, { method: "POST" }), (error) => error.code === "VEHICLE_ARCHIVE_DISABLED");
+
+  api.setVehicleArchiveEnabled(true);
+  const archived = await api.request(`/vehicles/${vehicle.id}/archive`, { method: "POST" });
+  const repeatedArchive = await api.request(`/vehicles/${vehicle.id}/archive`, { method: "POST" });
+  assert.equal(archived.revision, 3);
+  assert.equal(repeatedArchive.revision, 3);
+  assert.equal(repeatedArchive.archivedAt, archived.archivedAt);
+  assert.equal((await api.request("/vehicles")).some((item) => item.id === vehicle.id), false);
+  assert.equal((await api.request("/vehicles?state=archived")).some((item) => item.id === vehicle.id), true);
+  assert.equal((await api.request("/vehicles?state=all")).some((item) => item.id === vehicle.id), true);
+  assert.equal((await api.request("/notifications")).some((item) => item.id === maintenance.id), false);
+  assert.ok((await api.request("/maintenances")).some((item) => item.id === maintenance.id));
+  assert.ok((await api.request("/costs")).some((item) => item.id === cost.id));
+  await assert.rejects(api.request(`/vehicles/${vehicle.id}`, { method: "DELETE" }), (error) => error.code === "VEHICLE_ARCHIVE_REQUIRED");
+
+  const restored = await api.request(`/vehicles/${vehicle.id}/restore`, { method: "POST" });
+  const repeatedRestore = await api.request(`/vehicles/${vehicle.id}/restore`, { method: "POST" });
+  assert.equal(restored.revision, 4);
+  assert.equal(repeatedRestore.revision, 4);
+  assert.equal(repeatedRestore.archivedAt, null);
+  assert.equal((await api.request("/vehicles")).some((item) => item.id === vehicle.id), true);
+  await assert.rejects(api.request("/vehicles?state=invalid"), (error) => error.code === "INVALID_VEHICLE_STATE");
+});

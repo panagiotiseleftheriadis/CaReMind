@@ -13,7 +13,7 @@ const { REMINDER_CANDIDATE_SQL } = require("../routes/cron");
 // Validate before constructing any client. Only the shell's explicit test URL is read.
 const config = testDatabaseConfig();
 const source = path.resolve(__dirname, "../migrations");
-const expected = ["001_initial_schema.js", "002_align_legacy_schema.js"];
+const expected = ["001_initial_schema.js", "002_align_legacy_schema.js", "003_vehicle_identity_archive.js"];
 const logger = { log() {} };
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 async function waitFor(probe, description) {
@@ -73,7 +73,7 @@ test("real PostgreSQL migration guarantees", { timeout: 110_000 }, async (t) => 
   }
   const fresh = await database();
   let ledger;
-  await t.test("fresh database applies exactly 001/002 and all expected tables", async () => {
+  await t.test("fresh database applies exactly 001/002/003 and all expected tables", async () => {
     await migrate({ env: fresh.env, logger });
     ledger = (await fresh.client.query("SELECT name, checksum, executed_at FROM schema_migrations ORDER BY name")).rows;
     assert.deepEqual(ledger.map((row) => row.name), expected);
@@ -83,10 +83,10 @@ test("real PostgreSQL migration guarantees", { timeout: 110_000 }, async (t) => 
     await fresh.client.query("INSERT INTO companies(name) VALUES ('preserve-me')");
     await noRunnerSessions(fresh.name);
   });
-  await t.test("second run skips both migrations and preserves ledger/data", async () => {
+  await t.test("second run skips every migration and preserves ledger/data", async () => {
     const messages = [];
     await migrate({ env: fresh.env, logger: { log: (message) => messages.push(message) } });
-    assert.equal(messages.filter((message) => message.startsWith("skip ")).length, 2);
+    assert.equal(messages.filter((message) => message.startsWith("skip ")).length, 3);
     assert.equal(messages.filter((message) => message.startsWith("run ")).length, 0);
     assert.deepEqual((await fresh.client.query("SELECT name, checksum, executed_at FROM schema_migrations ORDER BY name")).rows, ledger);
     assert.equal((await fresh.client.query("SELECT name FROM companies")).rows[0].name, "preserve-me");
@@ -115,6 +115,33 @@ test("real PostgreSQL migration guarantees", { timeout: 110_000 }, async (t) => 
     assert.deepEqual((await fresh.client.query("SELECT name, checksum, executed_at FROM schema_migrations ORDER BY name")).rows, ledger);
     await noRunnerSessions(fresh.name);
     await migrate({ env: fresh.env, logger });
+  });
+  await t.test("a failure after copied 003 work rolls back every 003 schema change", async () => {
+    const target = await database();
+    const directory = await fixture("rollback-003");
+    await fs.appendFile(path.join(directory, expected[2]), `
+const originalUpForRollbackTest = module.exports.up;
+module.exports.up = async (db) => {
+  await originalUpForRollbackTest(db);
+  await db.query("SELECT 1/0");
+};
+`);
+    await assert.rejects(migrate({ env: target.env, directory, logger }), /division by zero/);
+    assert.deepEqual(
+      (await target.client.query("SELECT name FROM schema_migrations ORDER BY name")).rows.map((row) => row.name),
+      expected.slice(0, 2)
+    );
+    const columns = (await target.client.query(`SELECT column_name FROM information_schema.columns
+      WHERE table_schema='public' AND table_name='vehicles'`)).rows.map((row) => row.column_name);
+    for (const column of ["registration_plate", "registration_country", "make", "vin", "fuel_type", "purchase_date", "purchase_amount", "currency", "archived_at", "revision"]) {
+      assert.equal(columns.includes(column), false, column);
+    }
+    assert.equal((await target.client.query("SELECT to_regclass('idx_vehicles_user_active') AS index")).rows[0].index, null);
+    assert.deepEqual(
+      (await target.client.query("SELECT conname FROM pg_constraint WHERE conrelid='vehicles'::regclass AND conname LIKE 'chk_vehicles_%' ORDER BY conname")).rows.map((row) => row.conname),
+      ["chk_vehicles_mileage"]
+    );
+    await noRunnerSessions(target.name);
   });
   await t.test("two real runners serialize and execute on the session owning the lock", async () => {
     const target = await database();
@@ -154,6 +181,88 @@ test("real PostgreSQL migration guarantees", { timeout: 110_000 }, async (t) => 
   assert.deepEqual(await hashes(), originalHashes);
   await t.test("atomic security writes on disposable PostgreSQL", async (securityTest) => {
     await require("./security-writes")(securityTest, { ...config, database: fresh.name }, fresh.client, waitFor);
+  });
+  await t.test("003 preserves populated legacy vehicles and adds only nullable identity/archive state plus revision", async () => {
+    const target = await database();
+    const before003 = await fixture("legacy-before-003");
+    await fs.rm(path.join(before003, expected[2]));
+    await migrate({ env: target.env, directory: before003, logger });
+    const userId = (await target.client.query(
+      "INSERT INTO users(username,password,email) VALUES ('legacy-003','test','legacy-003@example.test') RETURNING id"
+    )).rows[0].id;
+    const vehicleId = (await target.client.query(
+      "INSERT INTO vehicles(user_id,vehicle_type,chassis_number,model,year,current_mileage) VALUES ($1,'car','LEGACY-003','Legacy',2018,123456) RETURNING id",
+      [userId]
+    )).rows[0].id;
+    const maintenanceId = (await target.client.query(
+      "INSERT INTO maintenances(user_id,vehicle_id,maintenance_type,status) VALUES ($1,$2,'service','pending') RETURNING id",
+      [userId, vehicleId]
+    )).rows[0].id;
+    const costId = (await target.client.query(
+      "INSERT INTO costs(user_id,vehicle_id,category,amount,cost_date) VALUES ($1,$2,'service',25.50,CURRENT_DATE) RETURNING id",
+      [userId, vehicleId]
+    )).rows[0].id;
+    const countsBefore = (await target.client.query(`SELECT
+      (SELECT count(*)::int FROM vehicles) AS vehicles,
+      (SELECT count(*)::int FROM maintenances) AS maintenances,
+      (SELECT count(*)::int FROM costs) AS costs`)).rows[0];
+
+    await migrate({ env: target.env, logger });
+    assert.deepEqual((await target.client.query(`SELECT
+      (SELECT count(*)::int FROM vehicles) AS vehicles,
+      (SELECT count(*)::int FROM maintenances) AS maintenances,
+      (SELECT count(*)::int FROM costs) AS costs`)).rows[0], countsBefore);
+    const vehicle = (await target.client.query("SELECT * FROM vehicles WHERE id=$1", [vehicleId])).rows[0];
+    assert.equal(Number(vehicle.id), Number(vehicleId));
+    assert.equal(Number(vehicle.user_id), Number(userId));
+    assert.equal(vehicle.chassis_number, "LEGACY-003");
+    assert.equal(vehicle.vehicle_type, "car");
+    assert.equal(vehicle.model, "Legacy");
+    assert.equal(vehicle.year, 2018);
+    assert.equal(vehicle.current_mileage, 123456);
+    for (const column of ["registration_plate", "registration_country", "make", "vin", "fuel_type", "purchase_date", "purchase_amount", "currency", "archived_at"]) assert.equal(vehicle[column], null, column);
+    assert.equal(vehicle.revision, 1);
+    assert.deepEqual((await target.client.query("SELECT id,vehicle_id FROM maintenances WHERE id=$1", [maintenanceId])).rows.map((row) => [Number(row.id), Number(row.vehicle_id)]), [[Number(maintenanceId), Number(vehicleId)]]);
+    assert.deepEqual((await target.client.query("SELECT id,vehicle_id FROM costs WHERE id=$1", [costId])).rows.map((row) => [Number(row.id), Number(row.vehicle_id)]), [[Number(costId), Number(vehicleId)]]);
+
+    const columns = (await target.client.query(`SELECT column_name,data_type,is_nullable,column_default
+      FROM information_schema.columns WHERE table_schema='public' AND table_name='vehicles'`)).rows;
+    const byName = Object.fromEntries(columns.map((column) => [column.column_name, column]));
+    assert.match(byName.revision.column_default, /^1$/);
+    assert.equal(byName.revision.is_nullable, "NO");
+    assert.equal(byName.archived_at.data_type, "timestamp with time zone");
+    assert.equal(byName.purchase_amount.data_type, "numeric");
+    const indexes = (await target.client.query("SELECT indexname,indexdef FROM pg_indexes WHERE schemaname='public' AND tablename='vehicles'")).rows;
+    assert.ok(indexes.some((index) => index.indexname === "idx_vehicles_user_active" && /WHERE \(archived_at IS NULL\)/.test(index.indexdef)));
+    assert.equal(indexes.some((index) => index.indexname === "uq_vehicles_id_user"), false);
+    const constraints = (await target.client.query("SELECT conname,convalidated FROM pg_constraint WHERE conrelid='vehicles'::regclass")).rows;
+    for (const name of ["chk_vehicles_purchase_amount", "chk_vehicles_registration_country", "chk_vehicles_currency", "chk_vehicles_revision", "uq_vehicles_user_chassis"]) assert.equal(constraints.find((item) => item.conname === name)?.convalidated, true, name);
+
+    await target.client.query("UPDATE vehicles SET registration_country=NULL,currency=NULL WHERE id=$1", [vehicleId]);
+    await target.client.query("UPDATE vehicles SET registration_country='GR',currency='EUR',purchase_amount=0,revision=1 WHERE id=$1", [vehicleId]);
+    await target.client.query("UPDATE vehicles SET purchase_amount=123.45 WHERE id=$1", [vehicleId]);
+    for (const invalid of ["gr", "G", "GRC"]) {
+      await assert.rejects(target.client.query("UPDATE vehicles SET registration_country=$2 WHERE id=$1", [vehicleId, invalid]), (error) => error.code === "23514" || error.code === "22001");
+    }
+    for (const invalid of ["eur", "EU", "EURO"]) {
+      await assert.rejects(target.client.query("UPDATE vehicles SET currency=$2 WHERE id=$1", [vehicleId, invalid]), (error) => error.code === "23514" || error.code === "22001");
+    }
+    await assert.rejects(target.client.query("UPDATE vehicles SET purchase_amount=-0.01 WHERE id=$1", [vehicleId]), (error) => error.code === "23514");
+    await assert.rejects(target.client.query("UPDATE vehicles SET revision=0 WHERE id=$1", [vehicleId]), (error) => error.code === "23514");
+    await assert.rejects(target.client.query("UPDATE vehicles SET revision=-1 WHERE id=$1", [vehicleId]), (error) => error.code === "23514");
+
+    const oldWriterId = (await target.client.query(
+      "INSERT INTO vehicles(user_id,vehicle_type,chassis_number,current_mileage) VALUES ($1,'car','OLD-WRITER-003',0) RETURNING id",
+      [userId]
+    )).rows[0].id;
+    await target.client.query("UPDATE vehicles SET model='Old writer still works' WHERE id=$1", [oldWriterId]);
+    assert.deepEqual((await target.client.query("SELECT model,revision,archived_at FROM vehicles WHERE id=$1", [oldWriterId])).rows[0], { model: "Old writer still works", revision: 1, archived_at: null });
+
+    const firstLedger = (await target.client.query("SELECT name,executed_at FROM schema_migrations WHERE name=$1", [expected[2]])).rows;
+    assert.equal(firstLedger.length, 1);
+    await migrate({ env: target.env, logger });
+    assert.deepEqual((await target.client.query("SELECT name,executed_at FROM schema_migrations WHERE name=$1", [expected[2]])).rows, firstLedger);
+    await noRunnerSessions(target.name);
   });
   await t.test("P0D reminder candidates enforce date, status, active-user and ownership rules", async () => {
     await fresh.client.query("BEGIN");
@@ -203,5 +312,35 @@ test("real PostgreSQL migration guarantees", { timeout: 110_000 }, async (t) => 
     } finally {
       await fresh.client.query("ROLLBACK");
     }
+  });
+  await t.test("full user deletion still cascades active and archived vehicle history", async () => {
+    const suffix = crypto.randomBytes(6).toString("hex");
+    const userId = (await fresh.client.query(
+      "INSERT INTO users(username,password,email) VALUES ($1,'test',$2) RETURNING id",
+      [`delete-${suffix}`, `delete-${suffix}@example.test`]
+    )).rows[0].id;
+    const activeVehicle = (await fresh.client.query(
+      "INSERT INTO vehicles(user_id,vehicle_type,chassis_number) VALUES ($1,'car',$2) RETURNING id",
+      [userId, `DELETE-ACTIVE-${suffix}`]
+    )).rows[0].id;
+    const archivedVehicle = (await fresh.client.query(
+      "INSERT INTO vehicles(user_id,vehicle_type,chassis_number,archived_at) VALUES ($1,'car',$2,clock_timestamp()) RETURNING id",
+      [userId, `DELETE-ARCHIVED-${suffix}`]
+    )).rows[0].id;
+    await fresh.client.query(
+      "INSERT INTO maintenances(user_id,vehicle_id,maintenance_type) VALUES ($1,$2,'active-history'),($1,$3,'archived-history')",
+      [userId, activeVehicle, archivedVehicle]
+    );
+    await fresh.client.query(
+      "INSERT INTO costs(user_id,vehicle_id,category,amount,cost_date) VALUES ($1,$2,'active-history',1,CURRENT_DATE),($1,$3,'archived-history',1,CURRENT_DATE)",
+      [userId, activeVehicle, archivedVehicle]
+    );
+    await fresh.client.query("DELETE FROM users WHERE id=$1", [userId]);
+    assert.equal((await fresh.client.query("SELECT count(*)::int AS count FROM vehicles WHERE user_id=$1", [userId])).rows[0].count, 0);
+    assert.equal((await fresh.client.query("SELECT count(*)::int AS count FROM maintenances WHERE user_id=$1", [userId])).rows[0].count, 0);
+    assert.equal((await fresh.client.query("SELECT count(*)::int AS count FROM costs WHERE user_id=$1", [userId])).rows[0].count, 0);
+  });
+  await t.test("P3a vehicle domain uses owner-scoped detail, PATCH, archive/restore and preserved history", async (vehicleTest) => {
+    await require("./vehicle-domain")(vehicleTest, { ...config, database: fresh.name }, fresh.client);
   });
 });

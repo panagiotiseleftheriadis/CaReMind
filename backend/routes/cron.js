@@ -23,6 +23,7 @@ const REMINDER_CANDIDATE_SQL = `
       JOIN vehicles v ON v.id = m.vehicle_id AND v.user_id = m.user_id
       WHERE
         u.is_active = 1
+        AND v.archived_at IS NULL
         AND m.status <> 'completed'
         AND m.next_date IS NOT NULL
         AND m.notification_days IS NOT NULL

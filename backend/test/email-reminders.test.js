@@ -12,6 +12,7 @@ const sendMail = require("../emailService");
 const cronRouter = require("../routes/cron");
 const authRouter = require("../routes/auth");
 const accountRouter = require("../routes/account");
+const { NOTIFICATION_QUERY_SQL } = require("../routes/notifications");
 
 const originalQuery = db.query;
 const originalGetConnection = db.getConnection;
@@ -306,6 +307,7 @@ test("cron selects only active, noncompleted, dated reminders and preserves zero
   assert.equal(result.status, 200);
   assert.match(candidateSql, /v.id = m.vehicle_id AND v.user_id = m.user_id/);
   assert.match(candidateSql, /u.is_active = 1/);
+  assert.match(candidateSql, /v.archived_at IS NULL/);
   assert.match(candidateSql, /m.status <> 'completed'/);
   assert.match(candidateSql, /m.next_date IS NOT NULL/);
   assert.match(candidateSql, /m.notification_days IS NOT NULL/);
@@ -325,6 +327,12 @@ test("cron selects only active, noncompleted, dated reminders and preserves zero
     "primary@example.test",
     "primary@example.test",
   ]);
+});
+
+test("authenticated notification projection excludes archived vehicles", () => {
+  assert.match(NOTIFICATION_QUERY_SQL, /v\.id = m\.vehicle_id AND v\.user_id = m\.user_id/);
+  assert.match(NOTIFICATION_QUERY_SQL, /v\.archived_at IS NULL/);
+  assert.match(NOTIFICATION_QUERY_SQL, /m\.status <> 'completed'/);
 });
 
 test("cron uses bounded concurrency for an arbitrary recipient batch", async (t) => {

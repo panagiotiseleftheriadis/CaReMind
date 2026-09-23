@@ -9,6 +9,8 @@ process.env.CORS_ORIGINS = "http://localhost:4173";
 
 const db = require("../db");
 const app = require("../server");
+const { normalizePatch } = require("../routes/vehicles");
+const { isVehicleArchiveEnabled } = require("../vehicle-archive-capability");
 
 const activeUser = {
   id: 1,
@@ -23,6 +25,16 @@ const activeUser = {
 let server;
 let baseUrl;
 let queryHandler;
+
+test("vehicle archive capability parsing is strict and fail-closed", () => {
+  assert.equal(isVehicleArchiveEnabled({}), false);
+  assert.equal(isVehicleArchiveEnabled({ VEHICLE_ARCHIVE_ENABLED: "" }), false);
+  assert.equal(isVehicleArchiveEnabled({ VEHICLE_ARCHIVE_ENABLED: "false" }), false);
+  assert.equal(isVehicleArchiveEnabled({ VEHICLE_ARCHIVE_ENABLED: "true" }), true);
+  for (const value of ["TRUE", "True", "1", "yes", " true ", true]) {
+    assert.equal(isVehicleArchiveEnabled({ VEHICLE_ARCHIVE_ENABLED: value }), false, String(value));
+  }
+});
 
 function tokenFor(user = activeUser, options = { expiresIn: "15m" }) {
   return jwt.sign(
@@ -76,6 +88,7 @@ before(async () => {
 
 beforeEach(() => {
   app.locals.rateLimitStore.clear();
+  delete process.env.VEHICLE_ARCHIVE_ENABLED;
   queryHandler = async () => {
     throw new Error("Unexpected database query");
   };
@@ -610,4 +623,109 @@ test("a user cannot attach costs or maintenance to another user's vehicle", asyn
     body: { vehicleId: 999, maintenanceType: "service" },
   });
   assert.equal(maintenance.response.status, 404);
+});
+
+test("vehicle detail and archive-state lists remain owner scoped", async () => {
+  const seen = [];
+  queryHandler = async (sql, params) => {
+    const normalized = String(sql).replace(/\s+/g, " ");
+    if (normalized.includes("SELECT id, username, email, role, is_active")) return [[{ ...activeUser, id: Number(params[0]), username: `user-${params[0]}` }], []];
+    seen.push(normalized);
+    if (normalized.includes("FROM vehicles v") && normalized.includes("WHERE v.id = ? AND v.user_id = ?")) {
+      return [Number(params[1]) === 1 ? [{ id: Number(params[0]), state: "archived", archivedAt: "2026-09-23T00:00:00.000Z", revision: 2 }] : [], []];
+    }
+    if (normalized.includes("FROM vehicles v") && normalized.includes("ORDER BY v.id DESC")) return [[{ id: 7 }], []];
+    throw new Error(`Unexpected vehicle detail/list query: ${sql}`);
+  };
+
+  assert.equal((await request("/api/vehicles/7", { token: tokenFor() })).response.status, 200);
+  assert.equal((await request("/api/vehicles/7", { token: tokenFor({ ...activeUser, id: 2, username: "other" }) })).response.status, 404);
+  assert.equal((await request("/api/vehicles?state=active", { token: tokenFor() })).response.status, 200);
+  assert.match(seen.at(-1), /v\.archived_at IS NULL/);
+  assert.equal((await request("/api/vehicles?state=archived", { token: tokenFor() })).response.status, 200);
+  assert.match(seen.at(-1), /v\.archived_at IS NOT NULL/);
+  assert.equal((await request("/api/vehicles?state=all", { token: tokenFor() })).response.status, 200);
+  assert.doesNotMatch(seen.at(-1), /WHERE v\.user_id = \? AND v\.archived_at/);
+  assert.equal((await request("/api/vehicles?state=invalid", { token: tokenFor() })).response.status, 400);
+});
+
+test("vehicle PATCH allowlist validates input and increments revision in one owner-scoped transaction", async () => {
+  assert.deepEqual(normalizePatch({ make: null }), [{ column: "make", value: null }]);
+  assert.throws(() => normalizePatch({ make: "" }), (error) => error.body.code === "INVALID_VEHICLE_FIELD");
+  let revision = 1;
+  let make = null;
+  queryHandler = authenticatedHandler(async (sql, params) => {
+    const normalized = String(sql).replace(/\s+/g, " ");
+    if (normalized === "SELECT id FROM users WHERE id = ? FOR UPDATE") return [[{ id: 1 }], []];
+    if (normalized.includes("SELECT id, user_id, archived_at AS archivedAt, revision") && normalized.includes("FOR UPDATE")) return [[{ id: 7, user_id: 1, archivedAt: null, revision }], []];
+    if (normalized.startsWith("UPDATE vehicles SET make = ?")) {
+      make = params[0];
+      revision++;
+      return [{ affectedRows: 1 }, []];
+    }
+    if (normalized.includes("FROM vehicles v") && normalized.includes("WHERE v.id = ? AND v.user_id = ?")) return [[{ id: 7, make, revision, state: "active", archivedAt: null }], []];
+    throw new Error(`Unexpected vehicle PATCH query: ${sql}`);
+  });
+
+  const patched = await request("/api/vehicles/7", { method: "PATCH", token: tokenFor(), body: { make: "Toyota" } });
+  assert.equal(patched.response.status, 200);
+  assert.equal(patched.body.make, "Toyota");
+  assert.equal(patched.body.revision, 2);
+  assert.equal((await request("/api/vehicles/7", { method: "PATCH", token: tokenFor(), body: { user_id: 99 } })).body.code, "UNSUPPORTED_VEHICLE_FIELD");
+  assert.equal((await request("/api/vehicles/7", { method: "PATCH", token: tokenFor(), body: { currentMileage: -1 } })).body.code, "INVALID_VEHICLE_FIELD");
+
+  queryHandler = authenticatedHandler(async (sql) => {
+    if (String(sql).includes("SELECT id FROM users")) return [[{ id: 1 }], []];
+    if (String(sql).includes("FROM vehicles") && String(sql).includes("FOR UPDATE")) return [[], []];
+    throw new Error("Cross-user PATCH must stop after the owned lookup");
+  });
+  assert.equal((await request("/api/vehicles/7", { method: "PATCH", token: tokenFor(), body: { make: "Nope" } })).response.status, 404);
+});
+
+test("archive capability gates transitions and protects legacy DELETE after activation", async () => {
+  queryHandler = authenticatedHandler(async () => {
+    throw new Error("A disabled archive or guarded DELETE must not query vehicle state");
+  });
+  assert.equal((await request("/api/vehicles/7/archive", { method: "POST", token: tokenFor() })).body.code, "VEHICLE_ARCHIVE_DISABLED");
+  assert.equal((await request("/api/vehicles/7/restore", { method: "POST", token: tokenFor() })).body.code, "VEHICLE_ARCHIVE_DISABLED");
+  process.env.VEHICLE_ARCHIVE_ENABLED = "true";
+  assert.equal((await request("/api/vehicles/7", { method: "DELETE", token: tokenFor() })).body.code, "VEHICLE_ARCHIVE_REQUIRED");
+
+  let archivedAt = null;
+  let revision = 1;
+  queryHandler = authenticatedHandler(async (sql) => {
+    const normalized = String(sql).replace(/\s+/g, " ");
+    if (normalized === "SELECT id FROM users WHERE id = ? FOR UPDATE") return [[{ id: 1 }], []];
+    if (normalized.includes("FROM vehicles") && normalized.includes("FOR UPDATE")) return [[{ id: 7, user_id: 1, archivedAt, revision }], []];
+    if (normalized.includes("SET archived_at = clock_timestamp()")) {
+      archivedAt = "2026-09-23T10:00:00.000Z";
+      revision++;
+      return [{ affectedRows: 1 }, []];
+    }
+    if (normalized.includes("SET archived_at = NULL")) {
+      archivedAt = null;
+      revision++;
+      return [{ affectedRows: 1 }, []];
+    }
+    if (normalized.includes("FROM vehicles v")) return [[{ id: 7, archivedAt, state: archivedAt ? "archived" : "active", revision }], []];
+    throw new Error(`Unexpected archive query: ${sql}`);
+  });
+
+  const archived = await request("/api/vehicles/7/archive", { method: "POST", token: tokenFor() });
+  assert.equal(archived.body.revision, 2);
+  const repeatedArchive = await request("/api/vehicles/7/archive", { method: "POST", token: tokenFor() });
+  assert.equal(repeatedArchive.body.revision, 2);
+  assert.equal(repeatedArchive.body.archivedAt, archived.body.archivedAt);
+  const restored = await request("/api/vehicles/7/restore", { method: "POST", token: tokenFor() });
+  assert.equal(restored.body.revision, 3);
+  const repeatedRestore = await request("/api/vehicles/7/restore", { method: "POST", token: tokenFor() });
+  assert.equal(repeatedRestore.body.revision, 3);
+
+  queryHandler = authenticatedHandler(async (sql) => {
+    if (String(sql).includes("SELECT id FROM users")) return [[{ id: 1 }], []];
+    if (String(sql).includes("FROM vehicles") && String(sql).includes("FOR UPDATE")) return [[], []];
+    throw new Error("Cross-user archive/restore must stop after the owned lookup");
+  });
+  assert.equal((await request("/api/vehicles/7/archive", { method: "POST", token: tokenFor() })).response.status, 404);
+  assert.equal((await request("/api/vehicles/7/restore", { method: "POST", token: tokenFor() })).response.status, 404);
 });
