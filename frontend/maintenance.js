@@ -6,6 +6,8 @@ class MaintenanceManager {
   constructor() {
     // API instance από το api.js
     this.api = window.api || null;
+    const requestedVehicle = new URLSearchParams(window.location.search).get("vehicleId");
+    this.vehicleId = /^\d+$/.test(requestedVehicle || "") && Number(requestedVehicle) > 0 ? Number(requestedVehicle) : null;
 
     // Δεδομένα από backend
     this.maintenance = [];
@@ -66,6 +68,9 @@ class MaintenanceManager {
       }
 
       this.vehicles = list;
+      if (this.vehicleId && !this.vehicles.some((vehicle) => Number(vehicle.id) === this.vehicleId)) {
+        this.vehicles.push(await this.api.getVehicle(this.vehicleId));
+      }
     } catch (error) {
       console.error("❌ Σφάλμα φόρτωσης vehicles από backend:", error);
       this.showNotification(
@@ -86,7 +91,7 @@ class MaintenanceManager {
         return;
       }
 
-      const data = await this.api.getMaintenances();
+      const data = await this.api.getMaintenances(this.vehicleId);
       let list = [];
 
       if (Array.isArray(data)) {
@@ -140,6 +145,7 @@ class MaintenanceManager {
         option.textContent = `${vehicle.vehicleType} - ${vehicle.model} (${vehicle.chassisNumber})`;
         select.appendChild(option);
       });
+      if (isFilter && this.vehicleId) select.value = String(this.vehicleId);
     });
   }
 
@@ -580,11 +586,11 @@ class MaintenanceManager {
   }
 
   getStatusLabel(status) {
-    return window.CaReMindMaintenanceLabels.status(status);
+    return window.CaReMindRecordLabels.status(status);
   }
 
   getMaintenanceTypeLabel(type) {
-    return window.CaReMindMaintenanceLabels.type(type);
+    return window.CaReMindRecordLabels.type(type);
   }
 
   saveMaintenance() {

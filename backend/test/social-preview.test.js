@@ -30,7 +30,7 @@ test("homepage exposes a valid 1200x630 social sharing preview", () => {
   const imagePath = path.join(frontendDirectory, "assets", "caremind-social-preview-v4.jpg");
   const image = fs.readFileSync(imagePath);
 
-  assert.match(html, /property="og:title" content="CaReMind · Mind your Car\."/);
+  assert.match(html, /property="og:title" content="CaReMind — Το ψηφιακό ιστορικό του οχήματός σου"/);
   assert.match(html, /property="og:image:width" content="1200"/);
   assert.match(html, /property="og:image:height" content="630"/);
   assert.match(html, /name="twitter:card" content="summary_large_image"/);

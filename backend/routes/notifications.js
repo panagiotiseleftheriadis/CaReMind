@@ -1,13 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const db = require("../db");
-
-// GET /api/notifications
-// Only upcoming or overdue reminders owned by the authenticated user.
-router.get("/", async (req, res) => {
-  try {
-    const [rows] = await db.query(
-      `SELECT
+const NOTIFICATION_QUERY_SQL = `SELECT
          m.id,
          m.maintenance_type AS maintenanceType,
          m.next_date AS dueDate,
@@ -17,13 +11,18 @@ router.get("/", async (req, res) => {
        FROM maintenances m
        JOIN vehicles v ON v.id = m.vehicle_id AND v.user_id = m.user_id
        WHERE m.user_id = ?
+         AND v.archived_at IS NULL
          AND m.next_date IS NOT NULL
          AND m.status <> 'completed'
          AND m.next_date - CURRENT_DATE <= COALESCE(m.notification_days, 7)
        ORDER BY m.next_date ASC
-       LIMIT 50`,
-      [req.user.id]
-    );
+       LIMIT 50`;
+
+// GET /api/notifications
+// Only upcoming or overdue reminders owned by the authenticated user.
+router.get("/", async (req, res) => {
+  try {
+    const [rows] = await db.query(NOTIFICATION_QUERY_SQL, [req.user.id]);
 
     return res.json(
       rows.map((row) => {
@@ -50,3 +49,4 @@ router.get("/", async (req, res) => {
 });
 
 module.exports = router;
+module.exports.NOTIFICATION_QUERY_SQL = NOTIFICATION_QUERY_SQL;

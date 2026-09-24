@@ -1,22 +1,31 @@
-require("dotenv").config();
-
 const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
-const db = require("../db");
+const { Client } = require("pg");
+const { runQuery } = require("../postgres-query");
+const { migrationConfig } = require("./migration-config");
 
 const migrationsDirectory = path.join(__dirname, "..", "migrations");
 
-async function migrate() {
-  if (!process.env.DATABASE_URL) {
-    throw new Error("DATABASE_URL is required for PostgreSQL migrations");
-  }
-
-  const connection = await db.getConnection();
+async function migrate({ env = process.env, directory = migrationsDirectory, logger = console } = {}) {
+  const client = new Client(migrationConfig(env));
+  // Idle socket errors must flow through normal teardown instead of becoming
+  // unhandled EventEmitter errors while a migration awaits non-query work.
+  let sessionError;
+  client.on("error", (error) => { sessionError = error; });
+  const connection = {
+    query: (sql, params) => runQuery(client, sql, params),
+    beginTransaction: () => client.query("BEGIN"),
+    commit: () => client.query("COMMIT"),
+    rollback: () => client.query("ROLLBACK"),
+  };
+  let locked = false;
 
   try {
+    await client.connect();
     // Prevent two serverless deployments from applying the same migration concurrently.
     await connection.query("SELECT pg_advisory_lock(hashtext('caremind_migrations'))");
+    locked = true;
 
     await connection.query(`
       CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -28,12 +37,12 @@ async function migrate() {
     `);
 
     const files = fs
-      .readdirSync(migrationsDirectory)
+      .readdirSync(directory)
       .filter((file) => /^\d+.*\.js$/.test(file))
       .sort();
 
     for (const file of files) {
-      const fullPath = path.join(migrationsDirectory, file);
+      const fullPath = path.resolve(directory, file);
       const checksum = crypto
         .createHash("sha256")
         .update(fs.readFileSync(fullPath))
@@ -47,7 +56,7 @@ async function migrate() {
         if (rows[0].checksum !== checksum) {
           throw new Error(`Applied migration was modified: ${file}`);
         }
-        console.log(`skip ${file}`);
+        logger.log(`skip ${file}`);
         continue;
       }
 
@@ -56,10 +65,11 @@ async function migrate() {
         throw new Error(`Migration ${file} does not export an up() function`);
       }
 
-      console.log(`run  ${file}`);
+      logger.log(`run  ${file}`);
       await connection.beginTransaction();
       try {
         await migration.up(connection);
+        if (sessionError) throw sessionError;
         await connection.query(
           "INSERT INTO schema_migrations (name, checksum) VALUES (?, ?)",
           [file, checksum]
@@ -71,22 +81,26 @@ async function migrate() {
       }
     }
 
-    console.log("Database migrations are up to date.");
+    logger.log("Database migrations are up to date.");
   } finally {
-    await connection
-      .query("SELECT pg_advisory_unlock(hashtext('caremind_migrations'))")
-      .catch(() => {});
-    connection.release();
+    try {
+      if (locked) await client.query("SELECT pg_advisory_unlock(hashtext('caremind_migrations'))");
+    } finally {
+      // Closing the dedicated session also releases locks after any failure.
+      await client.end();
+    }
   }
 }
 
 if (require.main === module) {
+  require("dotenv").config({ quiet: true });
   migrate()
     .catch((error) => {
-      console.error("Migration failed:", error.message);
+      // Driver errors can contain endpoint/user details; keep CLI output sanitized.
+      console.error("Migration failed:", /^(MIGRATION_DATABASE_URL|Applied migration was modified:|Migration .* does not export)/.test(error.message)
+        ? error.message : "Database operation failed; check direct connection configuration and migration SQL.");
       process.exitCode = 1;
-    })
-    .finally(() => db.end());
+    });
 }
 
 module.exports = { migrate };

@@ -4,7 +4,7 @@ const express = require("express");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
 const helmet = require("helmet");
-const { rateLimit } = require("express-rate-limit");
+const { createSecurityRateLimits } = require("./security-rate-limit");
 
 const adminUsersRoutes = require("./routes/adminUsers");
 const notificationsRoutes = require("./routes/notifications");
@@ -21,7 +21,10 @@ const db = require("./db");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.set("trust proxy", 1);
+// Rate limiting reads the platform IP explicitly, never arbitrary XFF.
+app.set("trust proxy", false);
+const securityLimits = createSecurityRateLimits();
+app.locals.rateLimitStore = securityLimits.store;
 app.use(helmet());
 app.use(express.json({ limit: "100kb" }));
 app.use(express.urlencoded({ extended: true, limit: "100kb" }));
@@ -50,51 +53,14 @@ const corsOptions = {
   },
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization", "X-Cron-Secret"],
+  exposedHeaders: ["Retry-After"],
   credentials: true,
 };
 
 app.use(cors(corsOptions));
 app.options(/.*/, cors(corsOptions));
 
-const loginLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  limit: 10,
-  standardHeaders: "draft-8",
-  legacyHeaders: false,
-  message: { error: "Πάρα πολλές προσπάθειες. Δοκιμάστε ξανά αργότερα." },
-});
-
-const verificationLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000,
-  limit: 10,
-  standardHeaders: "draft-8",
-  legacyHeaders: false,
-  message: { error: "Έγιναν πάρα πολλά αιτήματα επιβεβαίωσης." },
-});
-
-const publicFormLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000,
-  limit: 5,
-  standardHeaders: "draft-8",
-  legacyHeaders: false,
-  message: { error: "Έγιναν πάρα πολλά αιτήματα. Δοκιμάστε ξανά αργότερα." },
-});
-
-app.use("/api/login", loginLimiter);
-app.use(
-  [
-    "/api/register",
-    "/api/verify-email",
-    "/api/resend-verification",
-    "/api/forgot-password",
-    "/api/verify-reset-code",
-    "/api/reset-password",
-    "/api/account/send-code",
-    "/api/account/verify-code",
-  ],
-  verificationLimiter
-);
-app.use("/api/interest", publicFormLimiter);
+app.use(securityLimits.publicRouter);
 
 app.get("/api/health", async (req, res) => {
   try {
@@ -115,7 +81,7 @@ app.use("/api/vehicles", authenticateToken, vehicleRoutes);
 app.use("/api/maintenances", authenticateToken, maintenanceRoutes);
 app.use("/api/notifications", authenticateToken, notificationsRoutes);
 app.use("/api/costs", authenticateToken, costRoutes);
-app.use("/api/account", authenticateToken, accountRoutes);
+app.use("/api/account", authenticateToken, securityLimits.accountRouter, accountRoutes);
 app.use("/api/interest", interestRoutes);
 app.use("/api/users", adminUsersRoutes);
 app.use("/api/cron", cronRoutes);

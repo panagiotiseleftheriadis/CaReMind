@@ -2,7 +2,13 @@ openapi: 3.1.0
 info:
   title: CaReMind API
   version: 1.0.0
-  description: REST API for private vehicle, maintenance and operating-cost management.
+  description: >-
+    REST API for private vehicle, maintenance and operating-cost management.
+    JWTs use HS256 with mutually exclusive purpose claims: access, password_reset,
+    and account_change. Protected routes accept only access JWTs. Legacy access
+    JWTs without purpose are rejected; valid refresh cookies can obtain a new
+    typed access JWT. Existing correctly typed HS256 special-purpose JWTs remain
+    valid for their intended flows subject to expiry and verification-code checks.
   license:
     name: MIT
     identifier: MIT
@@ -32,6 +38,10 @@ paths:
       operationId: login
       tags: [Authentication]
       summary: Sign in and create a refresh session
+      description: >-
+        Credentials are revalidated under the user lock before creating a refresh
+        session. A concurrent password change rejects the stale login with 401.
+        Legacy password hash upgrades and session creation commit together.
       security: []
       requestBody:
         required: true
@@ -44,6 +54,8 @@ paths:
                 username: { type: string, description: Username or email }
                 password: { type: string, format: password }
       responses:
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '503': { $ref: '#/components/responses/RateLimitUnavailable' }
         '200':
           description: Authenticated
           headers:
@@ -57,8 +69,14 @@ paths:
       operationId: refreshSession
       tags: [Authentication]
       summary: Create a new access token from the HttpOnly refresh cookie
+      description: >-
+        Normally protected by the distributed IP quota. An operational limiter-store
+        failure uses a bounded, best-effort per-instance emergency quota for refresh
+        only; invalid configuration or client-IP identity still fails closed.
       security: []
       responses:
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '503': { $ref: '#/components/responses/RateLimitUnavailable' }
         '200':
           description: Refreshed
           content:
@@ -86,6 +104,13 @@ paths:
           application/json:
             schema: { $ref: '#/components/schemas/Registration' }
       responses:
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '503':
+          description: >-
+            Security rate limiting is temporarily unavailable, or the account was
+            created but its verification email could not be submitted. The latter
+            returns code VERIFICATION_EMAIL_UNAVAILABLE and the submitted email so
+            the client can offer resend verification.
         '200': { description: Registration accepted }
         '400': { $ref: '#/components/responses/BadRequest' }
         '409': { description: Username or email already exists }
@@ -94,9 +119,15 @@ paths:
       operationId: verifyEmail
       tags: [Authentication]
       summary: Verify a registration email code
+      description: >-
+        Email verification and code consumption commit atomically. Concurrent
+        verification of an already verified account retains the successful
+        already-verified response without applying the code again.
       security: []
       requestBody: { $ref: '#/components/requestBodies/EmailCode' }
       responses:
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '503': { $ref: '#/components/responses/RateLimitUnavailable' }
         '200': { description: Email verified }
         '400': { $ref: '#/components/responses/BadRequest' }
   /resend-verification:
@@ -107,17 +138,30 @@ paths:
       security: []
       requestBody: { $ref: '#/components/requestBodies/EmailOnly' }
       responses:
-        '200': { description: Generic delivery response }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '503': { $ref: '#/components/responses/RateLimitUnavailable' }
+        '200':
+          description: >-
+            Enumeration-neutral processing response. It does not confirm account
+            existence or email submission.
         '400': { $ref: '#/components/responses/BadRequest' }
   /forgot-password:
     post:
       operationId: requestPasswordReset
+      description: >-
+        Existing and absent emails receive the same generic processing response;
+        it does not confirm account existence or email submission.
       tags: [Authentication]
       summary: Request a password-reset code
       security: []
       requestBody: { $ref: '#/components/requestBodies/EmailOnly' }
       responses:
-        '200': { description: Generic delivery response }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '503': { $ref: '#/components/responses/RateLimitUnavailable' }
+        '200':
+          description: >-
+            Enumeration-neutral processing response. It does not confirm account
+            existence or email submission.
         '400': { $ref: '#/components/responses/BadRequest' }
   /verify-reset-code:
     post:
@@ -127,6 +171,8 @@ paths:
       security: []
       requestBody: { $ref: '#/components/requestBodies/EmailCode' }
       responses:
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '503': { $ref: '#/components/responses/RateLimitUnavailable' }
         '200': { description: Reset token created }
         '401': { $ref: '#/components/responses/Unauthorized' }
   /reset-password:
@@ -134,8 +180,17 @@ paths:
       operationId: resetPassword
       tags: [Authentication]
       summary: Set a new password and revoke refresh sessions
+      description: >-
+        The resetToken body field must be an HS256 JWT with purpose password_reset,
+        obtained from verify-reset-code. Access and account_change JWTs are rejected.
+        Code validity is rechecked after locking. Password mutation, single-use
+        code consumption and refresh-session revocation commit atomically. After
+        one redemption commits, concurrent or repeated redemption returns 401.
+        A failed database transaction leaves the mutation and code unchanged.
       security: []
       responses:
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '503': { $ref: '#/components/responses/RateLimitUnavailable' }
         '200': { description: Password updated }
         '401': { $ref: '#/components/responses/Unauthorized' }
   /vehicles:
@@ -144,6 +199,14 @@ paths:
       tags: [Vehicles]
       summary: List the signed-in user's vehicles
       security: [{ bearerAuth: [] }]
+      parameters:
+        - name: state
+          in: query
+          required: false
+          description: >-
+            Explicit archive filter. While VEHICLE_ARCHIVE_ENABLED is false the
+            omitted default is all; after activation the omitted default is active.
+          schema: { type: string, enum: [active, archived, all] }
       responses:
         '200':
           description: Vehicle list
@@ -151,17 +214,34 @@ paths:
             application/json:
               schema: { type: array, items: { $ref: '#/components/schemas/Vehicle' } }
         '401': { $ref: '#/components/responses/Unauthorized' }
+        '400': { $ref: '#/components/responses/BadRequest' }
     post:
       operationId: createVehicle
       tags: [Vehicles]
       summary: Add a vehicle
       security: [{ bearerAuth: [] }]
-      requestBody: { $ref: '#/components/requestBodies/Vehicle' }
+      requestBody: { $ref: '#/components/requestBodies/VehicleCreate' }
       responses:
-        '201': { description: Vehicle created }
+        '201':
+          description: Vehicle created with revision 1 and nullable P3a fields
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Vehicle' }
         '400': { $ref: '#/components/responses/BadRequest' }
   /vehicles/{id}:
     parameters: [{ $ref: '#/components/parameters/Id' }]
+    get:
+      operationId: getVehicle
+      tags: [Vehicles]
+      summary: Get an owned active or archived vehicle
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Vehicle detail without maintenance or cost history
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Vehicle' }
+        '404': { $ref: '#/components/responses/NotFound' }
     put:
       operationId: updateVehicle
       tags: [Vehicles]
@@ -169,25 +249,103 @@ paths:
       security: [{ bearerAuth: [] }]
       requestBody: { $ref: '#/components/requestBodies/Vehicle' }
       responses:
-        '200': { description: Vehicle updated }
+        '200':
+          description: Legacy fields updated; P3a fields preserved; revision incremented
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Vehicle' }
+        '400': { $ref: '#/components/responses/BadRequest' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+    patch:
+      operationId: patchVehicle
+      tags: [Vehicles]
+      summary: Partially update allowlisted fields on an owned vehicle
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/VehiclePatch' }
+      responses:
+        '200':
+          description: Vehicle updated and revision incremented once
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Vehicle' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
     delete:
       operationId: deleteVehicle
       tags: [Vehicles]
-      summary: Delete an owned vehicle and its dependent records
+      summary: Legacy permanent deletion while archive capability is disabled
+      description: >-
+        This remains the legacy physical delete, including FK cascades, while
+        VEHICLE_ARCHIVE_ENABLED is false. Once enabled, old clients receive 409
+        VEHICLE_ARCHIVE_REQUIRED and must use the archive endpoint. Full-account
+        administrator deletion remains a separate operation.
       security: [{ bearerAuth: [] }]
       responses:
         '200': { description: Vehicle deleted }
         '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /vehicles/{id}/archive:
+    parameters: [{ $ref: '#/components/parameters/Id' }]
+    post:
+      operationId: archiveVehicle
+      tags: [Vehicles]
+      summary: Reversibly archive an owned vehicle
+      description: >-
+        Enabled only when VEHICLE_ARCHIVE_ENABLED=true. The active-to-archived
+        transition sets archivedAt and increments revision once. Repeated calls
+        preserve the original timestamp and revision. Maintenance and costs remain.
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Current vehicle state
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Vehicle' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /vehicles/{id}/restore:
+    parameters: [{ $ref: '#/components/parameters/Id' }]
+    post:
+      operationId: restoreVehicle
+      tags: [Vehicles]
+      summary: Restore an owned archived vehicle
+      description: >-
+        Enabled only when VEHICLE_ARCHIVE_ENABLED=true. The archived-to-active
+        transition clears archivedAt and increments revision once. Repeated calls
+        leave revision unchanged. The user row is locked before the vehicle so a
+        future entitlement check can be inserted safely.
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Current vehicle state
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Vehicle' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
   /maintenances:
     get:
       operationId: listMaintenances
       tags: [Maintenance]
       summary: List maintenance records
       security: [{ bearerAuth: [] }]
+      parameters:
+        - name: vehicle_id
+          in: query
+          required: false
+          description: Return records for one vehicle owned by the signed-in user, including an archived vehicle.
+          schema: { type: integer, minimum: 1 }
       responses:
         '200': { description: Maintenance list }
+        '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
     post:
       operationId: createMaintenance
       tags: [Maintenance]
@@ -222,9 +380,17 @@ paths:
       tags: [Costs]
       summary: List cost entries
       security: [{ bearerAuth: [] }]
+      parameters:
+        - name: vehicle_id
+          in: query
+          required: false
+          description: Return records for one vehicle owned by the signed-in user, including an archived vehicle.
+          schema: { type: integer, minimum: 1 }
       responses:
         '200': { description: Cost list }
+        '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
     post:
       operationId: createCost
       tags: [Costs]
@@ -278,6 +444,12 @@ paths:
       summary: Send an account-change verification code
       security: [{ bearerAuth: [] }]
       responses:
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '503':
+          description: >-
+            Security rate limiting is temporarily unavailable, or the verification
+            email could not be submitted. Email submission failure returns code
+            VERIFICATION_EMAIL_UNAVAILABLE.
         '200': { description: Code sent }
         '401': { $ref: '#/components/responses/Unauthorized' }
   /account/verify-code:
@@ -287,6 +459,8 @@ paths:
       summary: Exchange an account-change code for a short-lived token
       security: [{ bearerAuth: [] }]
       responses:
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '503': { $ref: '#/components/responses/RateLimitUnavailable' }
         '200': { description: Account token created }
         '400': { $ref: '#/components/responses/BadRequest' }
   /account/update:
@@ -294,10 +468,24 @@ paths:
       operationId: updateAccount
       tags: [Account]
       summary: Update email, username or password with an account token
+      description: >-
+        Requires an access bearer JWT and an accountToken body field containing an
+        HS256 JWT with purpose account_change for the same user. One shared account
+        verification flow covers email, username and password updates; separate
+        per-field token purposes are not issued. Other JWT purposes are rejected.
+        The user must still be active and both JWTs and the code must still be
+        valid after locking. Account mutation, single-use code consumption and
+        refresh-session revocation for password changes commit atomically. After
+        one redemption commits, concurrent or repeated redemption returns 401.
+        Failed mutations leave the code reusable until its original expiry.
       security: [{ bearerAuth: [] }]
       responses:
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '503': { $ref: '#/components/responses/RateLimitUnavailable' }
         '200': { description: Account updated }
         '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { description: Inactive user or account token belongs to another user }
   /account/recipients:
     get:
       operationId: listNotificationRecipients
@@ -360,12 +548,42 @@ paths:
       responses:
         '200': { description: User deleted }
         '403': { $ref: '#/components/responses/Forbidden' }
+  /users/{id}/role:
+    parameters: [{ $ref: '#/components/parameters/Id' }]
+    patch:
+      operationId: changeUserRole
+      tags: [Administration]
+      summary: Owner-only promotion or demotion of an administrator
+      description: >-
+        The owner account is protected. The target role is checked under a user
+        row lock; demotion and refresh-session revocation commit atomically.
+        A failed transaction leaves both role and sessions unchanged.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [role]
+              properties:
+                role: { type: string, enum: [user, admin] }
+      responses:
+        '200': { description: Role changed or already assigned }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { description: User not found }
   /users/{id}/toggle-active:
     parameters: [{ $ref: '#/components/parameters/Id' }]
     patch:
       operationId: toggleUserStatus
       tags: [Administration]
       summary: Toggle a non-admin account status
+      description: >-
+        Current status and role are checked under a user row lock. Deactivation
+        and refresh-session revocation commit atomically; failure leaves both
+        unchanged. Concurrent toggles serialize against the latest status.
       security: [{ bearerAuth: [] }]
       responses:
         '200': { description: Status changed }
@@ -376,6 +594,8 @@ paths:
       summary: Submit the public interest form
       security: []
       responses:
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '503': { $ref: '#/components/responses/RateLimitUnavailable' }
         '201': { description: Request stored }
         '400': { $ref: '#/components/responses/BadRequest' }
   /cron/maintenance:
@@ -390,15 +610,36 @@ paths:
           required: true
           schema: { type: string }
       responses:
-        '200': { description: Reminder run completed }
+        '200':
+          description: >-
+            Reminder run completed. Submitted means accepted by the email provider,
+            not inbox delivery. Partial recipient failure returns 200 with ok=false.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, candidateReminders, recipientsAttempted, submitted, failed, skippedNoRecipients, recipientLookupFailures]
+                properties:
+                  ok: { type: boolean }
+                  candidateReminders: { type: integer, minimum: 0 }
+                  recipientsAttempted: { type: integer, minimum: 0 }
+                  submitted: { type: integer, minimum: 0 }
+                  failed: { type: integer, minimum: 0 }
+                  skippedNoRecipients: { type: integer, minimum: 0 }
+                  recipientLookupFailures: { type: integer, minimum: 0 }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '503': { description: Cron service is not configured }
+        '500': { description: Reminder candidate query or run setup failed }
 components:
   securitySchemes:
     bearerAuth:
       type: http
       scheme: bearer
       bearerFormat: JWT
+      description: >-
+        HS256 JWT with purpose access, issued by login or refresh and valid for
+        15 minutes. Password-reset, account-change and purpose-less JWTs cannot
+        authenticate protected routes.
     cronSecret:
       type: apiKey
       in: header
@@ -410,6 +651,35 @@ components:
       required: true
       schema: { type: integer, minimum: 1 }
   responses:
+    RateLimited:
+      description: >-
+        Security request quota exceeded. Fixed windows are shared across instances
+        during normal operation. Refresh may instead be enforcing its documented
+        best-effort per-instance emergency quota. Limits and shared endpoint groups
+        are documented in README. Responses do not disclose account existence.
+        Retry after the indicated number of seconds.
+      headers:
+        Retry-After:
+          description: Seconds until the blocking quota expires (rounded up).
+          schema: { type: integer, minimum: 1 }
+        Cache-Control:
+          schema: { type: string, const: no-store }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    RateLimitUnavailable:
+      description: >-
+        The security limiter is unavailable, timed out, lacks production configuration,
+        or could not validate the platform client IP. The operation was not performed.
+        Retry later; this is not a permanent account lockout.
+      headers:
+        Retry-After:
+          schema: { type: integer, const: 30 }
+        Cache-Control:
+          schema: { type: string, const: no-store }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
     BadRequest:
       description: Invalid request data
       content:
@@ -427,6 +697,11 @@ components:
           schema: { $ref: '#/components/schemas/Error' }
     NotFound:
       description: Resource not found or not owned by this user
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Conflict:
+      description: State, uniqueness or compatibility conflict
       content:
         application/json:
           schema: { $ref: '#/components/schemas/Error' }
@@ -453,7 +728,12 @@ components:
       required: true
       content:
         application/json:
-          schema: { $ref: '#/components/schemas/Vehicle' }
+          schema: { $ref: '#/components/schemas/VehicleLegacyWrite' }
+    VehicleCreate:
+      required: true
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/VehicleCreate' }
     Maintenance:
       required: true
       content:
@@ -500,9 +780,71 @@ components:
         id: { type: integer, readOnly: true }
         vehicleType: { type: string, maxLength: 100 }
         chassisNumber: { type: string, maxLength: 50 }
+        model: { type: [string, 'null'], minLength: 1, maxLength: 100 }
+        year: { type: [integer, 'null'], minimum: 1886 }
+        currentMileage: { type: [integer, 'null'], minimum: 0 }
+        registrationPlate: { type: [string, 'null'], minLength: 1, maxLength: 32 }
+        registrationCountry: { type: [string, 'null'], pattern: '^[A-Z]{2}$' }
+        make: { type: [string, 'null'], minLength: 1, maxLength: 100 }
+        vin: { type: [string, 'null'], minLength: 1, maxLength: 50 }
+        fuelType:
+          type: [string, 'null']
+          enum: [gasoline, diesel, hybrid, plug_in_hybrid, electric, lpg, cng, hydrogen, other, null]
+        purchaseDate: { type: [string, 'null'], format: date }
+        purchaseAmount: { type: [number, string, 'null'], minimum: 0 }
+        currency: { type: [string, 'null'], pattern: '^[A-Z]{3}$' }
+        archivedAt: { type: [string, 'null'], format: date-time, readOnly: true }
+        state: { type: string, enum: [active, archived], readOnly: true }
+        revision: { type: integer, minimum: 1, readOnly: true }
+    VehicleLegacyWrite:
+      type: object
+      required: [vehicleType, chassisNumber]
+      properties:
+        vehicleType: { type: string, minLength: 1, maxLength: 100 }
+        chassisNumber: { type: string, minLength: 1, maxLength: 50 }
         model: { type: [string, 'null'], maxLength: 100 }
         year: { type: [integer, 'null'], minimum: 1886 }
         currentMileage: { type: [integer, 'null'], minimum: 0 }
+    VehicleCreate:
+      type: object
+      required: [vehicleType, chassisNumber]
+      additionalProperties: false
+      properties:
+        vehicleType: { type: string, minLength: 1, maxLength: 100 }
+        chassisNumber: { type: string, minLength: 1, maxLength: 50 }
+        model: { type: [string, 'null'], minLength: 1, maxLength: 100 }
+        year: { type: [integer, 'null'], minimum: 1886 }
+        currentMileage: { type: [integer, 'null'], minimum: 0 }
+        registrationPlate: { type: [string, 'null'], minLength: 1, maxLength: 32 }
+        registrationCountry: { type: [string, 'null'], pattern: '^[A-Za-z]{2}$' }
+        make: { type: [string, 'null'], minLength: 1, maxLength: 100 }
+        vin: { type: [string, 'null'], minLength: 1, maxLength: 50 }
+        fuelType:
+          type: [string, 'null']
+          enum: [gasoline, diesel, hybrid, plug_in_hybrid, electric, lpg, cng, hydrogen, other, null]
+        purchaseDate: { type: [string, 'null'], format: date }
+        purchaseAmount: { type: [number, 'null'], minimum: 0, maximum: 9999999999.99 }
+        currency: { type: [string, 'null'], pattern: '^[A-Za-z]{3}$' }
+    VehiclePatch:
+      type: object
+      minProperties: 1
+      additionalProperties: false
+      properties:
+        vehicleType: { type: string, minLength: 1, maxLength: 100 }
+        chassisNumber: { type: string, minLength: 1, maxLength: 50 }
+        model: { type: [string, 'null'], minLength: 1, maxLength: 100 }
+        year: { type: [integer, 'null'], minimum: 1886 }
+        currentMileage: { type: [integer, 'null'], minimum: 0 }
+        registrationPlate: { type: [string, 'null'], minLength: 1, maxLength: 32 }
+        registrationCountry: { type: [string, 'null'], pattern: '^[A-Za-z]{2}$' }
+        make: { type: [string, 'null'], minLength: 1, maxLength: 100 }
+        vin: { type: [string, 'null'], minLength: 1, maxLength: 50 }
+        fuelType:
+          type: [string, 'null']
+          enum: [gasoline, diesel, hybrid, plug_in_hybrid, electric, lpg, cng, hydrogen, other, null]
+        purchaseDate: { type: [string, 'null'], format: date }
+        purchaseAmount: { type: [number, 'null'], minimum: 0, maximum: 9999999999.99 }
+        currency: { type: [string, 'null'], pattern: '^[A-Za-z]{3}$' }
     Maintenance:
       type: object
       required: [vehicleId, maintenanceType]

@@ -4,7 +4,7 @@
   const MODE_KEY = "caremindDemoMode";
   const DATA_KEY = "caremindDemoData";
   const TOUR_KEY = "caremindDemoTourV1";
-  const DEMO_VERSION = 1;
+  const DEMO_VERSION = 2;
 
   function dateOffset(days) {
     const date = new Date();
@@ -33,6 +33,17 @@
         model: "Toyota Corolla",
         year: 2021,
         currentMileage: 68400,
+        registrationPlate: "ΙΒΧ-1001",
+        registrationCountry: "GR",
+        make: "Toyota",
+        vin: null,
+        fuelType: "hybrid",
+        purchaseDate: null,
+        purchaseAmount: null,
+        currency: null,
+        archivedAt: null,
+        state: "active",
+        revision: 1,
         companyId,
         created_at: timestampOffset(-210),
       },
@@ -43,6 +54,17 @@
         model: "Honda NC750X",
         year: 2022,
         currentMileage: 24150,
+        registrationPlate: "ΜΟΤ-2002",
+        registrationCountry: "GR",
+        make: "Honda",
+        vin: null,
+        fuelType: "gasoline",
+        purchaseDate: null,
+        purchaseAmount: null,
+        currency: null,
+        archivedAt: null,
+        state: "active",
+        revision: 1,
         companyId,
         created_at: timestampOffset(-150),
       },
@@ -53,6 +75,17 @@
         model: "Mercedes Atego",
         year: 2019,
         currentMileage: 186700,
+        registrationPlate: "ΦΟΡ-3003",
+        registrationCountry: "GR",
+        make: "Mercedes-Benz",
+        vin: null,
+        fuelType: "diesel",
+        purchaseDate: null,
+        purchaseAmount: null,
+        currency: null,
+        archivedAt: null,
+        state: "active",
+        revision: 1,
         companyId,
         created_at: timestampOffset(-95),
       },
@@ -60,6 +93,7 @@
 
     return {
       version: DEMO_VERSION,
+      vehicleArchiveEnabled: false,
       user: {
         id: 9999,
         userId: 9999,
@@ -249,10 +283,18 @@
 
   function resourceRequest(state, collectionName, endpoint, method, body) {
     const collection = state[collectionName];
-    const idMatch = endpoint.match(/\/(\d+)$/);
+    const [path, rawQuery = ""] = endpoint.split("?", 2);
+    const idMatch = path.match(/\/(\d+)$/);
     const id = idMatch ? Number(idMatch[1]) : null;
 
-    if (method === "GET" && id === null) return clone(collection);
+    if (method === "GET" && id === null) {
+      const vehiclePart = rawQuery.split("&").find((part) => part.startsWith("vehicle_id="));
+      const vehicleId = vehiclePart ? decodeURIComponent(vehiclePart.slice(11)) : null;
+      if (vehicleId == null) return clone(collection);
+      if (!/^\d+$/.test(vehicleId) || Number(vehicleId) < 1) throw demoError("Μη έγκυρο αναγνωριστικό οχήματος.", "INVALID_VEHICLE_ID");
+      if (!state.vehicles.some((vehicle) => Number(vehicle.id) === Number(vehicleId))) throw demoError("Το όχημα δεν βρέθηκε.", "VEHICLE_NOT_FOUND", 404);
+      return clone(collection.filter((item) => Number(item.vehicleId) === Number(vehicleId)));
+    }
 
     if (method === "POST" && id === null) {
       const created = {
@@ -289,12 +331,155 @@
     throw new Error("Η ενέργεια δεν υποστηρίζεται στο demo.");
   }
 
+  const VEHICLE_PATCH_FIELDS = new Set([
+    "vehicleType", "chassisNumber", "model", "year", "currentMileage",
+    "registrationPlate", "registrationCountry", "make", "vin", "fuelType",
+    "purchaseDate", "purchaseAmount", "currency",
+  ]);
+
+  function demoError(message, code, status = 400) {
+    return Object.assign(new Error(message), { code, status });
+  }
+
+  function demoVehicleDefaults(vehicle) {
+    return {
+      registrationPlate: null,
+      registrationCountry: null,
+      make: null,
+      vin: null,
+      fuelType: null,
+      purchaseDate: null,
+      purchaseAmount: null,
+      currency: null,
+      archivedAt: null,
+      state: "active",
+      revision: 1,
+      ...vehicle,
+    };
+  }
+
+  function validateDemoVehiclePatch(body) {
+    if (!body || typeof body !== "object" || Array.isArray(body) || !Object.keys(body).length) {
+      throw demoError("Δεν δόθηκαν αλλαγές οχήματος.", "EMPTY_VEHICLE_PATCH");
+    }
+    const unsupported = Object.keys(body).find((key) => !VEHICLE_PATCH_FIELDS.has(key));
+    if (unsupported) throw demoError(`Μη υποστηριζόμενο πεδίο: ${unsupported}`, "UNSUPPORTED_VEHICLE_FIELD");
+    if (Object.hasOwn(body, "vehicleType") && (typeof body.vehicleType !== "string" || !body.vehicleType.trim() || body.vehicleType.length > 100)) throw demoError("Μη έγκυρος τύπος οχήματος.", "INVALID_VEHICLE_FIELD");
+    if (Object.hasOwn(body, "chassisNumber") && (typeof body.chassisNumber !== "string" || !body.chassisNumber.trim() || body.chassisNumber.trim().length > 50)) throw demoError("Μη έγκυρος αριθμός πλαισίου.", "INVALID_VEHICLE_FIELD");
+    if (Object.hasOwn(body, "currentMileage") && body.currentMileage != null && (!Number.isInteger(Number(body.currentMileage)) || Number(body.currentMileage) < 0)) throw demoError("Μη έγκυρα χιλιόμετρα.", "INVALID_VEHICLE_FIELD");
+    if (Object.hasOwn(body, "year") && body.year != null && (!Number.isInteger(Number(body.year)) || Number(body.year) < 1886 || Number(body.year) > new Date().getFullYear() + 1)) throw demoError("Μη έγκυρο έτος.", "INVALID_VEHICLE_FIELD");
+    if (Object.hasOwn(body, "purchaseAmount") && body.purchaseAmount != null && (!Number.isFinite(Number(body.purchaseAmount)) || Number(body.purchaseAmount) < 0 || Number(body.purchaseAmount) > 9999999999.99)) throw demoError("Μη έγκυρο ποσό αγοράς.", "INVALID_VEHICLE_FIELD");
+    for (const key of ["model", "make", "registrationPlate", "registrationCountry", "vin", "fuelType", "currency", "purchaseDate", "year", "currentMileage", "purchaseAmount"]) {
+      if (body[key] === "") throw demoError("Τα κενά πεδία πρέπει να καθαρίζονται με null.", "INVALID_VEHICLE_FIELD");
+    }
+    const lengths = { model: 100, make: 100, registrationPlate: 32, registrationCountry: 2, vin: 50, fuelType: 30, currency: 3 };
+    for (const [key, maximum] of Object.entries(lengths)) {
+      if (body[key] != null && (typeof body[key] !== "string" || !body[key].trim() || body[key].trim().length > maximum)) throw demoError("Μη έγκυρα στοιχεία οχήματος.", "INVALID_VEHICLE_FIELD");
+    }
+    if (body.registrationCountry != null && !/^[A-Za-z]{2}$/.test(body.registrationCountry.trim())) throw demoError("Μη έγκυρη χώρα ταξινόμησης.", "INVALID_VEHICLE_FIELD");
+    if (body.currency != null && !/^[A-Za-z]{3}$/.test(body.currency.trim())) throw demoError("Μη έγκυρο νόμισμα.", "INVALID_VEHICLE_FIELD");
+    if (body.fuelType != null && !["gasoline", "diesel", "hybrid", "plug_in_hybrid", "electric", "lpg", "cng", "hydrogen", "other"].includes(body.fuelType)) throw demoError("Μη έγκυρος τύπος καυσίμου.", "INVALID_VEHICLE_FIELD");
+    if (body.purchaseDate != null) {
+      const date = new Date(`${body.purchaseDate}T00:00:00.000Z`);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(body.purchaseDate) || Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== body.purchaseDate) throw demoError("Μη έγκυρη ημερομηνία αγοράς.", "INVALID_VEHICLE_FIELD");
+    }
+  }
+
+  function vehicleRequest(state, endpoint, method, body) {
+    const [path, rawQuery = ""] = endpoint.split("?", 2);
+    const idMatch = path.match(/^\/vehicles\/(\d+)$/);
+    const transitionMatch = path.match(/^\/vehicles\/(\d+)\/(archive|restore)$/);
+
+    if (path === "/vehicles" && method === "GET") {
+      const statePart = rawQuery.split("&").find((part) => part.startsWith("state="));
+      const requested = statePart ? decodeURIComponent(statePart.slice(6)) : null;
+      if (requested != null && !["active", "archived", "all"].includes(requested)) throw demoError("Μη έγκυρη κατάσταση οχήματος.", "INVALID_VEHICLE_STATE");
+      const filter = requested || (state.vehicleArchiveEnabled ? "active" : "all");
+      return clone(state.vehicles.filter((vehicle) => filter === "all" || (filter === "active" ? vehicle.archivedAt == null : vehicle.archivedAt != null)));
+    }
+    if (path === "/vehicles" && method === "POST") {
+      if (!body.vehicleType || !body.chassisNumber) throw demoError("Απαιτούνται τύπος οχήματος και αριθμός πλαισίου.", "INVALID_VEHICLE_FIELD");
+      validateDemoVehiclePatch(body);
+      if (state.vehicles.some((vehicle) => vehicle.chassisNumber === String(body.chassisNumber).trim())) throw demoError("Υπάρχει ήδη όχημα με αυτόν τον αριθμό πλαισίου.", "DUPLICATE_CHASSIS_NUMBER", 409);
+      const created = demoVehicleDefaults({
+        ...body,
+        id: nextId(state.vehicles),
+        vehicleType: body.vehicleType.trim(),
+        chassisNumber: String(body.chassisNumber).trim(),
+        make: body.make ? body.make.trim() : null,
+        model: body.model ? body.model.trim() : null,
+        registrationPlate: body.registrationPlate ? body.registrationPlate.trim() : null,
+        registrationCountry: body.registrationCountry ? body.registrationCountry.trim().toUpperCase() : null,
+        vin: body.vin ? body.vin.trim().toUpperCase() : null,
+        fuelType: body.fuelType || null,
+        year: body.year == null ? null : Number(body.year),
+        currentMileage: body.currentMileage == null ? null : Number(body.currentMileage),
+        purchaseDate: body.purchaseDate || null,
+        purchaseAmount: body.purchaseAmount == null ? null : Number(body.purchaseAmount),
+        currency: body.currency ? body.currency.trim().toUpperCase() : null,
+        companyId: state.user.companyId,
+        created_at: new Date().toISOString(),
+      });
+      state.vehicles.unshift(created);
+      save(state);
+      return clone(created);
+    }
+
+    const id = Number((idMatch || transitionMatch)?.[1]);
+    const index = state.vehicles.findIndex((vehicle) => Number(vehicle.id) === id);
+    if ((!idMatch && !transitionMatch) || index === -1) throw demoError("Το όχημα δεν βρέθηκε στο demo.", "VEHICLE_NOT_FOUND", 404);
+    const vehicle = state.vehicles[index];
+
+    if (idMatch && method === "GET") return clone(vehicle);
+    if (idMatch && (method === "PATCH" || method === "PUT")) {
+      const patch = method === "PUT"
+        ? { vehicleType: body.vehicleType, chassisNumber: body.chassisNumber, model: body.model ?? null, year: body.year ?? null, currentMileage: body.currentMileage ?? null }
+        : body;
+      validateDemoVehiclePatch(patch);
+      if (Object.hasOwn(patch, "chassisNumber") && state.vehicles.some((candidate) => Number(candidate.id) !== id && candidate.chassisNumber === String(patch.chassisNumber).trim())) throw demoError("Υπάρχει ήδη όχημα με αυτόν τον αριθμό πλαισίου.", "DUPLICATE_CHASSIS_NUMBER", 409);
+      Object.assign(vehicle, patch, {
+        chassisNumber: Object.hasOwn(patch, "chassisNumber") ? String(patch.chassisNumber).trim() : vehicle.chassisNumber,
+        registrationCountry: patch.registrationCountry ? String(patch.registrationCountry).trim().toUpperCase() : patch.registrationCountry ?? vehicle.registrationCountry,
+        vin: patch.vin ? String(patch.vin).trim().toUpperCase() : patch.vin ?? vehicle.vin,
+        currency: patch.currency ? String(patch.currency).trim().toUpperCase() : patch.currency ?? vehicle.currency,
+        revision: Number(vehicle.revision) + 1,
+      });
+      save(state);
+      return clone(vehicle);
+    }
+    if (transitionMatch && method === "POST") {
+      if (!state.vehicleArchiveEnabled) throw demoError("Η αρχειοθέτηση οχημάτων δεν είναι ακόμη ενεργή.", "VEHICLE_ARCHIVE_DISABLED", 409);
+      const archive = transitionMatch[2] === "archive";
+      if (archive && vehicle.archivedAt == null) {
+        vehicle.archivedAt = new Date().toISOString();
+        vehicle.state = "archived";
+        vehicle.revision += 1;
+      } else if (!archive && vehicle.archivedAt != null) {
+        vehicle.archivedAt = null;
+        vehicle.state = "active";
+        vehicle.revision += 1;
+      }
+      save(state);
+      return clone(vehicle);
+    }
+    if (idMatch && method === "DELETE") {
+      if (state.vehicleArchiveEnabled) throw demoError("Χρησιμοποιήστε αρχειοθέτηση αντί για οριστική διαγραφή οχήματος.", "VEHICLE_ARCHIVE_REQUIRED", 409);
+      state.vehicles.splice(index, 1);
+      state.maintenances = state.maintenances.filter((item) => Number(item.vehicleId) !== id);
+      state.costs = state.costs.filter((item) => Number(item.vehicleId) !== id);
+      save(state);
+      return { success: true };
+    }
+    throw demoError("Η ενέργεια δεν υποστηρίζεται στο demo.", "DEMO_OPERATION_UNSUPPORTED", 405);
+  }
+
   function buildNotifications(state) {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
     return state.maintenances
       .filter((item) => item.status !== "completed" && item.nextDate)
+      .filter((item) => state.vehicles.some((vehicle) => Number(vehicle.id) === Number(item.vehicleId) && vehicle.archivedAt == null))
       .map((item) => {
         const due = new Date(`${item.nextDate}T00:00:00`);
         const daysUntilDue = Math.round((due - today) / 86400000);
@@ -335,7 +520,7 @@
     if (endpoint === "/notifications") return buildNotifications(state);
 
     if (endpoint.startsWith("/vehicles")) {
-      return resourceRequest(state, "vehicles", endpoint, method, body);
+      return vehicleRequest(state, endpoint, method, body);
     }
     if (endpoint.startsWith("/maintenances")) {
       return resourceRequest(state, "maintenances", endpoint, method, body);
@@ -386,7 +571,9 @@
   }
 
   function installBanner() {
-    if (!isActive() || document.getElementById("demoModeBanner")) return;
+    const publicPaths = new Set(["/", "/index", "/index.html", "/login", "/login.html", "/register", "/register.html"]);
+    const pathname = (window.location.pathname || "/").replace(/\/+$/, "") || "/";
+    if (publicPaths.has(pathname) || !isActive() || document.getElementById("demoModeBanner")) return;
 
     const banner = document.createElement("aside");
     banner.id = "demoModeBanner";
@@ -408,6 +595,7 @@
         color: #fff; background: rgba(23, 55, 94, .96); box-shadow: 0 10px 28px rgba(15, 36, 64, .24);
         font: 13px/1.4 Arial, sans-serif;
       }
+      #demoModeBanner[hidden] { display: none !important; }
       #demoModeBanner button {
         flex: 0 0 auto; border: 1px solid rgba(255,255,255,.55); border-radius: 8px;
         padding: 7px 10px; color: #fff; background: transparent; cursor: pointer; font-weight: 700;
@@ -416,7 +604,20 @@
       #demoModeBanner .demo-banner-actions { display:flex; gap:7px; flex:0 0 auto; }
       #startDemoTourBtn { background: #f16f69 !important; border-color:#f16f69 !important; }
       #startDemoTourBtn:hover { background: #d65250 !important; }
+      :root.caremind-demo-active {
+        --demo-banner-clearance: calc(var(--demo-banner-height, 0px) + 36px);
+        scroll-padding-bottom: var(--demo-banner-clearance);
+      }
+      body.caremind-demo-active {
+        padding-bottom: var(--demo-banner-clearance);
+      }
+      body.caremind-demo-active :where(a, button, input, select, textarea, [tabindex]):focus-visible {
+        scroll-margin-bottom: var(--demo-banner-clearance);
+      }
       @media (max-width: 620px) {
+        :root.caremind-demo-active {
+          --demo-banner-clearance: calc(var(--demo-banner-height, 0px) + 24px + env(safe-area-inset-bottom, 0px));
+        }
         #demoModeBanner { left: 12px; right: 12px; bottom: 12px; align-items: flex-start; flex-wrap:wrap; }
         #demoModeBanner .demo-banner-actions { width:100%; }
         #demoModeBanner .demo-banner-actions button { flex:1; }
@@ -425,6 +626,15 @@
 
     document.head.appendChild(style);
     document.body.appendChild(banner);
+    document.documentElement.classList.add("caremind-demo-active");
+    document.body.classList.add("caremind-demo-active");
+    const syncBannerHeight = () => {
+      const height = Math.ceil(banner.getBoundingClientRect().height);
+      if (height > 0) document.documentElement.style.setProperty("--demo-banner-height", `${height}px`);
+    };
+    syncBannerHeight();
+    window.addEventListener("resize", syncBannerHeight);
+    if (typeof ResizeObserver === "function") new ResizeObserver(syncBannerHeight).observe(banner);
     document.getElementById("resetDemoDataBtn")?.addEventListener("click", () => {
       reset();
       window.location.reload();
@@ -437,6 +647,11 @@
     end,
     reset,
     request,
+    setVehicleArchiveEnabled(enabled) {
+      const state = load();
+      state.vehicleArchiveEnabled = enabled === true;
+      save(state);
+    },
   };
 
   document.addEventListener("DOMContentLoaded", installBanner);

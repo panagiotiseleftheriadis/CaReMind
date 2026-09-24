@@ -5,6 +5,8 @@ const safeHtml = window.CaReMindUI.escapeHtml;
 class CostsManager {
   constructor() {
     this.api = window.api || null;
+    const requestedVehicle = new URLSearchParams(window.location.search).get("vehicleId");
+    this.vehicleId = /^\d+$/.test(requestedVehicle || "") && Number(requestedVehicle) > 0 ? Number(requestedVehicle) : null;
     this.costs = [];
     this.filteredCosts = [];
     this.currentEditingId = null;
@@ -78,6 +80,9 @@ class CostsManager {
       }
 
       this.vehicles = list;
+      if (this.vehicleId && !this.vehicles.some((vehicle) => Number(vehicle.id) === this.vehicleId)) {
+        this.vehicles.push(await this.api.getVehicle(this.vehicleId));
+      }
     } catch (error) {
       console.error("❌ Σφάλμα φόρτωσης vehicles από backend:", error);
       this.showNotification(
@@ -99,7 +104,7 @@ class CostsManager {
         return;
       }
 
-      const data = await this.api.getCosts();
+      const data = await this.api.getCosts(this.vehicleId);
       let list = [];
 
       if (Array.isArray(data)) {
@@ -154,6 +159,7 @@ class CostsManager {
           option.textContent = `${vehicle.vehicleType} - ${vehicle.model} (${vehicle.chassisNumber})`;
           select.appendChild(option);
         });
+        if (isFilter && this.vehicleId) select.value = String(this.vehicleId);
       }
     });
   }
@@ -1287,37 +1293,7 @@ class CostsManager {
   /* ================== HELPERS ================== */
 
   getCategoryLabel(category) {
-    const key = String(category || "")
-      .trim()
-      .toLowerCase();
-    const labels = {
-      fuel: "Καύσιμα",
-      maintenance: "Συντήρηση",
-      insurance: "Ασφάλεια",
-      repair: "Επισκευές",
-      taxes: "Τέλη",
-      tolls: "Διόδια",
-      parking: "Στάθμευση",
-      wash: "Πλύσιμο",
-      fines: "Πρόστιμα",
-      oil: "Αλλαγή Λαδιών",
-      service: "Γενικό Service",
-      tires: "Αλλαγή Λάστιχων",
-      brakes: "Φρένα",
-      battery: "Μπαταρία",
-      filters: "Φίλτρα",
-      coolant: "Ψυκτικό Υγρό",
-      transmission: "Κιβώτιο Ταχυτήτων",
-      ac_service: "Service A/C",
-      spark_plugs: "Μπουζί",
-      timing_belt: "Ιμάντας Χρονισμού",
-      alignment: "Ευθυγράμμιση",
-      inspection: "Γενικός Έλεγχος",
-      kteo: "ΚΤΕΟ",
-
-      other: "Άλλο",
-    };
-    return labels[key] || category;
+    return window.CaReMindRecordLabels.costCategory(category);
   }
 
   showNotification(message, type = "info") {

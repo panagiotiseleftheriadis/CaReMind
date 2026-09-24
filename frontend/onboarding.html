@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="el">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Καλώς ήρθες | CaReMind</title>
+    <meta name="robots" content="noindex, nofollow" />
+    <meta name="theme-color" content="#0b2948" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <script src="demo-store.js"></script>
+    <script src="auth-guard.js?v=20260922-2"></script>
+    <link rel="stylesheet" href="onboarding.css" />
+  </head>
+  <body>
+    <main class="onboarding-shell" id="main-content">
+      <section class="welcome-card" aria-labelledby="welcomeTitle">
+        <a class="welcome-brand" href="/" aria-label="CaReMind — Αρχική">
+          <span class="welcome-brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 44 44" role="presentation"><path d="M9 27.5h3l2-7.2a4 4 0 0 1 3.8-2.9h10.5a5 5 0 0 1 3.8 1.8l3.4 4 2.5.8v3.5h-3"/><path d="M16 27.5h12.5M19 17.4l2.5-4h7.2l3.4 5.8"/><circle cx="15.5" cy="28.5" r="3.5"/><circle cx="32.5" cy="28.5" r="3.5"/></svg>
+          </span>
+          <span>CaReMind</span>
+        </a>
+
+        <div class="welcome-visual" aria-hidden="true">
+          <span class="welcome-road"></span>
+          <svg viewBox="0 0 180 82" role="presentation"><path d="M24 53h12l8-22a9 9 0 0 1 8-6h53a13 13 0 0 1 10 5l15 18 22 6v12h-14"/><path d="M59 25l13-18h35l16 33M50 53h71"/><circle cx="48" cy="59" r="13"/><circle cx="130" cy="59" r="13"/></svg>
+        </div>
+
+        <p class="welcome-eyebrow">Ο λογαριασμός σου είναι έτοιμος</p>
+        <h1 id="welcomeTitle">Καλώς ήρθες στο CaReMind</h1>
+        <p class="welcome-copy">Ξεκίνα προσθέτοντας το πρώτο σου όχημα και οργάνωσε το ιστορικό του από σήμερα.</p>
+
+        <div class="welcome-actions">
+          <a class="welcome-button welcome-button-primary" id="addFirstVehicle" href="/vehicles?add=1">
+            Πρόσθεσε το πρώτο μου όχημα <span aria-hidden="true">→</span>
+          </a>
+          <a class="welcome-button welcome-button-secondary" id="skipOnboarding" href="/dashboard">Θα το κάνω αργότερα</a>
+        </div>
+
+        <p class="welcome-note">Θα χρειαστείς τον τύπο και τον αριθμό πλαισίου του οχήματος. Μπορείς να συμπληρώσεις τα υπόλοιπα στοιχεία αργότερα.</p>
+      </section>
+    </main>
+
+    <script src="api.js?v=20260816-1"></script>
+    <script src="onboarding.js?v=1"></script>
+  </body>
+</html>

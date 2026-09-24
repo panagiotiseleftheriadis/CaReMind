@@ -3,6 +3,7 @@ const express = require("express");
 const router = express.Router();
 const db = require("../db");
 const { isPositiveId, requirePositiveId } = require("../validation");
+const { userOwnsVehicle } = require("../vehicle-ownership");
 
 router.param("id", requirePositiveId);
 
@@ -13,18 +14,17 @@ function isValidDate(value) {
   return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === raw;
 }
 
-async function userOwnsVehicle(userId, vehicleId) {
-  const [rows] = await db.query(
-    "SELECT id FROM vehicles WHERE id = ? AND user_id = ? LIMIT 1",
-    [vehicleId, userId]
-  );
-  return rows.length > 0;
-}
-
 // GET /api/costs
 router.get("/", async (req, res) => {
   try {
     const userId = req.user.id;
+    const vehicleId = req.query.vehicle_id;
+    if (vehicleId !== undefined && (typeof vehicleId !== "string" || !isPositiveId(vehicleId))) {
+      return res.status(400).json({ error: "Μη έγκυρο αναγνωριστικό οχήματος" });
+    }
+    if (vehicleId !== undefined && !(await userOwnsVehicle(db, userId, vehicleId))) {
+      return res.status(404).json({ error: "Το όχημα δεν βρέθηκε" });
+    }
     const [rows] = await db.query(
       `SELECT
          id,
@@ -36,9 +36,9 @@ router.get("/", async (req, res) => {
          receipt_number AS receiptNumber,
          created_at  -- ✅ ΠΡΟΣΘΗΚΗ ΕΔΩ
        FROM costs
-       WHERE user_id = ?
+       WHERE user_id = ?${vehicleId === undefined ? "" : " AND vehicle_id = ?"}
        ORDER BY cost_date DESC, id DESC`,
-      [userId]
+      vehicleId === undefined ? [userId] : [userId, vehicleId]
     );
     res.json(rows);
   } catch (err) {
@@ -60,7 +60,7 @@ router.post("/", async (req, res) => {
         .status(400)
         .json({ error: "Απαιτούνται όχημα, κατηγορία, ποσό και ημερομηνία" });
     }
-    if (!(await userOwnsVehicle(userId, vehicleId))) {
+    if (!(await userOwnsVehicle(db, userId, vehicleId))) {
       return res.status(404).json({ error: "Το όχημα δεν βρέθηκε" });
     }
     if (String(category).length > 100) {
@@ -126,7 +126,7 @@ router.put("/:id", async (req, res) => {
     ) {
       return res.status(400).json({ error: "Μη έγκυρα στοιχεία κόστους" });
     }
-    if (!(await userOwnsVehicle(userId, vehicleId))) {
+    if (!(await userOwnsVehicle(db, userId, vehicleId))) {
       return res.status(404).json({ error: "Το όχημα δεν βρέθηκε" });
     }
     if (

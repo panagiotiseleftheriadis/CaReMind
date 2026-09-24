@@ -25,6 +25,38 @@ jobs:
       - run: npm test
       - run: npm audit --omit=dev
 
+  postgres:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: caremind_test
+          POSTGRES_PASSWORD: disposable_ci_password
+          POSTGRES_DB: caremind_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U caremind_test -d caremind_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      TEST_DATABASE_URL: postgresql://caremind_test:disposable_ci_password@127.0.0.1:5432/caremind_test?sslmode=disable
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      - run: npm run test:postgres
+
   frontend:
     runs-on: ubuntu-latest
     steps:

@@ -61,13 +61,34 @@ class AuthService {
     
     // Αν είμαστε σε σελίδα Login, ίσως θέλουμε να δούμε αν υπάρχει ήδη cookie
     // και να κάνουμε redirect στο dashboard αυτόματα.
-    if (
-      window.location.pathname.endsWith("index.html") &&
-      localStorage.getItem(EXPLICIT_LOGOUT_KEY) !== "1"
-    ) {
+    const currentPath = window.location.pathname.replace(/\/+$/, "") || "/";
+    const isLoginPage = currentPath === "/login" || currentPath === "/login.html";
+    if (isLoginPage) {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("verified") === "1") {
+        const notice = document.getElementById("loginNotice");
+        let verifiedEmail = "";
+        let verificationResult = "verified";
+        try {
+          verifiedEmail = sessionStorage.getItem("caremindVerifiedEmail") || "";
+          verificationResult = sessionStorage.getItem("caremindVerificationResult") || "verified";
+          sessionStorage.removeItem("caremindVerifiedEmail");
+          sessionStorage.removeItem("caremindVerificationResult");
+        } catch (_error) {}
+        if (notice) {
+          notice.textContent = verificationResult === "already"
+            ? "Το email είναι ήδη επιβεβαιωμένο. Συνδέσου για να συνεχίσεις."
+            : "Το email επιβεβαιώθηκε. Συνδέσου για να ολοκληρώσεις την έναρξη.";
+          notice.hidden = false;
+        }
+        const usernameInput = document.getElementById("username");
+        if (usernameInput && verifiedEmail) usernameInput.value = verifiedEmail;
+      }
+    }
+    if (isLoginPage && localStorage.getItem(EXPLICIT_LOGOUT_KEY) !== "1") {
         api.refreshToken().then(data => {
             if (data && data.accessToken) {
-                 window.location.href = "dashboard.html";
+                 window.location.href = "/dashboard";
             }
         }).catch(() => {
             // Αν αποτύχει, απλά μένουμε στη σελίδα login
@@ -106,11 +127,8 @@ class AuthService {
 
       // Redirect logic
       const params = new URLSearchParams(window.location.search);
-      const nextRaw = params.get("next");
-      const next = nextRaw ? decodeURIComponent(nextRaw) : null;
-      const safeNext = next && !/^(https?:)?\/\//i.test(next) ? next.replace(/^\//, "") : null;
-
-      window.location.href = safeNext || "dashboard.html";
+      const safeNext = getSafeNextDestination(params.get("next"));
+      window.location.href = safeNext || "/dashboard";
       return true;
     } catch (error) {
       // ... (error handling code remains the same) ...
@@ -126,10 +144,7 @@ class AuthService {
 
   requireAuth() {
     if (!this.isLoggedIn()) {
-      const inSubfolder =
-        window.location.href.includes("/pages/") ||
-        window.location.href.includes("/views/");
-      window.location.href = inSubfolder ? "../login.html" : "login.html";
+      window.location.href = "/login";
       return false;
     }
     return true;
@@ -153,6 +168,25 @@ class AuthService {
       (el) => (el.style.display = this.isLoggedIn() ? "none" : "")
     );
   }
+}
+
+function getSafeNextDestination(rawValue) {
+  if (!rawValue) return null;
+
+  let value = rawValue;
+  try {
+    value = decodeURIComponent(value);
+  } catch (_error) {
+    return null;
+  }
+
+  if (/^[a-z][a-z\d+.-]*:/i.test(value) || value.startsWith("//") || /[\\\u0000-\u001f]/.test(value)) {
+    return null;
+  }
+
+  const normalized = value.replace(/^\/+/, "");
+  const match = normalized.match(/^(dashboard|vehicles|vehicle|maintenance|costs|account|admin|onboarding)(?:\.html)?((?:\?[^#]*)?(?:#.*)?)$/);
+  return match ? `/${match[1]}${match[2] || ""}` : null;
 }
 
 // Global instance
@@ -223,6 +257,7 @@ document.addEventListener("DOMContentLoaded", function () {
   const protectedPages = [
     "dashboard.html",
     "vehicles.html",
+    "vehicle.html",
     "maintenance.html",
   ];
   const currentPage = window.location.pathname.split("/").pop();

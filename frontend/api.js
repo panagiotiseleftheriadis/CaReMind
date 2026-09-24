@@ -78,11 +78,11 @@ class API {
           this.accessToken = null;
           localStorage.removeItem("currentUser");
           
-          const isAuthPage = window.location.pathname.endsWith("index.html") || 
-                             window.location.pathname.endsWith("login.html") ||
-                             window.location.pathname.endsWith("register.html");
+          const authPath = window.location.pathname.replace(/\/+$/, "");
+          const isAuthPage = authPath === "/login" || authPath === "/login.html" ||
+                             authPath === "/register" || authPath === "/register.html";
           if (!isAuthPage) {
-             window.location.href = "index.html"; 
+             window.location.href = "/login";
           }
           throw refreshError;
         }
@@ -113,7 +113,15 @@ class API {
 
   /* ------------ AUTH Methods ------------ */
 
+  endDemoBeforeRealAccountRequest() {
+    if (window.CaReMindDemo?.isActive?.()) {
+      window.CaReMindDemo.end();
+      this.removeToken();
+    }
+  }
+
   async login(username, password) {
+    this.endDemoBeforeRealAccountRequest();
     const response = await this.request("/login", {
       method: "POST",
       body: { username, password },
@@ -138,7 +146,7 @@ class API {
 
     if (isDemo) {
       window.CaReMindDemo.end();
-      window.location.replace("index.html");
+      window.location.replace("/login");
       return;
     }
 
@@ -156,7 +164,7 @@ class API {
       console.warn("Logout failed remotely", error);
     } finally {
       window.clearTimeout(logoutTimeout);
-      window.location.replace("index.html");
+      window.location.replace("/login");
     }
   }
 
@@ -196,12 +204,30 @@ class API {
   async updateUserRole(id, role) { return this.request(`/users/${id}/role`, { method: "PATCH", body: { role } }); }
   async deleteUser(id) { return this.request(`/users/${id}`, { method: "DELETE" }); }
 
-  async register(data) { return this.request("/register", { method: "POST", body: data }); }
-  async verifyEmail(email, code) { return this.request("/verify-email", { method: "POST", body: { email, code } }); }
-  async resendVerification(email) { return this.request("/resend-verification", { method: "POST", body: { email } }); }
-  async forgotPassword(email) { return this.request("/forgot-password", { method: "POST", body: { email } }); }
-  async verifyResetCode(email, code) { return this.request("/verify-reset-code", { method: "POST", body: { email, code } }); }
-  async resetPassword(token, pass) { return this.request("/reset-password", { method: "POST", body: { resetToken: token, newPassword: pass } }); }
+  async register(data) {
+    this.endDemoBeforeRealAccountRequest();
+    return this.request("/register", { method: "POST", body: data });
+  }
+  async verifyEmail(email, code) {
+    this.endDemoBeforeRealAccountRequest();
+    return this.request("/verify-email", { method: "POST", body: { email, code } });
+  }
+  async resendVerification(email) {
+    this.endDemoBeforeRealAccountRequest();
+    return this.request("/resend-verification", { method: "POST", body: { email } });
+  }
+  async forgotPassword(email) {
+    this.endDemoBeforeRealAccountRequest();
+    return this.request("/forgot-password", { method: "POST", body: { email } });
+  }
+  async verifyResetCode(email, code) {
+    this.endDemoBeforeRealAccountRequest();
+    return this.request("/verify-reset-code", { method: "POST", body: { email, code } });
+  }
+  async resetPassword(token, pass) {
+    this.endDemoBeforeRealAccountRequest();
+    return this.request("/reset-password", { method: "POST", body: { resetToken: token, newPassword: pass } });
+  }
   
   async getAccountMe() { return this.request("/account/me", { method: "GET" }); }
   async sendAccountChangeCode() { return this.request("/account/send-code", { method: "POST" }); }
@@ -212,17 +238,24 @@ class API {
   async deleteRecipient(id) { return this.request(`/account/recipients/${id}`, { method: "DELETE" }); }
   
   // Οχήματα, Κόστη, Συντηρήσεις κλπ...
-  async getVehicles() { return this.request("/vehicles", { method: "GET" }); }
+  async getVehicles(state) {
+    const suffix = state ? `?state=${encodeURIComponent(state)}` : "";
+    return this.request(`/vehicles${suffix}`, { method: "GET" });
+  }
+  async getVehicle(id) { return this.request(`/vehicles/${id}`, { method: "GET" }); }
   async addVehicle(d) { return this.request("/vehicles", { method: "POST", body: d }); }
   async updateVehicle(id, d) { return this.request(`/vehicles/${id}`, { method: "PUT", body: d }); }
+  async patchVehicle(id, d) { return this.request(`/vehicles/${id}`, { method: "PATCH", body: d }); }
+  async archiveVehicle(id) { return this.request(`/vehicles/${id}/archive`, { method: "POST" }); }
+  async restoreVehicle(id) { return this.request(`/vehicles/${id}/restore`, { method: "POST" }); }
   async deleteVehicle(id) { return this.request(`/vehicles/${id}`, { method: "DELETE" }); }
   
-  async getMaintenances() { return this.request("/maintenances", { method: "GET" }); }
+  async getMaintenances(vehicleId) { return this.request(`/maintenances${vehicleId == null ? "" : `?vehicle_id=${encodeURIComponent(vehicleId)}`}`, { method: "GET" }); }
   async addMaintenance(d) { return this.request("/maintenances", { method: "POST", body: d }); }
   async updateMaintenance(id, d) { return this.request(`/maintenances/${id}`, { method: "PUT", body: d }); }
   async deleteMaintenance(id) { return this.request(`/maintenances/${id}`, { method: "DELETE" }); }
 
-  async getCosts() { return this.request("/costs", { method: "GET" }); }
+  async getCosts(vehicleId) { return this.request(`/costs${vehicleId == null ? "" : `?vehicle_id=${encodeURIComponent(vehicleId)}`}`, { method: "GET" }); }
   async addCost(d) { return this.request("/costs", { method: "POST", body: d }); }
   async updateCost(id, d) { return this.request(`/costs/${id}`, { method: "PUT", body: d }); }
   async deleteCost(id) { return this.request(`/costs/${id}`, { method: "DELETE" }); }

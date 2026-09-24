@@ -9,15 +9,26 @@ const mimeTypes = {
   ".css": "text/css; charset=utf-8",
   ".html": "text/html; charset=utf-8",
   ".js": "text/javascript; charset=utf-8",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
   ".png": "image/png",
   ".svg": "image/svg+xml",
 };
 
 http
   .createServer((req, res) => {
-    const pathname = decodeURIComponent(new URL(req.url, "http://localhost").pathname);
+    const requestUrl = new URL(req.url, "http://localhost");
+    const pathname = decodeURIComponent(requestUrl.pathname);
+    if (pathname === "/index.html" || (pathname.endsWith(".html") && pathname !== "/")) {
+      const destination = pathname === "/index.html" ? "/" : pathname.slice(0, -5);
+      res.writeHead(308, { Location: `${destination}${requestUrl.search}` });
+      return res.end();
+    }
+
     const requested = pathname === "/" ? "index.html" : pathname.replace(/^\/+/, "");
-    const file = path.resolve(root, requested);
+    const directFile = path.resolve(root, requested);
+    const extensionlessFile = path.resolve(root, `${requested}.html`);
+    const file = (path.extname(requested) || fs.existsSync(directFile)) ? directFile : extensionlessFile;
 
     if (!file.startsWith(root + path.sep) || !fs.existsSync(file) || !fs.statSync(file).isFile()) {
       res.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });

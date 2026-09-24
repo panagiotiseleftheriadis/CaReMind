@@ -10,6 +10,7 @@ const { requirePositiveId } = require("../validation");
 const db = require("../db");
 const sendMail = require("../emailService");
 const { JWT_SECRET } = require("../authMiddleware");
+const { securityTransaction, securityFailure, lockSecurityCode } = require("../security-transaction");
 
 const router = express.Router();
 router.param("id", requirePositiveId);
@@ -23,6 +24,16 @@ function hashCode(code) {
 function generate6DigitCode() {
   const n = crypto.randomInt(0, 1000000);
   return String(n).padStart(6, "0");
+}
+
+function escapeHtml(value) {
+  return String(value ?? "").replace(/[&<>'"]/g, (character) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    "'": "&#39;",
+    '"': "&quot;",
+  })[character]);
 }
 
 // GET /api/account/me
@@ -52,6 +63,7 @@ router.get("/me", async (req, res) => {
 // POST /api/account/send-code
 // Sends a 6-digit code to the user's current email.
 router.post("/send-code", async (req, res) => {
+  let verificationCodeId = null;
   try {
     const userId = req.user.id;
     const [rows] = await db.query(
@@ -75,17 +87,18 @@ router.post("/send-code", async (req, res) => {
     const codeHash = hashCode(code);
 
     // 10 minutes validity
-    await db.query(
+    const [insertResult] = await db.query(
       `INSERT INTO verification_codes (user_id, code_hash, purpose, expires_at)
        VALUES (?, ?, 'account_change', NOW() + INTERVAL '10 minutes')`,
       [userId, codeHash]
     );
+    verificationCodeId = insertResult.insertId;
 
     const subject = "CaReMind - Κωδικός επιβεβαίωσης";
     const html = `
       <div style="font-family: Arial, sans-serif; line-height:1.6">
         <h2 style="margin:0 0 12px 0">Επιβεβαίωση αλλαγής στοιχείων</h2>
-        <p>Γεια σας <b>${rows[0].username || ""}</b>,</p>
+        <p>Γεια σας <b>${escapeHtml(rows[0].username || "")}</b>,</p>
         <p>Ο κωδικός επιβεβαίωσης σας είναι:</p>
         <div style="font-size:28px; letter-spacing:6px; font-weight:700; padding:12px 16px; background:#f3f6f8; display:inline-block; border-radius:10px;">${code}</div>
         <p style="margin-top:14px">Ο κωδικός λήγει σε <b>10 λεπτά</b>.</p>
@@ -97,6 +110,25 @@ router.post("/send-code", async (req, res) => {
 
     return res.json({ ok: true, message: "Code sent" });
   } catch (err) {
+    if (sendMail.isEmailSubmissionError(err)) {
+      if (verificationCodeId) {
+        try {
+          await db.query("DELETE FROM verification_codes WHERE id = ?", [verificationCodeId]);
+        } catch (cleanupError) {
+          console.error("Failed to remove an undelivered account-change code", {
+            error: String(cleanupError?.name || "DatabaseError"),
+          });
+        }
+      }
+      console.error(
+        "Account-change email submission failed",
+        sendMail.emailFailureLogDetails(err)
+      );
+      return res.status(503).json({
+        error: "Δεν ήταν δυνατή η υποβολή του email επιβεβαίωσης. Δοκιμάστε ξανά αργότερα.",
+        code: "VERIFICATION_EMAIL_UNAVAILABLE",
+      });
+    }
     console.error("account/send-code error:", err);
     return res.status(500).json({ error: "Σφάλμα διακομιστή" });
   }
@@ -134,7 +166,7 @@ router.post("/verify-code", async (req, res) => {
     const accountToken = jwt.sign(
       { userId, verificationId, purpose: "account_change" },
       JWT_SECRET,
-      { expiresIn: "15m" }
+      { algorithm: "HS256", expiresIn: "15m" }
     );
 
     return res.json({ accountToken });
@@ -155,7 +187,7 @@ router.post("/update", async (req, res) => {
   }
 
   try {
-    const payload = jwt.verify(accountToken, JWT_SECRET);
+    const payload = jwt.verify(accountToken, JWT_SECRET, { algorithms: ["HS256"] });
     if (payload?.purpose !== "account_change") {
       return res.status(401).json({ error: "Μη έγκυρο token" });
     }
@@ -170,7 +202,7 @@ router.post("/update", async (req, res) => {
     const [rows] = await db.query(
       `SELECT id
        FROM verification_codes
-       WHERE id = ? AND user_id = ? AND used_at IS NULL AND expires_at > NOW()
+       WHERE id = ? AND user_id = ? AND purpose = 'account_change' AND used_at IS NULL AND expires_at > NOW()
        LIMIT 1`,
       [verificationId, userId]
     );
@@ -233,21 +265,32 @@ router.post("/update", async (req, res) => {
     const vals = keys.map((k) => allowed[k]);
     vals.push(userId);
 
-    await db.query(`UPDATE users SET ${setSql} WHERE id = ?`, vals);
-    await db.query("UPDATE verification_codes SET used_at = NOW() WHERE id = ?", [
-      verificationId,
-    ]);
-
     const passwordChanged = Object.prototype.hasOwnProperty.call(allowed, "password");
-    if (passwordChanged) {
-      await db.query(
-        "UPDATE refresh_tokens SET revoked_at = NOW() WHERE user_id = ? AND revoked_at IS NULL",
-        [userId]
-      );
-    }
+    await securityTransaction(db, async (connection) => {
+      const [users] = await connection.query("SELECT id, is_active FROM users WHERE id = ? FOR UPDATE", [userId]);
+      if (!users.length) throw securityFailure(401, { error: "User not found" });
+      if (!users[0].is_active) throw securityFailure(403, { error: "User inactive" });
+      if (!await lockSecurityCode(connection, "verification_codes", verificationId, userId)) {
+        throw securityFailure(401, { error: "Ο κωδικός έχει λήξει" });
+      }
+      jwt.verify(accountToken, JWT_SECRET, { algorithms: ["HS256"] });
+      jwt.verify(req.headers.authorization.slice(7).trim(), JWT_SECRET, { algorithms: ["HS256"] });
+      await connection.query(`UPDATE users SET ${setSql} WHERE id = ?`, vals);
+      await connection.query("UPDATE verification_codes SET used_at = NOW() WHERE id = ?", [
+        verificationId,
+      ]);
+
+      if (passwordChanged) {
+        await connection.query(
+          "UPDATE refresh_tokens SET revoked_at = NOW() WHERE user_id = ? AND revoked_at IS NULL",
+          [userId]
+        );
+      }
+    });
 
     return res.json({ ok: true, requiresLogin: passwordChanged });
   } catch (err) {
+    if (err.body) return res.status(err.status).json(err.body);
     console.error("account/update error:", err);
     if (err?.name === "JsonWebTokenError" || err?.name === "TokenExpiredError") {
       return res.status(401).json({ error: "Μη έγκυρο ή ληγμένο token" });
