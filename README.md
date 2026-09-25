@@ -315,11 +315,11 @@ unchanged, and no 003, V2 product feature or deployment is part of P0C.
 
 ## Deploy the API on Vercel with Neon
 
-Create a separate Vercel project from this repository and set its Root Directory to `backend`. Use the Other framework preset and add the production environment variables from `backend/.env.example`; at minimum the deployment requires `DATABASE_URL`, `MIGRATION_DATABASE_URL`, `DB_SSL=true`, `NODE_ENV=production`, `JWT_SECRET`, `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` and `RATE_LIMIT_KEY_SECRET`. The three rate-limit settings are backend-only and are also required for Vercel previews. See the setup and failure policy below before deployment.
+Create a separate Vercel project from this repository and set its Root Directory to `backend`. Use the Other framework preset and add the production environment variables from `backend/.env.example`; at minimum the deployment requires `DATABASE_URL`, `MIGRATION_DATABASE_URL`, `DB_SSL=true`, `NODE_ENV=production`, `JWT_SECRET`, `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` and `RATE_LIMIT_KEY_SECRET`. The three rate-limit settings are backend-only and are also required for functional Vercel Preview API requests, but Preview builds do not require database credentials merely to build. See the setup and failure policy below before deployment.
 
 Before the next real deployment, configure the backend Vercel project's `MIGRATION_DATABASE_URL` with the direct endpoint for the same Neon branch/database as runtime `DATABASE_URL`. Verify its TLS trust and direct-connection status. Do not set `TEST_DATABASE_URL` there. The build fails closed without the direct migration URL; setting it is a manual operator step, not an action performed by tests or CI.
 
-The `vercel-build` command applies pending migrations during deployment. Vercel automatically detects the exported Express application in `server.js` and deploys it as one Vercel Function, preserving nested REST routes such as `/api/account/me`. After the deployment is healthy:
+The `vercel-build` command uses `VERCEL_ENV`/`VERCEL_TARGET_ENV` to apply pending migrations only during Production deployment. It logs and skips migrations for Preview, and fails closed when the environment is missing, conflicting or unsupported. Production migration failures still fail the deployment. Vercel automatically detects the exported Express application in `server.js` and deploys it as one Vercel Function, preserving nested REST routes such as `/api/account/me`. After the deployment is healthy:
 
 1. Add `api.car-remind.gr` as a custom domain in the backend Vercel project.
 2. Replace the old Render DNS record with the CNAME value shown by Vercel.

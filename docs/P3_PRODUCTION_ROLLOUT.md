@@ -10,7 +10,7 @@ The reviewed V2 commit is `b5138c05c04819538d42b1fe63f2d47a7c14ca0c` on `feature
 
 - The frontend is a separate static Vercel project. [`frontend/vercel.json`](../frontend/vercel.json) permanently redirects `/index.html` to `/`, `/login.html` to `/login`, and any other one-segment `/:path*.html` to `/:path`. It rewrites `/` to `/index.html`, `/login` to `/login.html`, and `/:path` to `/:path.html`.
 - The documented backend is a separate Vercel project whose Root Directory is `backend` and whose framework preset is Other. There is intentionally no backend `vercel.json` and no Edge `middleware.js`; Vercel auto-detects the exported Express app in `backend/server.js`.
-- `backend/package.json` defines `vercel-build` as `npm run db:migrate`, and `db:migrate` as `node scripts/migrate.js`. Therefore every backend deployment whose Vercel build settings honor this package script attempts all pending migrations during its build. A manual migration before deployment does not suppress the build hook; the later build should run the migrator again and no-op.
+- `backend/package.json` defines `vercel-build` as `node scripts/vercel-build.js`. The wrapper uses `VERCEL_ENV`/`VERCEL_TARGET_ENV`: an unambiguous Production build runs the existing migrator, Preview logs that migrations were skipped, and missing, conflicting or unsupported targets fail closed. A manual migration before Production deployment does not suppress the build hook; the later Production build should run the migrator again and no-op.
 - GitHub Actions runs checks and disposable PostgreSQL tests but contains no deployment job.
 - Git itself does not define a Vercel Production Branch. The repository does not contain linked `.vercel` project metadata or dashboard settings.
 
@@ -102,7 +102,7 @@ Steps 9-15 are not authorized by this rehearsal-planning task.
 - A named operator and second reviewer for target/command verification.
 - A secure location outside Git for timestamps, redacted screenshots, query output, counts, checksums, and logs.
 - A controlled test account and nonvaluable test vehicle. Do not use a valuable real user vehicle for the first archive transition.
-- For an isolated Preview, separate branch-scoped Preview values for `DATABASE_URL`, `MIGRATION_DATABASE_URL`, Upstash, email, secrets, cookie/CORS settings, and other writable integrations. No Preview variable may point to production.
+- For an isolated functional Preview API, use separate branch-scoped Preview values for `DATABASE_URL`, Upstash, email, secrets, cookie/CORS settings, and other writable integrations. Do not add production database credentials to Preview; the Preview build skips migrations and does not require `DATABASE_URL` or `MIGRATION_DATABASE_URL` merely to build. No Preview variable may point to production.
 - A production checkpoint/restore procedure validated in Neon before the eventual production window.
 
 ## 5. Create the Neon rehearsal branch manually
@@ -346,7 +346,7 @@ In a second shell, run `npm.cmd run frontend:serve` from `backend/` and open `ht
 
 ### Alternative: isolated Vercel Preview
 
-Do not create the Preview until branch-specific Preview variables are confirmed. Because `vercel-build` runs migrations, a Preview configured with production `MIGRATION_DATABASE_URL` could migrate production during build even if its runtime URL is safe. Set branch-specific Preview `DATABASE_URL` and `MIGRATION_DATABASE_URL` to the rehearsal branch first, together with isolated writable integrations and `VEHICLE_ARCHIVE_ENABLED=true`. Review deployment logs for 001/002/003 skips. Never promote this Preview to Production.
+Do not add production database credentials to Preview. `vercel-build` must report that database migrations were skipped for Preview; if environment detection is missing, conflicting or unsupported, the build must fail. A functional Preview API still needs an isolated branch-scoped runtime `DATABASE_URL` and other isolated writable integrations, together with `VEHICLE_ARCHIVE_ENABLED=true`; a build-only Preview needs neither database URL. Apply migrations to a rehearsal database only through an explicitly reviewed migration workflow, not the Preview build. Never promote this Preview to Production.
 
 ### Rehearsal checks
 
