@@ -7,6 +7,23 @@ const { migrationConfig } = require("./migration-config");
 
 const migrationsDirectory = path.join(__dirname, "..", "migrations");
 
+function canonicalMigrationBytes(content) {
+  const input = Buffer.isBuffer(content) ? content : Buffer.from(content);
+  const output = Buffer.allocUnsafe(input.length);
+  let written = 0;
+
+  for (let index = 0; index < input.length; index++) {
+    if (input[index] === 0x0d && input[index + 1] === 0x0a) index++;
+    output[written++] = input[index];
+  }
+
+  return output.subarray(0, written);
+}
+
+function hashMigrationContent(content) {
+  return crypto.createHash("sha256").update(canonicalMigrationBytes(content)).digest("hex");
+}
+
 async function migrate({ env = process.env, directory = migrationsDirectory, logger = console } = {}) {
   const client = new Client(migrationConfig(env));
   // Idle socket errors must flow through normal teardown instead of becoming
@@ -43,10 +60,7 @@ async function migrate({ env = process.env, directory = migrationsDirectory, log
 
     for (const file of files) {
       const fullPath = path.resolve(directory, file);
-      const checksum = crypto
-        .createHash("sha256")
-        .update(fs.readFileSync(fullPath))
-        .digest("hex");
+      const checksum = hashMigrationContent(fs.readFileSync(fullPath));
       const [rows] = await connection.query(
         "SELECT checksum FROM schema_migrations WHERE name = ? LIMIT 1",
         [file]
@@ -103,4 +117,4 @@ if (require.main === module) {
     });
 }
 
-module.exports = { migrate };
+module.exports = { migrate, canonicalMigrationBytes, hashMigrationContent };

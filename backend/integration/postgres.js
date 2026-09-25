@@ -6,7 +6,7 @@ const os = require("node:os");
 const path = require("node:path");
 const crypto = require("node:crypto");
 const { Client } = require("pg");
-const { migrate } = require("../scripts/migrate");
+const { migrate, hashMigrationContent } = require("../scripts/migrate");
 const { testDatabaseConfig } = require("../scripts/migration-config");
 const { REMINDER_CANDIDATE_SQL } = require("../routes/cron");
 
@@ -48,7 +48,7 @@ test("real PostgreSQL migration guarantees", { timeout: 110_000 }, async (t) => 
     }
   });
   await admin.connect();
-  const hashes = async () => Promise.all(expected.map(async (name) => crypto.createHash("sha256").update(await fs.readFile(path.join(source, name))).digest("hex")));
+  const hashes = async () => Promise.all(expected.map(async (name) => hashMigrationContent(await fs.readFile(path.join(source, name)))));
   const originalHashes = await hashes();
   async function database() {
     const name = `caremind_test_run_${crypto.randomBytes(10).toString("hex")}`;
@@ -90,6 +90,19 @@ test("real PostgreSQL migration guarantees", { timeout: 110_000 }, async (t) => 
     assert.equal(messages.filter((message) => message.startsWith("run ")).length, 0);
     assert.deepEqual((await fresh.client.query("SELECT name, checksum, executed_at FROM schema_migrations ORDER BY name")).rows, ledger);
     assert.equal((await fresh.client.query("SELECT name FROM companies")).rows[0].name, "preserve-me");
+  });
+  await t.test("CRLF checkout files match the existing LF ledger without rewriting it", async () => {
+    const directory = await fixture("crlf-checksum");
+    for (const name of expected) {
+      const file = path.join(directory, name);
+      const lf = (await fs.readFile(file, "utf8")).replace(/\r\n/g, "\n");
+      await fs.writeFile(file, lf.replace(/\n/g, "\r\n"), "utf8");
+    }
+    const messages = [];
+    await migrate({ env: fresh.env, directory, logger: { log: (message) => messages.push(message) } });
+    assert.equal(messages.filter((message) => message.startsWith("skip ")).length, expected.length);
+    assert.equal(messages.filter((message) => message.startsWith("run ")).length, 0);
+    assert.deepEqual((await fresh.client.query("SELECT name, checksum, executed_at FROM schema_migrations ORDER BY name")).rows, ledger);
   });
   await t.test("tampered copied migration fails without changing data or repository bytes", async () => {
     const directory = await fixture("checksum");
