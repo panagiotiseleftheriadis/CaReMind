@@ -39,6 +39,48 @@ function loadRecordLabels() {
   return window.CaReMindRecordLabels;
 }
 
+function renderVehicleActions(vehicle) {
+  const nodes = new Map();
+  const document = {
+    title: "",
+    addEventListener() {},
+    getElementById(id) {
+      if (!nodes.has(id)) {
+        nodes.set(id, {
+          hidden: false,
+          innerHTML: "",
+          textContent: "",
+          classList: { toggle() {} },
+        });
+      }
+      return nodes.get(id);
+    },
+  };
+  const context = vm.createContext({
+    window: {
+      CaReMindUI: {
+        escapeHtml: (value) => String(value),
+        vehicleDisplayName: (make, model) => [make, model].filter(Boolean).join(" "),
+      },
+    },
+    document,
+    vehicle,
+    console,
+    Date,
+    Intl,
+    Number,
+    String,
+    URLSearchParams,
+  });
+  vm.runInContext(read("vehicle.js"), context);
+  vm.runInContext("const manager = Object.create(VehicleDetailManager.prototype); manager.vehicle = vehicle; manager.render();", context);
+  return {
+    editVisible: !nodes.get("editVehicleButton").hidden,
+    archiveVisible: !nodes.get("archiveVehicleButton").hidden,
+    restoreVisible: !nodes.get("restoreVehicleButton").hidden,
+  };
+}
+
 async function freePort() {
   const server = net.createServer();
   await new Promise((resolve, reject) => { server.once("error", reject); server.listen(0, "127.0.0.1", resolve); });
@@ -176,6 +218,21 @@ test("detail handles invalid IDs, owner-authoritative errors, archived reading a
   assert.match(source, /v\.state === "archived" \|\| v\.archivedAt != null/);
   assert.match(html, /id="restoreVehicleButton" hidden/);
   assert.doesNotMatch(source, /currentUser/);
+});
+
+test("vehicle detail management actions match active and archived state", () => {
+  const active = renderVehicleActions({ state: "active", archivedAt: null, make: "Toyota", model: "Yaris" });
+  assert.deepEqual(active, { editVisible: true, archiveVisible: true, restoreVisible: false });
+
+  const archived = renderVehicleActions({ state: "archived", archivedAt: "2026-09-24T10:00:00.000Z", make: "Toyota", model: "Yaris" });
+  assert.deepEqual(archived, { editVisible: false, archiveVisible: false, restoreVisible: true });
+});
+
+test("vehicle management hidden state wins over shared button display styles", () => {
+  const sharedCss = read("styles.css");
+  const detailCss = read("vehicle.css");
+  assert.match(sharedCss, /\.btn-primary,\s*\.btn-secondary\s*\{[^}]*display:\s*inline-flex;/);
+  assert.match(detailCss, /\.vehicle-management-actions button\[hidden\]\s*\{\s*display:\s*none\s*!important;\s*\}/);
 });
 
 test("normal vehicle UI archives with accessible confirmation and never hard deletes", () => {
