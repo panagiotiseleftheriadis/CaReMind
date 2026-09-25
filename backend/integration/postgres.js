@@ -6,14 +6,14 @@ const os = require("node:os");
 const path = require("node:path");
 const crypto = require("node:crypto");
 const { Client } = require("pg");
-const { migrate } = require("../scripts/migrate");
+const { migrate, hashMigrationContent } = require("../scripts/migrate");
 const { testDatabaseConfig } = require("../scripts/migration-config");
 const { REMINDER_CANDIDATE_SQL } = require("../routes/cron");
 
 // Validate before constructing any client. Only the shell's explicit test URL is read.
 const config = testDatabaseConfig();
 const source = path.resolve(__dirname, "../migrations");
-const expected = ["001_initial_schema.js", "002_align_legacy_schema.js", "003_vehicle_identity_archive.js"];
+const expected = ["001_initial_schema.js", "002_align_legacy_schema.js", "003_vehicle_identity_archive.js", "004_odometer_readings.js"];
 const logger = { log() {} };
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 async function waitFor(probe, description) {
@@ -48,7 +48,7 @@ test("real PostgreSQL migration guarantees", { timeout: 110_000 }, async (t) => 
     }
   });
   await admin.connect();
-  const hashes = async () => Promise.all(expected.map(async (name) => crypto.createHash("sha256").update(await fs.readFile(path.join(source, name))).digest("hex")));
+  const hashes = async () => Promise.all(expected.map(async (name) => hashMigrationContent(await fs.readFile(path.join(source, name)))));
   const originalHashes = await hashes();
   async function database() {
     const name = `caremind_test_run_${crypto.randomBytes(10).toString("hex")}`;
@@ -73,23 +73,36 @@ test("real PostgreSQL migration guarantees", { timeout: 110_000 }, async (t) => 
   }
   const fresh = await database();
   let ledger;
-  await t.test("fresh database applies exactly 001/002/003 and all expected tables", async () => {
+  await t.test("fresh database applies exactly 001/002/003/004 and all expected tables", async () => {
     await migrate({ env: fresh.env, logger });
     ledger = (await fresh.client.query("SELECT name, checksum, executed_at FROM schema_migrations ORDER BY name")).rows;
     assert.deepEqual(ledger.map((row) => row.name), expected);
     assert.deepEqual(ledger.map((row) => row.checksum), originalHashes);
     const tables = (await fresh.client.query("SELECT tablename FROM pg_tables WHERE schemaname='public' ORDER BY tablename")).rows.map((row) => row.tablename);
-    assert.deepEqual(tables, ["companies", "costs", "email_verification_codes", "interest_requests", "maintenances", "notification_recipients", "password_reset_codes", "refresh_tokens", "schema_migrations", "users", "vehicles", "verification_codes"]);
+    assert.deepEqual(tables, ["companies", "costs", "email_verification_codes", "interest_requests", "maintenances", "notification_recipients", "odometer_readings", "password_reset_codes", "refresh_tokens", "schema_migrations", "users", "vehicles", "verification_codes"]);
     await fresh.client.query("INSERT INTO companies(name) VALUES ('preserve-me')");
     await noRunnerSessions(fresh.name);
   });
   await t.test("second run skips every migration and preserves ledger/data", async () => {
     const messages = [];
     await migrate({ env: fresh.env, logger: { log: (message) => messages.push(message) } });
-    assert.equal(messages.filter((message) => message.startsWith("skip ")).length, 3);
+    assert.equal(messages.filter((message) => message.startsWith("skip ")).length, expected.length);
     assert.equal(messages.filter((message) => message.startsWith("run ")).length, 0);
     assert.deepEqual((await fresh.client.query("SELECT name, checksum, executed_at FROM schema_migrations ORDER BY name")).rows, ledger);
     assert.equal((await fresh.client.query("SELECT name FROM companies")).rows[0].name, "preserve-me");
+  });
+  await t.test("CRLF checkout files match the existing LF ledger without rewriting it", async () => {
+    const directory = await fixture("crlf-checksum");
+    for (const name of expected) {
+      const file = path.join(directory, name);
+      const lf = (await fs.readFile(file, "utf8")).replace(/\r\n/g, "\n");
+      await fs.writeFile(file, lf.replace(/\n/g, "\r\n"), "utf8");
+    }
+    const messages = [];
+    await migrate({ env: fresh.env, directory, logger: { log: (message) => messages.push(message) } });
+    assert.equal(messages.filter((message) => message.startsWith("skip ")).length, expected.length);
+    assert.equal(messages.filter((message) => message.startsWith("run ")).length, 0);
+    assert.deepEqual((await fresh.client.query("SELECT name, checksum, executed_at FROM schema_migrations ORDER BY name")).rows, ledger);
   });
   await t.test("tampered copied migration fails without changing data or repository bytes", async () => {
     const directory = await fixture("checksum");
@@ -179,6 +192,104 @@ module.exports.up = async (db) => {
     }
   });
   assert.deepEqual(await hashes(), originalHashes);
+  await t.test("004 backfills mileage evidence and enforces ownership, correction and cascade constraints", async () => {
+    const target = await database();
+    const before004 = await fixture("legacy-before-004");
+    await fs.rm(path.join(before004, expected[3]));
+    await migrate({ env: target.env, directory: before004, logger });
+    const owner = (await target.client.query("INSERT INTO users(username,password,email) VALUES ('p4-owner','test','p4-owner@example.test') RETURNING id")).rows[0].id;
+    const foreign = (await target.client.query("INSERT INTO users(username,password,email) VALUES ('p4-foreign','test','p4-foreign@example.test') RETURNING id")).rows[0].id;
+    const active = (await target.client.query("INSERT INTO vehicles(user_id,vehicle_type,chassis_number,current_mileage) VALUES ($1,'car','P4-ACTIVE',12345) RETURNING id", [owner])).rows[0].id;
+    const archived = (await target.client.query("INSERT INTO vehicles(user_id,vehicle_type,chassis_number,current_mileage,archived_at) VALUES ($1,'car','P4-ARCHIVED',0,clock_timestamp()) RETURNING id", [owner])).rows[0].id;
+    const empty = (await target.client.query("INSERT INTO vehicles(user_id,vehicle_type,chassis_number,current_mileage) VALUES ($1,'car','P4-NULL',NULL) RETURNING id", [owner])).rows[0].id;
+    const foreignVehicle = (await target.client.query("INSERT INTO vehicles(user_id,vehicle_type,chassis_number,current_mileage) VALUES ($1,'car','P4-FOREIGN',77) RETURNING id", [foreign])).rows[0].id;
+    const maintenance = (await target.client.query("INSERT INTO maintenances(user_id,vehicle_id,maintenance_type,last_mileage,next_mileage) VALUES ($1,$2,'service',111,222) RETURNING id", [owner, active])).rows[0].id;
+    const cost = (await target.client.query("INSERT INTO costs(user_id,vehicle_id,category,amount,cost_date) VALUES ($1,$2,'service',10,CURRENT_DATE) RETURNING id", [owner, active])).rows[0].id;
+
+    await migrate({ env: target.env, logger });
+    const baselines = (await target.client.query("SELECT vehicle_id,mileage_km,occurred_on,source FROM odometer_readings ORDER BY vehicle_id")).rows;
+    assert.deepEqual(baselines.map((row) => [Number(row.vehicle_id), row.mileage_km, row.occurred_on, row.source]), [
+      [Number(active), 12345, null, "legacy_baseline"],
+      [Number(archived), 0, null, "legacy_baseline"],
+      [Number(foreignVehicle), 77, null, "legacy_baseline"],
+    ]);
+    assert.equal(baselines.some((row) => Number(row.vehicle_id) === Number(empty)), false);
+    assert.equal((await target.client.query("SELECT count(*)::int AS count FROM odometer_readings WHERE mileage_km IN (111,222)")).rows[0].count, 0);
+    assert.equal((await target.client.query("SELECT count(*)::int AS count FROM maintenances WHERE id=$1", [maintenance])).rows[0].count, 1);
+    assert.equal((await target.client.query("SELECT count(*)::int AS count FROM costs WHERE id=$1", [cost])).rows[0].count, 1);
+
+    await assert.rejects(
+      target.client.query("INSERT INTO odometer_readings(user_id,vehicle_id,mileage_km,occurred_on,source) VALUES ($1,$2,1,CURRENT_DATE,'manual')", [foreign, active]),
+      (error) => error.code === "23503"
+    );
+    const first = (await target.client.query("INSERT INTO odometer_readings(user_id,vehicle_id,mileage_km,occurred_on,source) VALUES ($1,$2,13000,CURRENT_DATE,'manual') RETURNING id", [owner, active])).rows[0].id;
+    await assert.rejects(
+      target.client.query("INSERT INTO odometer_readings(user_id,vehicle_id,mileage_km,occurred_on,source) VALUES ($1,$2,13001,CURRENT_DATE,'manual')", [owner, active]),
+      (error) => error.code === "23505"
+    );
+    await target.client.query("UPDATE odometer_readings SET voided_at=clock_timestamp(),void_reason='Correction' WHERE id=$1", [first]);
+    const replacement = (await target.client.query("INSERT INTO odometer_readings(user_id,vehicle_id,mileage_km,occurred_on,source,replaces_reading_id) VALUES ($1,$2,13001,CURRENT_DATE,'manual',$3) RETURNING id", [owner, active, first])).rows[0].id;
+    await assert.rejects(
+      target.client.query("INSERT INTO odometer_readings(user_id,vehicle_id,mileage_km,occurred_on,source,replaces_reading_id) VALUES ($1,$2,13002,CURRENT_DATE-1,'manual',$3)", [owner, active, first]),
+      (error) => {
+        assert.equal(error.code, "23505");
+        assert.equal(error.constraint, "uq_odometer_readings_replacement");
+        return true;
+      }
+    );
+    const crossScopeOriginal = (await target.client.query(
+      "INSERT INTO odometer_readings(user_id,vehicle_id,mileage_km,occurred_on,source) VALUES ($1,$2,12900,CURRENT_DATE-2,'manual') RETURNING id",
+      [owner, active]
+    )).rows[0].id;
+    await target.client.query("UPDATE odometer_readings SET voided_at=clock_timestamp(),void_reason='Cross-scope FK test' WHERE id=$1", [crossScopeOriginal]);
+    await assert.rejects(
+      target.client.query("INSERT INTO odometer_readings(user_id,vehicle_id,mileage_km,occurred_on,source,replaces_reading_id) VALUES ($1,$2,80,CURRENT_DATE-2,'manual',$3)", [foreign, foreignVehicle, crossScopeOriginal]),
+      (error) => {
+        assert.equal(error.code, "23503");
+        assert.equal(error.constraint, "fk_odometer_readings_replaces");
+        return true;
+      }
+    );
+    await target.client.query("BEGIN");
+    await target.client.query("DELETE FROM odometer_readings WHERE id=$1", [first]);
+    await assert.rejects(
+      target.client.query("COMMIT"),
+      (error) => {
+        assert.equal(error.code, "23503");
+        assert.equal(error.constraint, "fk_odometer_readings_replaces");
+        return true;
+      }
+    );
+    await target.client.query("ROLLBACK");
+    assert.equal((await target.client.query("SELECT count(*)::int AS count FROM odometer_readings WHERE id IN ($1,$2)", [first, replacement])).rows[0].count, 2);
+    await target.client.query("DELETE FROM vehicles WHERE id=$1", [active]);
+    assert.equal((await target.client.query("SELECT count(*)::int AS count FROM odometer_readings WHERE vehicle_id=$1", [active])).rows[0].count, 0);
+  });
+  await t.test("004 fails closed on unledgered table, constraint or index state", async () => {
+    async function before004Target(label) {
+      const target = await database();
+      const directory = await fixture(label);
+      await fs.rm(path.join(directory, expected[3]));
+      await migrate({ env: target.env, directory, logger });
+      return target;
+    }
+
+    const tableTarget = await before004Target("fail-closed-table");
+    await tableTarget.client.query("CREATE TABLE odometer_readings(id BIGINT)");
+    await assert.rejects(migrate({ env: tableTarget.env, logger }), /already exists/);
+    assert.deepEqual((await tableTarget.client.query("SELECT name FROM schema_migrations ORDER BY name")).rows.map((row) => row.name), expected.slice(0, 3));
+
+    const constraintTarget = await before004Target("fail-closed-constraint");
+    await constraintTarget.client.query("ALTER TABLE vehicles ADD CONSTRAINT uq_vehicles_id_user UNIQUE(id,user_id)");
+    await assert.rejects(migrate({ env: constraintTarget.env, logger }), /already exists/);
+    assert.equal((await constraintTarget.client.query("SELECT to_regclass('odometer_readings') AS table")).rows[0].table, null);
+
+    const indexTarget = await before004Target("fail-closed-index");
+    await indexTarget.client.query("CREATE INDEX idx_odometer_readings_vehicle_history ON vehicles(user_id)");
+    await assert.rejects(migrate({ env: indexTarget.env, logger }), /already exists/);
+    assert.equal((await indexTarget.client.query("SELECT to_regclass('odometer_readings') AS table")).rows[0].table, null);
+    assert.equal((await indexTarget.client.query("SELECT to_regclass('idx_odometer_readings_vehicle_history') AS index")).rows[0].index, "idx_odometer_readings_vehicle_history");
+  });
   await t.test("atomic security writes on disposable PostgreSQL", async (securityTest) => {
     await require("./security-writes")(securityTest, { ...config, database: fresh.name }, fresh.client, waitFor);
   });
@@ -186,6 +297,7 @@ module.exports.up = async (db) => {
     const target = await database();
     const before003 = await fixture("legacy-before-003");
     await fs.rm(path.join(before003, expected[2]));
+    await fs.rm(path.join(before003, expected[3]));
     await migrate({ env: target.env, directory: before003, logger });
     const userId = (await target.client.query(
       "INSERT INTO users(username,password,email) VALUES ('legacy-003','test','legacy-003@example.test') RETURNING id"
@@ -234,7 +346,7 @@ module.exports.up = async (db) => {
     assert.equal(byName.purchase_amount.data_type, "numeric");
     const indexes = (await target.client.query("SELECT indexname,indexdef FROM pg_indexes WHERE schemaname='public' AND tablename='vehicles'")).rows;
     assert.ok(indexes.some((index) => index.indexname === "idx_vehicles_user_active" && /WHERE \(archived_at IS NULL\)/.test(index.indexdef)));
-    assert.equal(indexes.some((index) => index.indexname === "uq_vehicles_id_user"), false);
+    assert.equal(indexes.some((index) => index.indexname === "uq_vehicles_id_user"), true);
     const constraints = (await target.client.query("SELECT conname,convalidated FROM pg_constraint WHERE conrelid='vehicles'::regclass")).rows;
     for (const name of ["chk_vehicles_purchase_amount", "chk_vehicles_registration_country", "chk_vehicles_currency", "chk_vehicles_revision", "uq_vehicles_user_chassis"]) assert.equal(constraints.find((item) => item.conname === name)?.convalidated, true, name);
 
