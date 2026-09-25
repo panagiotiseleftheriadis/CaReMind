@@ -782,7 +782,10 @@ components:
         chassisNumber: { type: string, maxLength: 50 }
         model: { type: [string, 'null'], minLength: 1, maxLength: 100 }
         year: { type: [integer, 'null'], minimum: 1886 }
-        currentMileage: { type: [integer, 'null'], minimum: 0 }
+        currentMileage:
+          type: [integer, 'null']
+          minimum: 0
+          description: Backward-compatible cache of the authoritative accepted odometer evidence.
         registrationPlate: { type: [string, 'null'], minLength: 1, maxLength: 32 }
         registrationCountry: { type: [string, 'null'], pattern: '^[A-Z]{2}$' }
         make: { type: [string, 'null'], minLength: 1, maxLength: 100 }
@@ -804,7 +807,13 @@ components:
         chassisNumber: { type: string, minLength: 1, maxLength: 50 }
         model: { type: [string, 'null'], maxLength: 100 }
         year: { type: [integer, 'null'], minimum: 1886 }
-        currentMileage: { type: [integer, 'null'], minimum: 0 }
+        currentMileage:
+          type: [integer, 'null']
+          minimum: 0
+          description: >-
+            Legacy scalar compatibility field. Once accepted dated history exists,
+            only the unchanged derived cache value is accepted; changing or clearing
+            it returns 409 ODOMETER_HISTORY_REQUIRED.
     VehicleCreate:
       type: object
       required: [vehicleType, chassisNumber]
@@ -814,7 +823,10 @@ components:
         chassisNumber: { type: string, minLength: 1, maxLength: 50 }
         model: { type: [string, 'null'], minLength: 1, maxLength: 100 }
         year: { type: [integer, 'null'], minimum: 1886 }
-        currentMileage: { type: [integer, 'null'], minimum: 0 }
+        currentMileage:
+          type: [integer, 'null']
+          minimum: 0
+          description: Creates an undated legacy baseline when non-null.
         registrationPlate: { type: [string, 'null'], minLength: 1, maxLength: 32 }
         registrationCountry: { type: [string, 'null'], pattern: '^[A-Za-z]{2}$' }
         make: { type: [string, 'null'], minLength: 1, maxLength: 100 }
@@ -834,7 +846,13 @@ components:
         chassisNumber: { type: string, minLength: 1, maxLength: 50 }
         model: { type: [string, 'null'], minLength: 1, maxLength: 100 }
         year: { type: [integer, 'null'], minimum: 1886 }
-        currentMileage: { type: [integer, 'null'], minimum: 0 }
+        currentMileage:
+          type: [integer, 'null']
+          minimum: 0
+          description: >-
+            Updates the undated legacy baseline before dated history exists. With
+            dated history, only the unchanged derived value is accepted; changing
+            or clearing it returns 409 ODOMETER_HISTORY_REQUIRED.
         registrationPlate: { type: [string, 'null'], minLength: 1, maxLength: 32 }
         registrationCountry: { type: [string, 'null'], pattern: '^[A-Za-z]{2}$' }
         make: { type: [string, 'null'], minLength: 1, maxLength: 100 }

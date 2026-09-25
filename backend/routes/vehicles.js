@@ -5,6 +5,7 @@ const { requirePositiveId } = require("../validation");
 const { securityTransaction } = require("../security-transaction");
 const { findOwnedVehicle, userOwnsVehicle } = require("../vehicle-ownership");
 const { isVehicleArchiveEnabled } = require("../vehicle-archive-capability");
+const { createLegacyBaseline, mediateLegacyCurrentMileage } = require("../odometer-domain");
 
 router.param("id", requirePositiveId);
 
@@ -160,6 +161,28 @@ async function lockUser(connection, userId) {
   if (!rows.length) throw routeError(404, "VEHICLE_NOT_FOUND", "Το όχημα δεν βρέθηκε");
 }
 
+const VEHICLE_COLUMN_FIELDS = {
+  vehicle_type: "vehicleType",
+  chassis_number: "chassisNumber",
+  model: "model",
+  year: "year",
+  registration_plate: "registrationPlate",
+  registration_country: "registrationCountry",
+  make: "make",
+  vin: "vin",
+  fuel_type: "fuelType",
+  purchase_date: "purchaseDate",
+  purchase_amount: "purchaseAmount",
+  currency: "currency",
+};
+
+function sameVehicleValue(vehicle, column, value) {
+  const current = vehicle[VEHICLE_COLUMN_FIELDS[column]];
+  if (current == null || current === "") return value == null;
+  if (["year", "purchase_amount"].includes(column)) return Number(current) === Number(value);
+  return String(current) === String(value);
+}
+
 function sendRouteError(res, error, fallback) {
   if (error.body) return res.status(error.status).json(error.body);
   if (error.code === "23505") return res.status(409).json({ error: "Υπάρχει ήδη όχημα με αυτόν τον αριθμό πλαισίου", code: "DUPLICATE_CHASSIS_NUMBER" });
@@ -192,15 +215,21 @@ router.post("/", async (req, res) => {
     const userId = req.user.id;
     const values = normalizeCreate(req.body);
     const normalizedChassis = values.find((item) => item.column === "chassis_number").value;
-    const [duplicates] = await db.query("SELECT id FROM vehicles WHERE user_id = ? AND chassis_number = ? LIMIT 1", [userId, normalizedChassis]);
-    if (duplicates.length) return res.status(409).json({ error: "Υπάρχει ήδη όχημα με αυτόν τον αριθμό πλαισίου", code: "DUPLICATE_CHASSIS_NUMBER" });
-    const columns = values.map((item) => item.column);
-    const [result] = await db.query(
-      `INSERT INTO vehicles (user_id, ${columns.join(", ")})
-       VALUES (?, ${columns.map(() => "?").join(", ")})`,
-      [userId, ...values.map((item) => item.value)]
-    );
-    return res.status(201).json(await selectVehicle(db, userId, result.insertId));
+    const vehicle = await securityTransaction(db, async (connection) => {
+      await lockUser(connection, userId);
+      const [duplicates] = await connection.query("SELECT id FROM vehicles WHERE user_id = ? AND chassis_number = ? LIMIT 1", [userId, normalizedChassis]);
+      if (duplicates.length) throw routeError(409, "DUPLICATE_CHASSIS_NUMBER", "Υπάρχει ήδη όχημα με αυτόν τον αριθμό πλαισίου");
+      const columns = values.map((item) => item.column);
+      const [result] = await connection.query(
+        `INSERT INTO vehicles (user_id, ${columns.join(", ")})
+         VALUES (?, ${columns.map(() => "?").join(", ")})`,
+        [userId, ...values.map((item) => item.value)]
+      );
+      const mileage = values.find((item) => item.column === "current_mileage")?.value;
+      if (mileage != null) await createLegacyBaseline(connection, userId, result.insertId, mileage);
+      return selectVehicle(connection, userId, result.insertId);
+    });
+    return res.status(201).json(vehicle);
   } catch (error) {
     return sendRouteError(res, error, "Add vehicle error:");
   }
@@ -219,18 +248,49 @@ router.get("/:id", async (req, res) => {
 router.put("/:id", async (req, res) => {
   try {
     const userId = req.user.id;
-    const { vehicleType, chassisNumber, model, year, currentMileage } = req.body || {};
+    const body = req.body || {};
+    const hasCurrentMileage = Object.hasOwn(body, "currentMileage");
+    const { vehicleType, chassisNumber, model, year, currentMileage } = body;
     const validationError = validateVehicleInput({ vehicleType, chassisNumber, model, year, currentMileage });
     if (validationError) return res.status(400).json({ error: validationError });
-    if (!(await userOwnsVehicle(db, userId, req.params.id))) return res.status(404).json({ error: "Το όχημα δεν βρέθηκε", code: "VEHICLE_NOT_FOUND" });
     const normalizedChassis = String(chassisNumber).trim();
-    const [duplicates] = await db.query("SELECT id FROM vehicles WHERE user_id = ? AND chassis_number = ? AND id <> ? LIMIT 1", [userId, normalizedChassis, req.params.id]);
-    if (duplicates.length) return res.status(409).json({ error: "Υπάρχει ήδη όχημα με αυτόν τον αριθμό πλαισίου", code: "DUPLICATE_CHASSIS_NUMBER" });
-    await db.query(
-      `UPDATE vehicles SET vehicle_type = ?, chassis_number = ?, model = ?, year = ?, current_mileage = ?, revision = revision + 1 WHERE id = ? AND user_id = ?`,
-      [vehicleType, normalizedChassis, model || null, year === "" || year == null ? null : Number(year), currentMileage === "" || currentMileage == null ? null : Number(currentMileage), req.params.id, userId]
-    );
-    return res.json(await selectVehicle(db, userId, req.params.id));
+    const normalized = {
+      vehicle_type: vehicleType,
+      chassis_number: normalizedChassis,
+      model: model || null,
+      year: year === "" || year == null ? null : Number(year),
+    };
+    const vehicle = await securityTransaction(db, async (connection) => {
+      await lockUser(connection, userId);
+      const owned = await findOwnedVehicle(connection, userId, req.params.id, { forUpdate: true });
+      if (!owned) throw routeError(404, "VEHICLE_NOT_FOUND", "Το όχημα δεν βρέθηκε");
+      const current = await selectVehicle(connection, userId, req.params.id);
+      const [duplicates] = await connection.query("SELECT id FROM vehicles WHERE user_id = ? AND chassis_number = ? AND id <> ? LIMIT 1", [userId, normalizedChassis, req.params.id]);
+      if (duplicates.length) throw routeError(409, "DUPLICATE_CHASSIS_NUMBER", "Υπάρχει ήδη όχημα με αυτόν τον αριθμό πλαισίου");
+      const mileage = hasCurrentMileage
+        ? await mediateLegacyCurrentMileage(connection, {
+          userId,
+          vehicle: { ...owned, currentMileage: current.currentMileage },
+          requestedMileage: currentMileage === "" || currentMileage == null ? null : Number(currentMileage),
+        })
+        : null;
+      const normalChanged = Object.entries(normalized).some(([column, value]) => !sameVehicleValue(current, column, value));
+      if (normalChanged || (mileage && (mileage.evidenceChanged || mileage.cacheChanged))) {
+        if (mileage) {
+          await connection.query(
+            `UPDATE vehicles SET vehicle_type = ?, chassis_number = ?, model = ?, year = ?, current_mileage = ?, revision = revision + 1 WHERE id = ? AND user_id = ?`,
+            [normalized.vehicle_type, normalized.chassis_number, normalized.model, normalized.year, mileage.cacheMileage, req.params.id, userId]
+          );
+        } else {
+          await connection.query(
+            `UPDATE vehicles SET vehicle_type = ?, chassis_number = ?, model = ?, year = ?, revision = revision + 1 WHERE id = ? AND user_id = ?`,
+            [normalized.vehicle_type, normalized.chassis_number, normalized.model, normalized.year, req.params.id, userId]
+          );
+        }
+      }
+      return selectVehicle(connection, userId, req.params.id);
+    });
+    return res.json(vehicle);
   } catch (error) {
     return sendRouteError(res, error, "Update vehicle error:");
   }
@@ -243,13 +303,28 @@ router.patch("/:id", async (req, res) => {
       await lockUser(connection, req.user.id);
       const owned = await findOwnedVehicle(connection, req.user.id, req.params.id, { forUpdate: true });
       if (!owned) throw routeError(404, "VEHICLE_NOT_FOUND", "Το όχημα δεν βρέθηκε");
+      const current = await selectVehicle(connection, req.user.id, req.params.id);
       const chassis = updates.find((item) => item.column === "chassis_number");
       if (chassis) {
         const [duplicates] = await connection.query("SELECT id FROM vehicles WHERE user_id = ? AND chassis_number = ? AND id <> ? LIMIT 1", [req.user.id, chassis.value, req.params.id]);
         if (duplicates.length) throw routeError(409, "DUPLICATE_CHASSIS_NUMBER", "Υπάρχει ήδη όχημα με αυτόν τον αριθμό πλαισίου");
       }
-      const assignments = updates.map((item) => `${item.column} = ?`).join(", ");
-      await connection.query(`UPDATE vehicles SET ${assignments}, revision = revision + 1 WHERE id = ? AND user_id = ?`, [...updates.map((item) => item.value), req.params.id, req.user.id]);
+      const mileageUpdate = updates.find((item) => item.column === "current_mileage");
+      const mileage = mileageUpdate
+        ? await mediateLegacyCurrentMileage(connection, {
+          userId: req.user.id,
+          vehicle: { ...owned, currentMileage: current.currentMileage },
+          requestedMileage: mileageUpdate.value,
+        })
+        : null;
+      const actual = updates.filter((item) => item.column !== "current_mileage" && !sameVehicleValue(current, item.column, item.value));
+      if (mileage && (mileage.evidenceChanged || mileage.cacheChanged)) {
+        actual.push({ column: "current_mileage", value: mileage.cacheMileage });
+      }
+      if (actual.length) {
+        const assignments = actual.map((item) => `${item.column} = ?`).join(", ");
+        await connection.query(`UPDATE vehicles SET ${assignments}, revision = revision + 1 WHERE id = ? AND user_id = ?`, [...actual.map((item) => item.value), req.params.id, req.user.id]);
+      }
       return selectVehicle(connection, req.user.id, req.params.id);
     });
     return res.json(vehicle);

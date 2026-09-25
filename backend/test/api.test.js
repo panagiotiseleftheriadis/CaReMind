@@ -11,6 +11,7 @@ const db = require("../db");
 const app = require("../server");
 const { normalizeCreate, normalizePatch } = require("../routes/vehicles");
 const { isVehicleArchiveEnabled } = require("../vehicle-archive-capability");
+const { isOdometerHistoryEnabled } = require("../odometer-history-capability");
 
 const activeUser = {
   id: 1,
@@ -33,6 +34,13 @@ test("vehicle archive capability parsing is strict and fail-closed", () => {
   assert.equal(isVehicleArchiveEnabled({ VEHICLE_ARCHIVE_ENABLED: "true" }), true);
   for (const value of ["TRUE", "True", "1", "yes", " true ", true]) {
     assert.equal(isVehicleArchiveEnabled({ VEHICLE_ARCHIVE_ENABLED: value }), false, String(value));
+  }
+});
+
+test("odometer history capability parsing enables only exact true", () => {
+  assert.equal(isOdometerHistoryEnabled({ ODOMETER_HISTORY_ENABLED: "true" }), true);
+  for (const value of [undefined, "", "false", "TRUE", "True", "1", "yes", " true", "true ", true]) {
+    assert.equal(isOdometerHistoryEnabled(value === undefined ? {} : { ODOMETER_HISTORY_ENABLED: value }), false, String(value));
   }
 });
 
@@ -505,6 +513,7 @@ test("email verification handles invalid or expired codes and already verified a
 test("vehicle CRUD remains scoped to the authenticated user", async () => {
   queryHandler = authenticatedHandler(async (sql, params) => {
     const normalized = String(sql);
+    if (normalized.includes("SELECT id FROM users WHERE id = ? FOR UPDATE")) return [[{ id: 1 }], []];
     if (normalized.includes("FROM vehicles v") && normalized.includes("ORDER BY")) {
       assert.equal(params[0], 1);
       return [[{ id: 7, chassisNumber: "VIN-7" }], []];
@@ -514,6 +523,11 @@ test("vehicle CRUD remains scoped to the authenticated user", async () => {
       assert.equal(params[0], 1);
       return [{ insertId: 8 }, []];
     }
+    if (normalized.includes("INSERT INTO odometer_readings")) return [{ insertId: 18 }, []];
+    if (normalized.includes("FROM vehicles") && normalized.includes("FOR UPDATE")) return [[{ id: 8, user_id: 1, archivedAt: null, revision: 1 }], []];
+    if (normalized.includes("FROM odometer_readings") && normalized.includes("occurred_on IS NOT NULL")) return [[], []];
+    if (normalized.includes("FROM odometer_readings") && normalized.includes("source = 'legacy_baseline'")) return [[{ id: 18, mileageKm: 12000 }], []];
+    if (normalized.includes("UPDATE odometer_readings")) return [{ affectedRows: 1 }, []];
     if (normalized.includes("FROM vehicles v") && normalized.includes("WHERE v.id = ?")) {
       return [[{ id: Number(params[0]), chassisNumber: "VIN-8", vehicleType: "car" }], []];
     }
@@ -726,6 +740,154 @@ test("vehicle PATCH allowlist validates input and increments revision in one own
     throw new Error("Cross-user PATCH must stop after the owned lookup");
   });
   assert.equal((await request("/api/vehicles/7", { method: "PATCH", token: tokenFor(), body: { make: "Nope" } })).response.status, 404);
+});
+
+test("PUT distinguishes omitted mileage from an explicit clear before dated history", async () => {
+  const state = {
+    revision: 1,
+    model: "Demo",
+    currentMileage: 500,
+    baseline: { id: 20, mileageKm: 500, voided: false },
+  };
+  let odometerQueries = 0;
+  queryHandler = authenticatedHandler(async (sql, params) => {
+    const normalized = String(sql).replace(/\s+/g, " ").trim();
+    if (normalized === "SELECT id FROM users WHERE id = ? FOR UPDATE") return [[{ id: 1 }], []];
+    if (normalized.includes("SELECT id, user_id, archived_at AS archivedAt, revision") && normalized.includes("FOR UPDATE")) {
+      return [[{ id: 7, user_id: 1, archivedAt: null, revision: state.revision }], []];
+    }
+    if (normalized.includes("FROM vehicles v") && normalized.includes("WHERE v.id = ? AND v.user_id = ?")) {
+      return [[{ id: 7, vehicleType: "car", chassisNumber: "VIN-7", model: state.model, year: 2024, currentMileage: state.currentMileage, revision: state.revision, state: "active", archivedAt: null }], []];
+    }
+    if (normalized.includes("chassis_number = ? AND id <> ?")) return [[], []];
+    if (normalized.includes("FROM odometer_readings") && normalized.includes("occurred_on IS NOT NULL")) {
+      odometerQueries += 1;
+      return [[], []];
+    }
+    if (normalized.includes("FROM odometer_readings") && normalized.includes("source = 'legacy_baseline'")) {
+      odometerQueries += 1;
+      return [state.baseline.voided ? [] : [{ id: state.baseline.id, mileageKm: state.baseline.mileageKm }], []];
+    }
+    if (normalized.startsWith("UPDATE odometer_readings")) {
+      state.baseline.voided = true;
+      return [{ affectedRows: 1 }, []];
+    }
+    if (normalized.startsWith("UPDATE vehicles SET vehicle_type = ?, chassis_number = ?, model = ?, year = ?, revision")) {
+      state.model = params[2];
+      state.revision += 1;
+      return [{ affectedRows: 1 }, []];
+    }
+    if (normalized.startsWith("UPDATE vehicles SET vehicle_type = ?, chassis_number = ?, model = ?, year = ?, current_mileage")) {
+      state.model = params[2];
+      state.currentMileage = params[4];
+      state.revision += 1;
+      return [{ affectedRows: 1 }, []];
+    }
+    throw new Error(`Unexpected pre-history PUT query: ${sql}`);
+  });
+
+  const omitted = await request("/api/vehicles/7", {
+    method: "PUT",
+    token: tokenFor(),
+    body: { vehicleType: "car", chassisNumber: "VIN-7", model: "Updated", year: 2024 },
+  });
+  assert.equal(omitted.response.status, 200);
+  assert.equal(omitted.body.model, "Updated");
+  assert.equal(omitted.body.currentMileage, 500);
+  assert.equal(omitted.body.revision, 2);
+  assert.equal(state.baseline.voided, false);
+  assert.equal(odometerQueries, 0);
+
+  const omittedNoOp = await request("/api/vehicles/7", {
+    method: "PUT",
+    token: tokenFor(),
+    body: { vehicleType: "car", chassisNumber: "VIN-7", model: "Updated", year: 2024 },
+  });
+  assert.equal(omittedNoOp.response.status, 200);
+  assert.equal(omittedNoOp.body.revision, 2);
+  assert.equal(state.baseline.voided, false);
+  assert.equal(odometerQueries, 0);
+
+  const cleared = await request("/api/vehicles/7", {
+    method: "PUT",
+    token: tokenFor(),
+    body: { vehicleType: "car", chassisNumber: "VIN-7", model: "Updated", year: 2024, currentMileage: null },
+  });
+  assert.equal(cleared.response.status, 200);
+  assert.equal(cleared.body.currentMileage, null);
+  assert.equal(cleared.body.revision, 3);
+  assert.equal(state.baseline.voided, true);
+  assert.equal(odometerQueries, 2);
+});
+
+test("dated odometer history protects legacy scalar writes without blocking unrelated vehicle updates", async () => {
+  const state = { revision: 1, make: null, model: "Demo", currentMileage: 500 };
+  let datedQueries = 0;
+  queryHandler = authenticatedHandler(async (sql, params) => {
+    const normalized = String(sql).replace(/\s+/g, " ").trim();
+    if (normalized === "SELECT id FROM users WHERE id = ? FOR UPDATE") return [[{ id: 1 }], []];
+    if (normalized.includes("SELECT id, user_id, archived_at AS archivedAt, revision") && normalized.includes("FOR UPDATE")) {
+      return [[{ id: 7, user_id: 1, archivedAt: null, revision: state.revision }], []];
+    }
+    if (normalized.includes("FROM vehicles v") && normalized.includes("WHERE v.id = ? AND v.user_id = ?")) {
+      return [[{ id: 7, vehicleType: "car", chassisNumber: "VIN-7", model: state.model, year: 2024, make: state.make, currentMileage: state.currentMileage, revision: state.revision, state: "active", archivedAt: null }], []];
+    }
+    if (normalized.includes("FROM odometer_readings") && normalized.includes("occurred_on IS NOT NULL")) {
+      datedQueries += 1;
+      return [[{ id: 30, mileageKm: 500, occurredOn: "2026-09-01", source: "manual" }], []];
+    }
+    if (normalized.includes("chassis_number = ? AND id <> ?")) return [[], []];
+    if (normalized.startsWith("UPDATE vehicles SET make = ?")) {
+      state.make = params[0];
+      state.revision += 1;
+      return [{ affectedRows: 1 }, []];
+    }
+    if (normalized.startsWith("UPDATE vehicles SET vehicle_type = ?, chassis_number = ?, model = ?, year = ?, revision")) {
+      state.model = params[2];
+      state.revision += 1;
+      return [{ affectedRows: 1 }, []];
+    }
+    throw new Error(`Unexpected dated-history vehicle query: ${sql}`);
+  });
+
+  const equal = await request("/api/vehicles/7", { method: "PATCH", token: tokenFor(), body: { currentMileage: 500 } });
+  assert.equal(equal.response.status, 200);
+  assert.equal(equal.body.revision, 1);
+  for (const currentMileage of [499, 501, null]) {
+    const conflict = await request("/api/vehicles/7", { method: "PATCH", token: tokenFor(), body: { currentMileage } });
+    assert.equal(conflict.response.status, 409);
+    assert.equal(conflict.body.code, "ODOMETER_HISTORY_REQUIRED");
+  }
+  const unrelated = await request("/api/vehicles/7", { method: "PATCH", token: tokenFor(), body: { make: "Toyota" } });
+  assert.equal(unrelated.response.status, 200);
+  assert.equal(unrelated.body.revision, 2);
+  const datedQueriesBeforeOmittedPut = datedQueries;
+  const omittedPut = await request("/api/vehicles/7", {
+    method: "PUT",
+    token: tokenFor(),
+    body: { vehicleType: "car", chassisNumber: "VIN-7", model: "Updated", year: 2024 },
+  });
+  assert.equal(omittedPut.response.status, 200);
+  assert.equal(omittedPut.body.model, "Updated");
+  assert.equal(omittedPut.body.currentMileage, 500);
+  assert.equal(omittedPut.body.revision, 3);
+  assert.equal(datedQueries, datedQueriesBeforeOmittedPut);
+
+  const clearConflict = await request("/api/vehicles/7", {
+    method: "PUT",
+    token: tokenFor(),
+    body: { vehicleType: "car", chassisNumber: "VIN-7", model: "Updated", year: 2024, currentMileage: null },
+  });
+  assert.equal(clearConflict.response.status, 409);
+  assert.equal(clearConflict.body.code, "ODOMETER_HISTORY_REQUIRED");
+
+  const legacyPut = await request("/api/vehicles/7", {
+    method: "PUT",
+    token: tokenFor(),
+    body: { vehicleType: "car", chassisNumber: "VIN-7", model: "Updated", year: 2024, currentMileage: 500 },
+  });
+  assert.equal(legacyPut.response.status, 200);
+  assert.equal(legacyPut.body.revision, 3);
 });
 
 test("archive capability gates transitions and protects legacy DELETE after activation", async () => {
