@@ -10,7 +10,7 @@
     "db:import:mysql": "node scripts/import-mysql-to-postgres.js",
     "db:seed": "node scripts/seed-development.js",
     "db:setup": "npm run db:migrate",
-    "vercel-build": "npm run db:migrate",
+    "vercel-build": "node scripts/vercel-build.js",
     "frontend:serve": "node scripts/serve-frontend.js",
     "test": "node --test --test-concurrency=1",
     "test:postgres": "node --test --test-concurrency=1 integration/postgres.js",
